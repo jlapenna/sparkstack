@@ -1,0 +1,51 @@
+description: Qwen3-Coder-Next-int4-Autoround — 1M context
+model: Intel/Qwen3-Coder-Next-int4-AutoRound
+container: vllm-node-tf5
+mods:
+  - mods/fix-qwen3-next-autoround
+limits:
+  memory: 104G
+defaults:
+  port: 8000
+  host: 0.0.0.0
+  tensor_parallel: 1
+  gpu_memory_utilization: 0.81
+  max_model_len: 1048576
+env:
+  VLLM_MARLIN_USE_ATOMIC_ADD: '1'
+  VLLM_SLEEP_WHEN_IDLE: '0'
+  VLLM_ALLOW_LONG_MAX_MODEL_LEN: '1'
+  VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS: '1'
+  SAFETENSORS_FAST_GPU: '1'
+  VLLM_USE_FLASHINFER_MOE_FP8: '1'
+command: |
+  vllm serve Intel/Qwen3-Coder-Next-int4-AutoRound \
+    --max-model-len {max_model_len} \
+    --enable-auto-tool-choice \
+    --tool-call-parser qwen3_coder \
+    --gpu-memory-utilization {gpu_memory_utilization} \
+    --host {host} \
+    --port {port} \
+    --load-format fastsafetensors \
+    --language-model-only \
+    --enable-prefix-caching \
+    --enable-chunked-prefill \
+    --max-num-batched-tokens 49152 \
+    --max-num-seqs 384 \
+    --kv-cache-dtype fp8 \
+    --optimization-level 3 \
+    --performance-mode throughput \
+    --mamba-cache-mode align \
+    --mamba-block-size 8 \
+    --hf-overrides '{"rope_scaling": {"rope_type": "yarn", "factor": 4.0, "original_max_position_embeddings": 262144}}'
+recipe_version: '2'
+name: qwen3-coder-next-int4-autoround-1M
+cluster_only: false
+solo_only: true
+
+litellm_overrides:
+  thinking_format: qwen-chat-template
+  min_p: 0.1
+  presence_penalty: 0.0
+  frequency_penalty: 0.0
+  stop_token_ids: [151643, 151644, 151645]

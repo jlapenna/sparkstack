@@ -1,0 +1,48 @@
+model_list:
+- model_name: main
+  litellm_params:
+    model: openai/main
+    api_base: http://host.docker.internal:8001/v1
+    api_key: ${VLLM_SPARK_API_KEY:-}
+    role_map:
+      developer: system
+  model_info:
+    base_model: nemotron-3-super-nvfp4-vllm
+    context_window: 131072
+    max_tokens: 131072
+    input:
+    - text
+- model_name: embedding
+  litellm_params:
+    model: openai/embedding
+    api_base: http://host.docker.internal:8002/v1
+    api_key: ${VLLM_SPARK_API_KEY:-}
+    encoding_format: float
+  model_info:
+    base_model: bge-m3
+    context_window: 8192
+    max_tokens: 8192
+    input:
+    - text
+litellm_settings:
+  drop_params: true
+  set_verbose: false
+  telemetry: false
+  callbacks:
+  - prometheus
+  - otel
+  guardrails: []
+  master_key: ${VLLM_SPARK_API_KEY:-}
+  request_timeout: 1200
+  num_retries: 3
+  retry_policy:
+    exponential_backoff: true
+  connect_timeout: 10
+  health_check: true
+  openai_developer_role_to_system: true
+general_settings:
+  reload_config: true
+  reload_interval: 10
+router_settings:
+  routing_strategy: simple-shuffle
+  enable_pre_call_checks: true

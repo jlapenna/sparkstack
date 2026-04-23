@@ -1,0 +1,7 @@
+# Authoritative versions for all sparkrun packages
+# Run: python scripts/update-versions.py to sync all files
+# Run: python scripts/update-versions.py --check to verify (CI-friendly)
+
+sparkrun: 0.2.28
+sparkrun-cc-plugin: 0.0.4
+sparkrun-openclaw-plugin: 0.0.1

@@ -1,0 +1,9 @@
+#
+# NEVER modify this file without reviewing all previous docker adjustments in `skills/stack-knowledge/SKILL.md`
+
+services:
+  openclaw-gateway:
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    group_add:
+      - "988"

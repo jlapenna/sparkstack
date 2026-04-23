@@ -1,0 +1,77 @@
+[project]
+name = "services"
+version = "0.1.0"
+description = "Management codebase for Docker services, including vLLM and OpenClaw."
+requires-python = ">=3.13"
+dependencies = [
+    "aiohttp>=3.9.0",
+    "httpx>=0.27.0,<0.28.0",
+    "jq>=1.11.0",
+    "loguru>=0.7.2",
+    "openai-whisper>=20250625",
+    "pydantic-settings>=2.2.1",
+    "python-dotenv>=1.2.2",
+    "pyyaml>=6.0.3",
+    "rich>=13.7.1",
+    "tenacity>=8.2.3",
+    "torch>=2.1.0",
+    "sparkrun",
+    "psutil>=7.2.2",
+]
+
+[tool.uv]
+package = false
+prerelease = "allow"
+link-mode = "symlink"
+compile-bytecode = true
+required-environments = ["sys_platform == 'linux' and platform_machine == 'aarch64'"]
+
+[tool.uv.sources]
+sparkrun = { path = "sparkrun", editable = true }
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.7",
+    "pyright>=1.1.350",
+    "pre-commit>=3.7.0",
+    "mdformat>=1.0.0",
+    "mdformat-gfm>=1.0.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.ruff.lint]
+# Enable Pyflakes (F), Pycodestyle (E, W), Isort (I), and Pyupgrade (UP)
+select = ["F", "E", "W", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/*.py" = ["E402", "I001"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["utils"]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+exclude = [
+    "openclaw",
+    "sparkrun/tests",
+    "sparkrun/.venv",
+    "monitoring",
+    "registry",
+    ".venv",
+]
+
+[tool.pytest.ini_options]
+pythonpath = [
+    "."
+]

@@ -1,0 +1,32 @@
+default_install_hook_types: [pre-commit, pre-push]
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.8
+    hooks:
+      - id: ruff
+        args: [ --exit-zero ]
+        verbose: true
+        stages: [pre-push]
+      - id: ruff-format
+        entry: bash -c 'ruff format --check "$@" || true' --
+        verbose: true
+        stages: [pre-push]
+  - repo: https://github.com/executablebooks/mdformat
+    rev: 1.0.0
+    hooks:
+      - id: mdformat
+        entry: bash -c 'mdformat --check "$@" || true' --
+        verbose: true
+        additional_dependencies:
+          - mdformat-gfm
+        stages: [pre-push]
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.408
+    hooks:
+      - id: pyright
+        entry: bash -c 'pyright "$@" || true' --
+        verbose: true
+        args: [ core/, scripts/, tests/ ]
+        additional_dependencies:
+          - pyright
+        stages: [pre-push]

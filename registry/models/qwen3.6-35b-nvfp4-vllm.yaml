@@ -1,0 +1,51 @@
+recipe_version: "2"
+model: RedHatAI/Qwen3.6-35B-A3B-NVFP4
+runtime: vllm
+container: ghcr.io/spark-arena/dgx-vllm-eugr-nightly:latest
+
+metadata:
+  description: Qwen3.6-35B NVFP4 — Native Blackwell FP4 Optimization
+  human_name: "Spark Main (Qwen3.6-35B-A3B-NVFP4)"
+  status: deprecated
+  notes: |
+    🛑 DEPRECATED: This model was producing gibberish and "falling in on itself" during complex reasoning/section generation.
+    Observed behavior: Infinite repetitive looping ("contribute while others don't... linkage bridge link tie bond attachment...").
+    We have stopped using this model in the primary stack.
+
+defaults:
+  port: 8000
+  host: 0.0.0.0
+  tensor_parallel: 1
+  gpu_memory_utilization: 0.81
+  max_model_len: 262144
+  max_num_seqs: 256
+
+hardware:
+  memory_limit: 80G
+
+command: |
+  vllm serve {model} \
+    --kv-cache-dtype nvfp4 \
+    --quantization nvfp4 \
+    --attention-backend FLASHINFER \
+    --trust-remote-code \
+    --gpu-memory-utilization {gpu_memory_utilization} \
+    --max-model-len {max_model_len} \
+    --max-num-seqs {max_num_seqs} \
+    --max-num-batched-tokens 4096 \
+    --enable-prefix-caching \
+    --enable-chunked-prefill \
+    --host {host} \
+    --port {port} \
+    --tool-call-parser qwen3_coder \
+    --enable-auto-tool-choice \
+    --chat-template-content-format auto \
+    --speculative-config '{"method":"mtp","num_speculative_tokens":3}' \
+    --tensor-parallel-size {tensor_parallel}
+
+litellm_overrides:
+  thinking_format: qwen-chat-template
+  min_p: 0.1
+  presence_penalty: 1.5
+  frequency_penalty: 0.2
+  stop_token_ids: [151643, 151644, 151645]

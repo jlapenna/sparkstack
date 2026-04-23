@@ -1,0 +1,123 @@
+# Dockerfile.sandbox-custom
+#
+# NEVER modify this file without reviewing all previous docker adjustments in `skills/stack-knowledge/SKILL.md`
+
+FROM openclaw-sandbox:bookworm-slim
+
+# Tool & Package Versions
+ENV NVM_VERSION=v0.40.1
+ENV GOGCLI_VERSION=0.12.0
+ENV GOPLACES_VERSION=0.3.0
+ENV CAMSNAP_VERSION=0.2.0
+ENV BLOGWATCHER_VERSION=v0.0.2
+ENV MCPORTER_VERSION=0.8.1
+ENV SUMMARIZE_VERSION=0.13.0
+ENV OPENAI_WHISPER_VERSION=20250625
+ENV NANO_PDF_VERSION=0.2.1
+
+# Switch to root to install system-wide dependencies
+USER root
+
+# Install prerequisites for external Apt repositories
+# Note: curl, ca-certificates, jq, ripgrep, python3, and git are natively 
+# provided by the base openclaw-sandbox:bookworm-slim image.
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    gnupg
+
+# Setup external Apt repositories (GitHub, Google Cloud, Docker)
+RUN mkdir -p /etc/apt/keyrings && \
+    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
+    chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null && \
+    curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg && \
+    chmod 644 /usr/share/keyrings/cloud.google.gpg && \
+    echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee /etc/apt/sources.list.d/google-cloud-sdk.list && \
+    curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
+    chmod a+r /etc/apt/keyrings/docker.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian bookworm stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# Install all required apt packages (internal + external)
+# Redundant packages omitted due to upstream inclusion: curl, ca-certificates, jq, ripgrep, python3, git.
+ARG OPENCLAW_DOCKER_APT_PACKAGES
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    gh \
+    google-cloud-cli \
+    docker-ce-cli \
+    ffmpeg \
+    python3-pip \
+    mosquitto-clients \
+    build-essential \
+    procps \
+    file \
+    tmux \
+    wget \
+    chromium \
+    git-lfs \
+    zip \
+    unzip \
+    bzip2 \
+    xz-utils \
+    tree \
+    sqlite3 \
+    cmake \
+    pkg-config \
+    lsof \
+    netcat-openbsd \
+    ${OPENCLAW_DOCKER_APT_PACKAGES} \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install Go via multi-stage copy
+COPY --from=golang:1.24 /usr/local/go/ /usr/local/go/
+
+# Install uv globally
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+
+# Install Node.js via multi-stage copy
+COPY --from=node:24-bookworm-slim /usr/local/bin/node /usr/local/bin/
+COPY --from=node:24-bookworm-slim /usr/local/lib/node_modules/ /usr/local/lib/node_modules/
+RUN ln -sf /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
+    ln -sf /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx && \
+    ln -sf /usr/local/lib/node_modules/corepack/dist/corepack.js /usr/local/bin/corepack
+
+# Setup environment for the sandbox user
+ENV PATH="/home/sandbox/.local/bin:/usr/local/go/bin:${PATH}"
+
+# Create directories and assign permissions to sandbox user
+RUN mkdir -p /home/sandbox/.config \
+    /home/sandbox/.cache \
+    /home/sandbox/.npm /home/sandbox/.local/bin \
+    /home/sandbox/.openclaw \
+    && chown -R sandbox:sandbox /home/sandbox
+
+# Install bun via multi-stage copy
+COPY --from=oven/bun:1 /usr/local/bin/bun /usr/local/bin/bun
+
+# Install mcporter and summarize globally via npm
+RUN npm install -g mcporter@${MCPORTER_VERSION} @steipete/summarize@${SUMMARIZE_VERSION} && \
+    npm cache clean --force
+
+# Install explicit versions of external go-based utilities
+
+RUN set -ex; \
+    ARCH=$(uname -m); \
+    if [ "$ARCH" = "x86_64" ]; then ASSET_ARCH="amd64"; \
+    elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then ASSET_ARCH="arm64"; \
+    else ASSET_ARCH="amd64"; fi; \
+    curl -fL "https://github.com/steipete/gogcli/releases/download/v${GOGCLI_VERSION}/gogcli_${GOGCLI_VERSION}_linux_${ASSET_ARCH}.tar.gz" | tar -xz -C /usr/local/bin gog && \
+    curl -fL "https://github.com/steipete/goplaces/releases/download/v${GOPLACES_VERSION}/goplaces_${GOPLACES_VERSION}_linux_${ASSET_ARCH}.tar.gz" | tar -xz -C /usr/local/bin goplaces && \
+    curl -fL "https://github.com/steipete/camsnap/releases/download/v${CAMSNAP_VERSION}/camsnap_${CAMSNAP_VERSION}_linux_${ASSET_ARCH}.tar.gz" | tar -xz -C /usr/local/bin camsnap && \
+    chmod +x /usr/local/bin/gog /usr/local/bin/goplaces /usr/local/bin/camsnap
+
+# Install Go tools (blogwatcher, blu)
+RUN GOBIN=/usr/local/bin /usr/local/go/bin/go install github.com/Hyaxia/blogwatcher/cmd/blogwatcher@${BLOGWATCHER_VERSION} && \
+    rm -rf /root/.cache/go-build /root/go
+
+
+# Install Python CLI tools globally using uv tool without permanently polluting sandbox env
+RUN UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin uv tool install openai-whisper==${OPENAI_WHISPER_VERSION} --with torch && \
+    UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin uv tool install nano-pdf==${NANO_PDF_VERSION} && \
+    uv cache clean && \
+    chown -R sandbox:sandbox /opt/uv-tools
+
+# Switch to the sandbox user for runtime
+USER sandbox

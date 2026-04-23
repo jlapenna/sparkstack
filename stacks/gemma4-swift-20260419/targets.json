@@ -1,0 +1,18 @@
+[
+  {
+    "targets": [
+      "host.docker.internal:8001"
+    ],
+    "labels": {
+      "model": "main"
+    }
+  },
+  {
+    "targets": [
+      "host.docker.internal:8002"
+    ],
+    "labels": {
+      "model": "embedding"
+    }
+  }
+]

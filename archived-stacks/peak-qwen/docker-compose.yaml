@@ -1,0 +1,24 @@
+services:
+  gateway:
+    container_name: vllm-gateway
+    image: ghcr.io/berriai/litellm:main-latest
+    restart: unless-stopped
+    ports:
+    - ${VLLM_PORT}:4000
+    volumes:
+    - ./litellm-config.yaml:/app/config.yaml
+    environment:
+    - PROMETHEUS_MONITORING=True
+    - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+    - OTEL_SERVICE_NAME=vllm-gateway
+    command:
+    - --config
+    - /app/config.yaml
+    networks:
+    - vllm-network
+    - proxy-tier
+networks:
+  vllm-network:
+    external: true
+  proxy-tier:
+    external: true
