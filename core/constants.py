@@ -9,8 +9,8 @@ from pathlib import Path
 PROJECT_ROOT = Path(os.getenv("SPARK_PROJECT_ROOT", "/home/jlapenna/services")).absolute()
 OPENCLAW_HOME = Path(os.getenv("OPENCLAW_HOME", Path.home() / ".openclaw")).absolute()
 OPENCLAW_CONFIG = OPENCLAW_HOME / "openclaw.json"
-STACKS_DIR = PROJECT_ROOT / "stacks"
-REGISTRY_DIR = PROJECT_ROOT / "registry"
+STACKS_DIR = PROJECT_ROOT / "spark-stack-registry" / "stacks"
+REGISTRY_DIR = PROJECT_ROOT / "spark-stack-registry"
 
 # DGX Spark (GB10) Hardware Specifications
 TOTAL_SHARED_RAM_GB = 128.0

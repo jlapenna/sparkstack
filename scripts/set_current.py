@@ -10,14 +10,14 @@ from loguru import logger
 from core.utils import async_run_command
 
 ROOT_DIR = Path(__file__).parent.parent.absolute()
-STACKS_DIR = ROOT_DIR / "stacks"
+STACKS_DIR = ROOT_DIR / "spark-stack-registry" / "stacks"
 
 
 async def main():
     parser = argparse.ArgumentParser(description="Switch active stack and restart services")
     parser.add_argument(
         "target",
-        help="Directory name of the target stack (e.g., stacks/powerhouse-maximize-20260330)",
+        help="Directory name of the target stack (e.g., spark-stack-registry/spark-stack-registry/stacks/powerhouse-maximize-20260330)",
     )
     args = parser.parse_args()
 
@@ -25,7 +25,7 @@ async def main():
 
     # Resolve absolute path if target is relative
     if not target_str.startswith("/"):
-        if target_str.startswith("stacks/"):
+        if target_str.startswith("spark-stack-registry/stacks/"):
             full_target = ROOT_DIR / target_str
         else:
             full_target = STACKS_DIR / target_str

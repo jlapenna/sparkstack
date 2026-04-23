@@ -39,7 +39,7 @@ ______________________________________________________________________
 
 Create or verify the custom `sparkrun` recipe in the registry.
 
-- **File**: `registry/models/[MODEL_ID].yaml`
+- **File**: `spark-stack-registry/models/[MODEL_ID].yaml`
 - **VLLM Config Details to Verify**:
   - **Resource Allocation**: Must match the budget calculated above.
   - **Engine & Architecture**: Consult the **stack-manager** "Troubleshooting & Learnings" section for model-specific engine overrides (e.g., V1 vs V0 requirements, attention backends, and reasoning parser plugins).
@@ -128,6 +128,6 @@ ______________________________________________________________________
 Once verified functional:
 
 1. **Document Learnings**: Ensure this executed plan is completely filled out and saved as `plan.md` in the stack's directory (and update the files in `skills/stack-manager/references/` if new technical constraints were discovered).
-1. **Cleanup**: Remove all failed iterative stack directories from the `stacks/` folder.
+1. **Cleanup**: Remove all failed iterative stack directories from the `spark-stack-registry/stacks/` folder.
 1. **Standardize Name**: Rename the working stack directory to remove the iterative suffix (e.g., `core-upgrade-20260329-01` -> `core-upgrade-20260329`).
 1. **Reset Current**: Finalize symlinks to ensure they point to the clean name.
