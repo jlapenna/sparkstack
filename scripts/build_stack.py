@@ -291,8 +291,8 @@ class StackBuilder:
 
                 if isinstance(model_config, SparkrunRegistryModel):
                     recipe_dict = model_config.recipe
-                    backend_url = f"http://host.docker.internal:{port}/v1"
-                    prometheus_target = f"host.docker.internal:{port}"
+                    backend_url = f"http://{container_hostname}:{port}/v1"
+                    prometheus_target = f"{container_hostname}:{port}"
 
                     vllm_cfg = recipe_dict.get("vllm_config") or recipe_dict.get("defaults") or {}
 
@@ -395,7 +395,7 @@ class StackBuilder:
                     cmd_args.extend(["-o", f"port={port}"])
                     cmd_args.extend(
                         [
-                            "--cluster",
+                            "--container-name",
                             f"{target_role}",
                             "--label",
                             f"sparkrun.role={target_role}",
@@ -526,7 +526,7 @@ class StackBuilder:
         self.litellm_builder.write()
         self.prometheus_builder.write()
         self._generate_launcher_script()
-        logger.info(f"🚀 Stack '{self.stack_name}' built successfully in spark-stack-registry/stacks/{self.stack_name}")
+        logger.info(f"🚀 Stack '{self.stack_name}' built successfully in stacks/{self.stack_name}")
 
     def _generate_launcher_script(self):
         lines = [
