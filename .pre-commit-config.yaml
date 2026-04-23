@@ -30,3 +30,8 @@ repos:
         additional_dependencies:
           - pyright
         stages: [pre-push]
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.24.0
+    hooks:
+      - id: gitleaks
+        stages: [pre-commit, pre-push]
