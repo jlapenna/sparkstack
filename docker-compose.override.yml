@@ -1,0 +1,38 @@
+# OpenClaw gateway overrides (auto-merged by docker compose).
+#
+# NEVER modify this file without reviewing all previous docker adjustments in `skills/stack-knowledge/SKILL.md`
+#
+# The upstream openclaw/docker-compose.yml already maps:
+#   ${OPENCLAW_CONFIG_DIR} → /home/node/.openclaw
+#   ${OPENCLAW_WORKSPACE_DIR} → /home/node/.openclaw/workspace
+#
+# Those mappings let the node process read config at its native HOME.
+# This override adds the items below on top of that.
+services:
+  openclaw-gateway:
+    image: openclaw-gateway-custom:latest
+
+    # Inject secrets (TELEGRAM_BOT_TOKEN, VLLM_SPARK_API_KEY, etc.)
+    # from the user's state directory, not the repo .env.
+    env_file:
+      - ${OPENCLAW_CONFIG_DIR}/.env
+
+    volumes:
+      # DooD identical volume map: the gateway uses Docker-out-of-Docker
+      # to create sandbox containers. update_openclaw.py rewrites internal
+      # /home/node/ paths to /home/jlapenna/ so Docker evaluates bind
+      # mounts against the host filesystem correctly. This map ensures
+      # the rewritten paths resolve inside the gateway container too.
+      - ${OPENCLAW_CONFIG_DIR}:${OPENCLAW_CONFIG_DIR}
+      - /var/run/docker.sock:/var/run/docker.sock
+
+    networks:
+      - default
+      - proxy-tier
+
+  openclaw-cli:
+    image: openclaw-gateway-custom:latest
+
+networks:
+  proxy-tier:
+    external: true

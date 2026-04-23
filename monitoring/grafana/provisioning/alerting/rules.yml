@@ -1,0 +1,22 @@
+apiVersion: 1
+
+groups:
+  - name: vLLM-Alerts
+    rules:
+      - alert: vLLM_Model_Offline
+        expr: up{job="vllm"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "vLLM Model {{ $labels.model }} is offline"
+          description: "Model container {{ $labels.instance }} has been down for more than 2 minutes."
+
+      - alert: GPU_VRAM_Critical
+        expr: DCGM_FI_DEV_FB_USED / DCGM_FI_DEV_FB_FREE > 0.95
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "GPU VRAM usage critical on {{ $labels.gpu }}"
+          description: "GPU VRAM usage is above 95% for more than 1 minute. Risk of OOM."

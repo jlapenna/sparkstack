@@ -1,0 +1,55 @@
+recipe_version: "2"
+model: nvidia/Gemma-4-31B-it-NVFP4
+runtime: vllm
+container: ghcr.io/spark-arena/dgx-vllm-eugr-nightly:latest
+
+metadata:
+  description: Google Gemma 4 31B IT (NVFP4) — Standalone Spark Configuration
+  model_params: 31000000000
+  model_dtype: nvfp4
+  kv_dtype: fp8
+  num_layers: 48
+  num_kv_heads: 8
+  head_dim: 128
+  
+defaults:
+  port: 8000
+  host: 0.0.0.0
+  tensor_parallel: 1
+  gpu_memory_utilization: 0.80
+  max_model_len: 131072
+  max_num_seqs: 128
+
+hardware:
+  memory_limit: 108G
+
+env:
+  VLLM_ATTENTION_BACKEND: 'TRITON'
+  # OpenTelemetry Tracing
+  # OpenTelemetry Tracing
+  VLLM_OTEL_TRACING_ENABLED: '1'
+  OTEL_EXPORTER_OTLP_ENDPOINT: 'http://otel-collector:4317'
+  OTEL_SERVICE_NAME: 'vllm-main'
+
+command: |
+  vllm serve {model} \
+    --kv-cache-dtype auto \
+    --quantization nvfp4 \
+    --attention-backend TRITON_ATTN \
+    --trust-remote-code \
+    --gpu-memory-utilization {gpu_memory_utilization} \
+    --max-model-len {max_model_len} \
+    --max-num-seqs {max_num_seqs} \
+    --enable-prefix-caching \
+    --host {host} \
+    --port {port} \
+    --tensor-parallel-size {tensor_parallel} \
+    --enable-auto-tool-choice \
+    --tool-call-parser gemma4 \
+    --reasoning-parser gemma4 \
+    --tokenizer nvidia/Gemma-4-31B-it-NVFP4
+
+litellm_overrides:
+  thinking_format: openai
+  min_p: 0.05
+  presence_penalty: 0.3

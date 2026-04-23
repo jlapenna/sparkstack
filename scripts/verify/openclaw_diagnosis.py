@@ -1,0 +1,27 @@
+import re
+import json
+from loguru import logger
+from core.utils import async_run_command
+from scripts.verify.utils import verify_layer
+from scripts.verify.context import VerifyContext
+
+
+@verify_layer("Layer 4: OpenClaw System Diagnosis")
+async def run(ctx: VerifyContext):
+    result = await async_run_command([str(ctx.oc_bin), "models", "list", "--json"])
+    match = re.search(r"\{.*\}", result.stdout, re.DOTALL)
+    if not match:
+        logger.error("❌ Could not find JSON in 'oc models list' output")
+        return False
+
+    data = json.loads(match.group(0))
+    models = data.get("models", [])
+    spark_models = [m["key"] for m in models if m.get("key", "").startswith("spark/")]
+    logger.info(f"Configured Spark models: {', '.join(spark_models)}")
+
+    if any(m == "spark/main" for m in spark_models):
+        logger.info("✅ Pass: OpenClaw System Diagnosis")
+        return True
+    else:
+        logger.error("❌ Failure: spark/main not found in OpenClaw")
+        return False

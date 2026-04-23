@@ -1,0 +1,35 @@
+litellm_settings:
+  drop_params: true
+  set_verbose: false
+  telemetry: false
+  callbacks:
+  - prometheus
+  - otel
+  guardrails: []
+  master_key: ${VLLM_SPARK_API_KEY:-}
+  request_timeout: 1200
+  num_retries: 3
+  retry_policy:
+    exponential_backoff: true
+  connect_timeout: 10
+  health_check: true
+  openai_developer_role_to_system: true
+general_settings:
+  reload_config: true
+  reload_interval: 10
+router_settings:
+  routing_strategy: simple-shuffle
+  enable_pre_call_checks: true
+model_list:
+- model_name: main
+  litellm_params:
+    model: openai/Qwen/Qwen3.5-35B-A3B-FP8
+    api_base: http://172.19.0.1:8001/v1
+    api_key: ${VLLM_SPARK_API_KEY:-}
+    role_map:
+      developer: system
+  model_info:
+    context_window: 131072
+    max_tokens: 131072
+    input:
+    - text

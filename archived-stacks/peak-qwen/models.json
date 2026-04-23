@@ -1,0 +1,18 @@
+{
+  "spark": {
+    "baseUrl": "http://spark.lan:4000/v1",
+    "apiKey": "f6879aac-ef42-433c-a0b9-b71e79dfcba1",
+    "auth": "api-key",
+    "api": "openai-completions",
+    "models": [
+      {
+        "id": "main",
+        "name": "Spark Main (Qwen-35-Coder)",
+        "contextWindow": 131072,
+        "input": [
+          "text"
+        ]
+      }
+    ]
+  }
+}

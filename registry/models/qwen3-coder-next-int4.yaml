@@ -1,0 +1,6 @@
+
+litellm_overrides:
+  min_p: 0.1
+  presence_penalty: 0.0
+  frequency_penalty: 0.0
+  stop_token_ids: [151643, 151644, 151645]

@@ -1,0 +1,125 @@
+# Dockerfile.gateway-custom
+#
+# NEVER modify this file without reviewing all previous docker adjustments in `skills/stack-knowledge/SKILL.md`
+
+FROM openclaw:local
+
+# Tool & Package Versions
+ENV NVM_VERSION=v0.40.1
+ENV GOGCLI_VERSION=0.12.0
+ENV GOPLACES_VERSION=0.3.0
+ENV CAMSNAP_VERSION=0.2.0
+ENV BLOGWATCHER_VERSION=v0.0.2
+ENV MCPORTER_VERSION=0.8.1
+ENV SUMMARIZE_VERSION=0.13.0
+ENV OPENAI_WHISPER_VERSION=20250625
+ENV NANO_PDF_VERSION=0.2.1
+ENV GEMINI_CLI_VERSION=0.38.2
+ENV PI_CODING_AGENT_VERSION=0.67.68
+ENV OPENCODE_VERSION=v1.4.11
+
+# Switch to root to install system-wide dependencies
+USER root
+
+# Install prerequisites for external Apt repositories
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    gnupg \
+    ca-certificates \
+    curl \
+    jq \
+    ripgrep \
+    python3 \
+    git
+
+# Setup external Apt repositories (GitHub, Google Cloud, Docker)
+RUN mkdir -p /etc/apt/keyrings /usr/share/keyrings && \
+    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
+    chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null && \
+    curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --batch --yes --dearmor -o /usr/share/keyrings/cloud.google.gpg && \
+    chmod 644 /usr/share/keyrings/cloud.google.gpg && \
+    echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee /etc/apt/sources.list.d/google-cloud-sdk.list && \
+    curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --batch --yes --dearmor -o /etc/apt/keyrings/docker.gpg && \
+    chmod a+r /etc/apt/keyrings/docker.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian bookworm stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# Install all required apt packages
+ARG OPENCLAW_DOCKER_APT_PACKAGES
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    gh \
+    google-cloud-cli \
+    docker-ce-cli \
+    ffmpeg \
+    python3-pip \
+    mosquitto-clients \
+    build-essential \
+    procps \
+    file \
+    tmux \
+    wget \
+    chromium \
+    git-lfs \
+    zip \
+    unzip \
+    bzip2 \
+    xz-utils \
+    tree \
+    sqlite3 \
+    cmake \
+    pkg-config \
+    lsof \
+    netcat-openbsd \
+    ${OPENCLAW_DOCKER_APT_PACKAGES} \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install Go via multi-stage copy
+COPY --from=golang:1.26 /usr/local/go/ /usr/local/go/
+ENV PATH="/usr/local/go/bin:${PATH}"
+
+# Install uv globally
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+
+# Install bun via multi-stage copy
+COPY --from=oven/bun:1 /usr/local/bin/bun /usr/local/bin/bun
+
+# Install global tools needed by the Gateway for ACP execution and Skills
+RUN npm install -g @google/gemini-cli@${GEMINI_CLI_VERSION} @mariozechner/pi-coding-agent@${PI_CODING_AGENT_VERSION} mcporter@${MCPORTER_VERSION} @steipete/summarize@${SUMMARIZE_VERSION} && \
+    npm cache clean --force
+
+# Install OpenCode CLI via direct binary download natively for ACP execution
+RUN set -ex; \
+    ARCH=$(uname -m); \
+    if [ "$ARCH" = "x86_64" ]; then ASSET_ARCH="x64"; \
+    elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then ASSET_ARCH="arm64"; \
+    else ASSET_ARCH="x64"; fi; \
+    curl -fL "https://github.com/anomalyco/opencode/releases/download/${OPENCODE_VERSION}/opencode-linux-${ASSET_ARCH}.tar.gz" | tar -xz -C /usr/local/bin opencode && \
+    chmod +x /usr/local/bin/opencode
+
+# Install explicit versions of external go-based utilities
+RUN set -ex; \
+    ARCH=$(uname -m); \
+    if [ "$ARCH" = "x86_64" ]; then ASSET_ARCH="amd64"; \
+    elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then ASSET_ARCH="arm64"; \
+    else ASSET_ARCH="amd64"; fi; \
+    curl -fL "https://github.com/steipete/gogcli/releases/download/v${GOGCLI_VERSION}/gogcli_${GOGCLI_VERSION}_linux_${ASSET_ARCH}.tar.gz" | tar -xz -C /usr/local/bin gog && \
+    curl -fL "https://github.com/steipete/goplaces/releases/download/v${GOPLACES_VERSION}/goplaces_${GOPLACES_VERSION}_linux_${ASSET_ARCH}.tar.gz" | tar -xz -C /usr/local/bin goplaces && \
+    curl -fL "https://github.com/steipete/camsnap/releases/download/v${CAMSNAP_VERSION}/camsnap_${CAMSNAP_VERSION}_linux_${ASSET_ARCH}.tar.gz" | tar -xz -C /usr/local/bin camsnap && \
+    chmod +x /usr/local/bin/gog /usr/local/bin/goplaces /usr/local/bin/camsnap
+
+# Install Go tools (blogwatcher, blu)
+RUN GOBIN=/usr/local/bin /usr/local/go/bin/go install github.com/Hyaxia/blogwatcher/cmd/blogwatcher@${BLOGWATCHER_VERSION} && \
+    rm -rf /root/.cache/go-build /root/go
+
+# Install Python CLI tools globally using uv tool
+RUN UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin uv tool install openai-whisper==${OPENAI_WHISPER_VERSION} --with torch && \
+    UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin uv tool install nano-pdf==${NANO_PDF_VERSION} && \
+    uv cache clean
+
+# Return to node user for execution
+USER node
+
+# Setup OpenTelemetry preloading
+COPY --chown=node:node otel-preload.mjs /app/otel-preload.mjs
+ENV NODE_OPTIONS="--import /app/otel-preload.mjs"
+ENV OTEL_EXPORTER_OTLP_ENDPOINT="http://otel-collector:4318"
+ENV OTEL_SERVICE_NAME="openclaw-gateway"

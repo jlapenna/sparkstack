@@ -1,0 +1,28 @@
+recipe_version: '1'
+model: BAAI/bge-m3
+runtime: vllm-distributed
+builder: eugr
+max_nodes: 1
+container: vllm-node
+solo_only: true
+hardware:
+  memory_limit: 4G
+env:
+  VLLM_V1: "0"
+defaults:
+  port: 8002
+  host: 0.0.0.0
+  tensor_parallel: 1
+  gpu_memory_utilization: 0.05
+  max_model_len: 8192
+  max_num_batched_tokens: 8192
+command: |
+  vllm serve {model} \
+     --port {port} --host {host} \
+     --runner pooling \
+     --gpu-memory-utilization {gpu_memory_utilization} \
+     --max-model-len {max_model_len} \
+     --max-num-batched-tokens {max_num_batched_tokens} \
+     --enforce-eager \
+     --trust-remote-code \
+     --attention-backend FLASH_ATTN

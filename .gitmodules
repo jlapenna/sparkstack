@@ -1,0 +1,6 @@
+[submodule "sparkrun"]
+	path = sparkrun
+	url = https://github.com/jlapenna/sparkrun.git
+[submodule "openclaw"]
+	path = openclaw
+	url = https://github.com/jlapenna/openclaw.git

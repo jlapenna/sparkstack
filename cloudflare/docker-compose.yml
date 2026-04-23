@@ -1,0 +1,14 @@
+services:
+  tunnel:
+    image: cloudflare/cloudflared:2026.3.0
+    container_name: cloudflared
+    restart: unless-stopped
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    command: tunnel run
+    networks:
+      - proxy-tier
+
+networks:
+  proxy-tier:
+    external: true
