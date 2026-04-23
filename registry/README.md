@@ -8,7 +8,7 @@ The stack is composed using a "Model Registry" pattern:
 
 - **`base/`**: Global settings for LiteLLM and base Docker Compose network/volumes.
 - **`models/`**: Individual YAML files for each model (LLM or STT).
-- **`build_stack.py`**: Composes these modules into a functional stack under `stacks/`.
+- **`build_stack.py`**: Composes these modules into a functional stack under `spark-stack-registry/stacks/`.
 
 ## Modern Blackwell Standards (March 2026)
 

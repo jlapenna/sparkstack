@@ -526,7 +526,7 @@ class StackBuilder:
         self.litellm_builder.write()
         self.prometheus_builder.write()
         self._generate_launcher_script()
-        logger.info(f"🚀 Stack '{self.stack_name}' built successfully in stacks/{self.stack_name}")
+        logger.info(f"🚀 Stack '{self.stack_name}' built successfully in spark-stack-registry/stacks/{self.stack_name}")
 
     def _generate_launcher_script(self):
         lines = [

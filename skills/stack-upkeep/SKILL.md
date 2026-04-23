@@ -45,7 +45,7 @@ The underlying vLLM and LiteLLM containers may have received upstream patches.
 
 - **Command:**
   ```bash
-  cd ./stacks/current && docker compose pull
+  cd ./spark-stack-registry/stacks/current && docker compose pull
   ```
 - **Behavior:** Ensures the latest container images are downloaded.
 
@@ -53,8 +53,8 @@ The underlying vLLM and LiteLLM containers may have received upstream patches.
 
 If pulling the latest container image introduces a breaking registry change or stability issue, you must rollback to a known-good configuration immediately:
 
-- **Command:** `uv run python -m scripts.set_current stacks/<previous_stable_stack_directory>`
-- **Behavior:** This resets the `current` symlink and rebuilds the active docker-compose configuration using the older, verified images and recipes. Run `cd stacks/current && docker compose up -d --force-recreate` to solidify the restore.
+- **Command:** `uv run python -m scripts.set_current spark-stack-registry/spark-stack-registry/stacks/<previous_stable_stack_directory>`
+- **Behavior:** This resets the `current` symlink and rebuilds the active docker-compose configuration using the older, verified images and recipes. Run `cd spark-stack-registry/spark-stack-registry/stacks/current && docker compose up -d --force-recreate` to solidify the restore.
 
 ### 4. Automatic Maintenance (Zombie Protocol)
 
@@ -79,8 +79,8 @@ If any model configuration changes were detected upstream, rebuild and restart t
 
 - **Commands:**
   ```bash
-  # Assuming the active stack is 'stacks/official-main-20260325'
-  uv run python -m scripts.set_current stacks/official-main-20260325
+  # Assuming the active stack is 'spark-stack-registry/stacks/official-main-20260325'
+  uv run python -m scripts.set_current spark-stack-registry/spark-stack-registry/stacks/official-main-20260325
   ```
 
 ### 6. Final Verification (MANDATORY)
@@ -93,7 +93,7 @@ After applying updates and verifying functionality, run the full `spark-arena-v1
 
 - **Command:**
   ```bash
-  uv run sparkrun benchmark /home/jlapenna/services/registry/models/<YOUR_ACTIVE_MAIN_MODEL>.yaml \
+  uv run sparkrun benchmark /home/jlapenna/services/spark-stack-registry/models/<YOUR_ACTIVE_MAIN_MODEL>.yaml \
       --profile spark-arena-v1 \
       --skip-run \
       --port 8001 \

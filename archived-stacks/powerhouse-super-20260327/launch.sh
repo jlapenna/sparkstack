@@ -14,7 +14,7 @@ source "$PARENT_ENV"
 set +a
 
 echo "🚀 Launching model instances via sparkrun..."
-sparkrun run /home/jlapenna/services/vllm/registry/models/nemotron-super.yaml --hosts localhost --port 8001 --solo --no-follow --tp 1 -o port=8000 -o host=0.0.0.0 --tp 1 --gpu-mem 0.7 --max-model-len 65536
+sparkrun run /home/jlapenna/services/vllm/spark-stack-registry/models/nemotron-super.yaml --hosts localhost --port 8001 --solo --no-follow --tp 1 -o port=8000 -o host=0.0.0.0 --tp 1 --gpu-mem 0.7 --max-model-len 65536
 
 echo "📦 Starting gateway and monitoring via docker compose..."
 docker compose --env-file "$PARENT_ENV" up -d

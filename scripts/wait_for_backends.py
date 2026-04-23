@@ -135,7 +135,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     root_dir = Path(__file__).parent.parent.absolute()
-    stack_dir = root_dir / "stacks" / args.stack if args.stack else root_dir / "current"
+    stack_dir = root_dir / "spark-stack-registry" / "stacks" / args.stack if args.stack else root_dir / "current"
 
     try:
         if not asyncio.run(wait_for_backends_to_load(stack_dir, args.timeout)):

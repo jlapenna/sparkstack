@@ -107,7 +107,7 @@ class VerifyOrchestrator:
 class StackVerifier:
     def __init__(self, stack_name: str | None = None):
         root_dir = Path(__file__).parent.parent.absolute()
-        stack_dir = root_dir / "stacks" / stack_name if stack_name else root_dir / "current"
+        stack_dir = root_dir / "spark-stack-registry" / "stacks" / stack_name if stack_name else root_dir / "current"
 
         oc_bin = Path.home() / "bin" / "oc"
         gateway_url = "http://localhost:4000/v1"

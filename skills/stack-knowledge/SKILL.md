@@ -523,10 +523,10 @@ ______________________________________________________________________
 ### 2026-04-19T23:41 — Restarted vllm-gateway without VLLM_PORT context
 
 - **Scenario**: Restarting vllm-gateway after enabling OTEL tracing via \`docker compose up\` resulted in the gateway binding to a random port instead of 4000.
-- **Hypothesis**: The VLLM_PORT environment variable was missing because \`docker compose\` in the stacks/... directory does not natively traverse upwards to find the repository root \`.env\` file.
+- **Hypothesis**: The VLLM_PORT environment variable was missing because \`docker compose\` in the spark-stack-registry/stacks/... directory does not natively traverse upwards to find the repository root \`.env\` file.
 - **Action**: Recreated container using \`docker compose --env-file ../../.env up -d gateway\`, adhering to the standard \`launch.sh\` behavior.
 - **Result**: Gateway properly inherited the mapping to host port 4000.
 
 **Learnings:**
 
-- Always run \`docker compose\` with \`--env-file ../../.env\` when operating manually inside the active \`stacks/current\` directory to guarantee port bindings map correctly.
+- Always run \`docker compose\` with \`--env-file ../../.env\` when operating manually inside the active \`spark-stack-registry/stacks/current\` directory to guarantee port bindings map correctly.
