@@ -111,14 +111,12 @@ To serve as the single source of truth for Docker decisions in this repository. 
 
 ### OpenClaw Volume Architecture
 
-The `openclaw-gateway` container has two bind mounts to the **same host directory** (`/home/jlapenna/.openclaw`), each serving a distinct purpose:
-
 | Source (Host)              | Destination (Container)    | Origin                        | Purpose                                        |
 | -------------------------- | -------------------------- | ----------------------------- | ---------------------------------------------- |
-| `/home/jlapenna/.openclaw` | `/home/node/.openclaw`     | `openclaw/docker-compose.yml` | Native config access for the `node` process    |
-| `/home/jlapenna/.openclaw` | `/home/jlapenna/.openclaw` | `docker-compose.override.yml` | DooD identical volume map for sandbox creation |
+| `/path/to/host/.openclaw` | `/home/node/.openclaw`     | `openclaw/docker-compose.yml` | Native config access for the `node` process    |
+| `/path/to/host/.openclaw` | `/path/to/host/.openclaw`  | `docker-compose.override.yml` | DooD identical volume map for sandbox creation |
 
-**Why two mappings?** OpenClaw uses Docker-out-of-Docker (DooD) to create sandbox containers. The gateway passes bind mount paths to the host Docker socket. `update_openclaw.py` rewrites all internal `/home/node/` paths in `openclaw.json` to `/home/jlapenna/` so Docker evaluates them correctly on the host. The identical volume map (`/home/jlapenna/.openclaw:/home/jlapenna/.openclaw`) ensures these rewritten paths also resolve inside the gateway container itself.
+**Why two mappings?** OpenClaw uses Docker-out-of-Docker (DooD) to create sandbox containers. The gateway passes bind mount paths to the host Docker socket. `update_openclaw.py` rewrites all internal `/home/node/` paths in `openclaw.json` to the host's absolute path so Docker evaluates them correctly on the host. The identical volume map ensures these rewritten paths also resolve inside the gateway container itself.
 
 **Secrets:** Injected via `env_file: ${OPENCLAW_CONFIG_DIR}/.env` in the override, keeping sensitive tokens (`TELEGRAM_BOT_TOKEN`, `VLLM_SPARK_API_KEY`, etc.) out of the repository `.env`.
 
@@ -341,7 +339,7 @@ This eliminates the Docker hairpin NAT issue entirely. Both containers are on pr
 
 - **Scenario**: Agents kept losing read/write access to their sandboxes. When `workspaceAccess` was manually hardcoded to `"rw"`, the agents suddenly crashed and timed out when evaluating tools.
 - **Hypothesis**: `setup.sh` defaults to generating `"workspaceAccess": "none"`. If restored to `"rw"`, the Gateway executes a Docker-out-of-Docker (DooD) mount explicitly. However, because `setup.sh` generates container-local path topologies (`/home/node/...`), the Host-side Docker daemon evaluates that path literally, finds it missing on the Host, and mounts empty, root-owned substitute directories. The Sandbox cannot see the Gateway's heartbeat files, causing silent session timeouts.
-- **Action**: Injected dual logic inside `update_openclaw.py`: (1) Explicitly lock `workspaceAccess: rw`; and (2) Recursively sweep the schema to rewrite `/home/node/` back to identical Host-absolute `/home/jlapenna/` strings.
+- **Action**: Injected dual logic inside `update_openclaw.py`: (1) Explicitly lock `workspaceAccess: rw`; and (2) Recursively sweep the schema to rewrite `/home/node/` back to identical Host-absolute strings.
 - **Result**: The sandboxes launch flawlessly. The identical mappings successfully traverse the DooD boundary, delivering functional RW access to the agents.
 
 **Learnings:**
@@ -364,10 +362,10 @@ This eliminates the Docker hairpin NAT issue entirely. Both containers are on pr
 
 ### 2026-04-17T17:50 — OpenClaw Split-Brain Session Persistence
 
-- **Scenario**: `oc doctor` continuously reported: "Multiple state directories detected. This can split session history. ~/.openclaw vs Active state dir: /home/jlapenna/.openclaw".
-- **Hypothesis**: Because the internal `openclaw-gateway` container executes natively as `node`, its fallback string for `~/.openclaw` implicitly targets `/home/node/.openclaw`. While major sandbox/log paths were successfully rewritten as Host-absolute (`/home/jlapenna/`) to obey identical volume maps, implicit undocumented engine fallbacks (like `.cache` or `.db`) continue slipping into `/home/node/` which is not mapped externally.
-- **Action**: Modified `docker-compose.override.yml` to explicitly pass `OPENCLAW_STATE_DIR=${OPENCLAW_CONFIG_DIR}` into the gateway's environment payload, forcing the engine's hidden fallbacks onto the bound volume. *(Note: Later reverted upon user request to preserve standard base container paths)*.
-- **Result**: Injecting `OPENCLAW_STATE_DIR` correctly silences the `oc doctor` warning and homogenizes all internal container write streams directly onto the explicit identically-bound Docker volume, preventing stateless deletion upon container rebuilds.
+- **Scenario**: `openclaw doctor` continuously reported: "Multiple state directories detected. This can split session history. ~/.openclaw vs Active state dir: /path/to/host/.openclaw".
+- **Hypothesis**: Because the internal `openclaw-gateway` container executes natively as `node`, its fallback string for `~/.openclaw` implicitly targets `/home/node/.openclaw`. While major sandbox/log paths were successfully rewritten as Host-absolute to obey identical volume maps, implicit undocumented engine fallbacks (like `.cache` or `.db`) continue slipping into `/home/node/` which is not mapped externally.
+- **Action**: Modified `docker-compose.override.yml` to explicitly pass `OPENCLAW_STATE_DIR=${OPENCLAW_CONFIG_DIR}` into the gateway's environment payload, forcing the engine's hidden fallbacks onto the bound volume.
+- **Result**: Injecting `OPENCLAW_STATE_DIR` correctly silences the `openclaw doctor` warning and homogenizes all internal container write streams directly onto the explicit identically-bound Docker volume, preventing stateless deletion upon container rebuilds.
 
 **Learnings:**
 
@@ -392,7 +390,7 @@ This eliminates the Docker hairpin NAT issue entirely. Both containers are on pr
 - **Scenario**: Agents received "Permission denied writing to workspace" after switching to full tool profile. Investigation revealed the sandbox mounted an empty, root-owned directory at /workspace.
 - **Hypothesis**: The Gateway passed container-local paths (/home/node/...) to the host Docker daemon via the socket. The host daemon evaluated these against the host FS where they did not exist, leading to dummy mounts.
 - **Action**:
-  1. Updated `scripts/update_openclaw.py` to robustly rewrite all internal `/home/node` and `~` paths in `openclaw.json` to identical host-absolute paths (`/home/jlapenna`).
+  1. Updated `scripts/update_openclaw.py` to robustly rewrite all internal `/home/node` and `~` paths in `openclaw.json` to identical host-absolute paths.
   1. Verified the gateway has an Identical Volume Map for the state directory.
   1. Purged stale `openclaw-sbx-*` containers to force recreation with correct binds.
 - **Result**: **Correct.** New sandboxes correctly mount the host workspace directory with RW permissions. Agents can now persist state.
@@ -450,15 +448,15 @@ This eliminates the Docker hairpin NAT issue entirely. Both containers are on pr
 ### 2026-04-18T19:44 — Lost Agent Write Access via Pydantic Validator Removal
 
 - **Scenario**: Agents received "Permission denied writing to workspace" errors in their sandboxes.
-- **Hypothesis**: The removal of Pydantic schema validation inside `update_openclaw.py` unintentionally removed the logic that consistently rewrites internal `/home/node/` and `~` paths to absolute `/home/jlapenna/` Host-paths before deploying `.openclaw/openclaw.json`. Without that active rewriting logic, the configuration naturally preserved the string `~/.openclaw/workspaces/...`. Because the sandbox lifecycle executes inside the gateway container (which runs as user `node`), this resolved to `/home/node/...` natively. Upon passing this path through the Docker socket (DooD) for the sandbox mount, the host daemon found no `/home/node/` workspace and silently substituted an empty, root-owned directory, stripping agent write permissions.
-- **Action**: Performed a manual surgical text rewrite inside `~/.openclaw/openclaw.json` to hardcode absolute Host paths (replacing `"workspace": "~/.openclaw/..."` with `"workspace": "/home/jlapenna/.openclaw/..."`).
+- **Hypothesis**: The removal of Pydantic schema validation inside `update_openclaw.py` unintentionally removed the logic that consistently rewrites internal `/home/node/` and `~` paths to absolute Host-paths before deploying `.openclaw/openclaw.json`. Without that active rewriting logic, the configuration naturally preserved the string `~/.openclaw/workspaces/...`. Because the sandbox lifecycle executes inside the gateway container (which runs as user `node`), this resolved to `/home/node/...` natively. Upon passing this path through the Docker socket (DooD) for the sandbox mount, the host daemon found no `/home/node/` workspace and silently substituted an empty, root-owned directory, stripping agent write permissions.
+- **Action**: Performed a manual surgical text rewrite inside `~/.openclaw/openclaw.json` to hardcode absolute Host paths (replacing `"workspace": "~/.openclaw/..."` with `"workspace": "/absolute/path/to/host/.openclaw/..."`).
 - **Result**: **Successful**. Absolute host-side paths correctly bind against the host filesystem, restoring read/write privileges.
 
 **Learnings**:
 
 - Bypassing heavy validations allows surgical JSON edits but removes structural safety nets that might implicitly rewrite Docker volume paths into Host-absolute context.
-- When decoupling deployments from orchestrators, you MUST ensure that sandbox workspace binds inside `openclaw.json` strictly specify absolute host-side paths (e.g., `/home/jlapenna/`).
-- Avoid `~` syntax inside Docker bind configs because runtime evaluation ownership (`node` vs `jlapenna`) will skew the expected execution path during Docker-out-of-Docker evaluation.
+- When decoupling deployments from orchestrators, you MUST ensure that sandbox workspace binds inside `openclaw.json` strictly specify absolute host-side paths.
+- Avoid `~` syntax inside Docker bind configs because runtime evaluation ownership (`node` vs host user) will skew the expected execution path during Docker-out-of-Docker evaluation.
 
 ### 2026-04-19T11:20 — Telegram 400 Error vs Qwen Protocol Mismatch
 

@@ -28,7 +28,7 @@ This skill defines the standard operating procedure for checking out submodules,
 
 ## PR Creation Standard
 
-When preparing or updating any upstream PR for these submodules, you **MUST** load and follow the `pr-writer` skill. This skill enforces Sentry-style PR standards and ensures clean, contextual PR descriptions. To load the skill, run `view_file` on `/home/jlapenna/.gemini/antigravity/skills/pr-writer/SKILL.md` before using `gh pr create` or `gh pr edit`.
+When preparing or updating any upstream PR for these submodules, you **MUST** load and follow the `pr-writer` skill. This skill enforces Sentry-style PR standards and ensures clean, contextual PR descriptions. To load the skill, run `view_file` on `~/.gemini/antigravity/skills/pr-writer/SKILL.md` before using `gh pr create` or `gh pr edit`.
 
 ## PR Verification and Maintenance
 
