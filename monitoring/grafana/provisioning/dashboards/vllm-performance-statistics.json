@@ -29,95 +29,6 @@
         "x": 0,
         "y": 0
       },
-      "id": 100,
-      "panels": [],
-      "title": "Service Health & Loading Progress",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 15,
-            "lineWidth": 1,
-            "pointSize": 3,
-            "spanNulls": true,
-            "gradientMode": "scheme"
-          },
-          "mappings": [],
-          "max": 100,
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              },
-              {
-                "color": "green",
-                "value": 100
-              }
-            ]
-          },
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 24,
-        "x": 0,
-        "y": 1
-      },
-      "id": 101,
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "right",
-          "calcs": [
-            "lastNotNull"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "pluginVersion": "11.3.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "max by (name, model_id) (vllm_model_load_progress > 0)",
-          "format": "table",
-          "legendFormat": "{{name}} ({{model_id}})",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Model Loading Progress",
-      "type": "timeseries"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 4
-      },
       "id": 9,
       "panels": [],
       "title": "Graph: E2E latency over time ",
@@ -213,7 +124,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "sum by (model) (rate(litellm_llm_api_latency_metric_sum{model=~\"$model\"}[$__interval])) / sum by (model) (rate(litellm_llm_api_latency_metric_count{model=~\"$model\"}[$__interval]))",
+          "expr": "rate(vllm:e2e_request_latency_seconds_sum[$__interval]) / rate(vllm:e2e_request_latency_seconds_count[$__interval])",
           "format": "table",
           "legendFormat": "E2E Latency",
           "range": true,
@@ -282,7 +193,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum by(le) (rate(litellm_request_total_latency_metric_bucket{model=~\"$model\"}[$__range])))",
+          "expr": "histogram_quantile(0.99, sum by(le) (rate(vllm:e2e_request_latency_seconds_bucket[$__range])))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -303,7 +214,7 @@
             "mode": "thresholds"
           },
           "decimals": 2,
-          "displayName": "P95",
+          "displayName": "P90",
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -350,13 +261,13 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by(le) (rate(litellm_request_total_latency_metric_bucket{model=~\"$model\"}[$__range])))",
+          "expr": "histogram_quantile(0.90, sum by(le) (rate(vllm:e2e_request_latency_seconds_bucket[$__range])))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "E2E Latency (P95)",
+      "title": "E2E Latency (P90)",
       "type": "stat"
     },
     {
@@ -394,7 +305,7 @@
         "h": 4,
         "w": 6,
         "x": 12,
-        "y": 9
+        "y": 5
       },
       "id": 2,
       "options": {
@@ -418,7 +329,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "(sum(increase(litellm_llm_api_latency_metric_sum{model=~\"$model\"}[$__range])) / sum(increase(litellm_llm_api_latency_metric_count{model=~\"$model\"}[$__range])))",
+          "expr": "(sum(increase(vllm:e2e_request_latency_seconds_sum[$__range])) / sum(increase(vllm:e2e_request_latency_seconds_count[$__range])))",
           "legendFormat": "Average E2E Latency",
           "range": true,
           "refId": "A"
@@ -462,7 +373,7 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 9
+        "y": 5
       },
       "id": 3,
       "options": {
@@ -486,7 +397,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "histogram_quantile(0.50, sum by(le) (rate(litellm_request_total_latency_metric_bucket{model=~\"$model\"}[$__range])))",
+          "expr": "histogram_quantile(0.50, sum by(le) (rate(vllm:e2e_request_latency_seconds_bucket[$__range])))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -501,7 +412,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 13
+        "y": 9
       },
       "id": 8,
       "panels": [],
@@ -575,7 +486,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 14
+        "y": 10
       },
       "id": 10,
       "options": {
@@ -594,7 +505,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum by (model) (rate(vllm:time_to_first_token_seconds_sum{model_name=~\"$model\"}[$__interval])) / sum by (model) (rate(vllm:time_to_first_token_seconds_count{model_name=~\"$model\"}[$__interval]))",
+          "expr": "rate(vllm:time_to_first_token_seconds_sum[$__interval]) / rate(vllm:time_to_first_token_seconds_count[$__interval])",
           "format": "table",
           "legendFormat": "TTFT (Avg)",
           "range": true,
@@ -639,7 +550,7 @@
         "h": 4,
         "w": 6,
         "x": 12,
-        "y": 14
+        "y": 10
       },
       "id": 14,
       "options": {
@@ -663,7 +574,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum by(le) (rate(vllm:time_to_first_token_seconds_bucket{model_name=~\"$model\"}[$__range])))",
+          "expr": "histogram_quantile(0.99, sum by(le) (rate(vllm:time_to_first_token_seconds_bucket[$__range])))",
           "legendFormat": "TTFT (p99)",
           "range": true,
           "refId": "A"
@@ -684,7 +595,7 @@
             "mode": "thresholds"
           },
           "decimals": 2,
-          "displayName": "P95",
+          "displayName": "P90",
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -707,7 +618,7 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 14
+        "y": 10
       },
       "id": 13,
       "options": {
@@ -731,13 +642,13 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by(le) (rate(vllm:time_to_first_token_seconds_bucket{model_name=~\"$model\"}[$__range])))",
-          "legendFormat": "TTFT (p95)",
+          "expr": "histogram_quantile(0.90, sum by(le) (rate(vllm:time_to_first_token_seconds_bucket[$__range])))",
+          "legendFormat": "TTFT (p90)",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "TTFT (P95)",
+      "title": "TTFT (P90)",
       "type": "stat"
     },
     {
@@ -775,7 +686,7 @@
         "h": 4,
         "w": 6,
         "x": 12,
-        "y": 18
+        "y": 14
       },
       "id": 11,
       "options": {
@@ -799,7 +710,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "(sum(increase(vllm:time_to_first_token_seconds_sum{model_name=~\"$model\"}[$__range])) / sum(increase(vllm:time_to_first_token_seconds_count{model_name=~\"$model\"}[$__range])))",
+          "expr": "(sum(increase(vllm:time_to_first_token_seconds_sum[$__range])) / sum(increase(vllm:time_to_first_token_seconds_count[$__range])))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -842,7 +753,7 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 18
+        "y": 14
       },
       "id": 12,
       "options": {
@@ -865,7 +776,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "histogram_quantile(0.50, sum by(le) (rate(vllm:time_to_first_token_seconds_bucket{model_name=~\"$model\"}[$__range])))",
+          "expr": "histogram_quantile(0.50, sum by(le) (rate(vllm:time_to_first_token_seconds_bucket[$__range])))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -880,7 +791,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 22
+        "y": 18
       },
       "id": 7,
       "panels": [],
@@ -954,7 +865,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 23
+        "y": 19
       },
       "id": 15,
       "options": {
@@ -973,7 +884,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum by (model) (rate(litellm_deployment_latency_per_output_token_sum{model=~\"$model\"}[$__interval])) / sum by (model) (rate(litellm_deployment_latency_per_output_token_count{model=~\"$model\"}[$__interval]))",
+          "expr": "rate(vllm:inter_token_latency_seconds_sum[$__interval]) / rate(vllm:inter_token_latency_seconds_count[$__interval])",
           "legendFormat": "ITL (Avg)",
           "range": true,
           "refId": "A"
@@ -984,7 +895,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.50, sum by(le) (rate(litellm_deployment_latency_per_output_token_bucket{model=~\"$model\"}[$__interval])))",
+          "expr": "histogram_quantile(0.50, sum by(le) (rate(vllm:inter_token_latency_seconds_bucket[$__interval])))",
           "hide": false,
           "instant": false,
           "legendFormat": "ITL (p50)",
@@ -997,10 +908,10 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by(le) (rate(litellm_deployment_latency_per_output_token_bucket{model=~\"$model\"}[$__interval])))",
+          "expr": "histogram_quantile(0.90, sum by(le) (rate(vllm:inter_token_latency_seconds_bucket[$__interval])))",
           "hide": false,
           "instant": false,
-          "legendFormat": "ITL (p95)",
+          "legendFormat": "ITL (p90)",
           "range": true,
           "refId": "C"
         },
@@ -1010,7 +921,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum by(le) (rate(litellm_deployment_latency_per_output_token_bucket{model=~\"$model\"}[$__interval])))",
+          "expr": "histogram_quantile(0.99, sum by(le) (rate(vllm:inter_token_latency_seconds_bucket[$__interval])))",
           "hide": false,
           "instant": false,
           "legendFormat": "ITL (p99)",
@@ -1055,7 +966,7 @@
         "h": 4,
         "w": 6,
         "x": 12,
-        "y": 23
+        "y": 19
       },
       "id": 18,
       "options": {
@@ -1079,13 +990,13 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by(le) (rate(litellm_deployment_latency_per_output_token_bucket{model=~\"$model\"}[$__range])))",
+          "expr": "histogram_quantile(0.90, sum by(le) (rate(vllm:inter_token_latency_seconds_bucket[$__range])))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "ITL (P95)",
+      "title": "ITL (P90)",
       "type": "stat"
     },
     {
@@ -1122,7 +1033,7 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 23
+        "y": 19
       },
       "id": 19,
       "options": {
@@ -1146,7 +1057,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum by(le) (rate(litellm_deployment_latency_per_output_token_bucket{model=~\"$model\"}[$__range])))",
+          "expr": "histogram_quantile(0.99, sum by(le) (rate(vllm:inter_token_latency_seconds_bucket[$__range])))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -1189,7 +1100,7 @@
         "h": 4,
         "w": 6,
         "x": 12,
-        "y": 27
+        "y": 23
       },
       "id": 16,
       "options": {
@@ -1213,7 +1124,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "(sum(increase(litellm_deployment_latency_per_output_token_sum{model=~\"$model\"}[$__range])) / sum(increase(litellm_deployment_latency_per_output_token_count{model=~\"$model\"}[$__range])))",
+          "expr": "(sum(increase(vllm:inter_token_latency_seconds_sum[$__range])) / sum(increase(vllm:inter_token_latency_seconds_count[$__range])))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -1256,7 +1167,7 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 27
+        "y": 23
       },
       "id": 17,
       "options": {
@@ -1280,7 +1191,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "histogram_quantile(0.50, sum by(le) (rate(litellm_deployment_latency_per_output_token_bucket{model=~\"$model\"}[$__range])))",
+          "expr": "histogram_quantile(0.50, sum by(le) (rate(vllm:inter_token_latency_seconds_bucket[$__range])))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -1295,7 +1206,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 31
+        "y": 27
       },
       "id": 6,
       "panels": [],
@@ -1368,7 +1279,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 32
+        "y": 28
       },
       "id": 20,
       "options": {
@@ -1387,7 +1298,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "rate(litellm_output_tokens_metric_total{model=~\"$model\"}[$__interval])",
+          "expr": "rate(vllm:generation_tokens_total[$__interval])",
           "legendFormat": "Generation TPS",
           "range": true,
           "refId": "A"
@@ -1398,7 +1309,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rate(litellm_input_tokens_metric_total{model=~\"$model\"}[$__interval])",
+          "expr": "rate(vllm:prompt_tokens_total[$__interval])",
           "hide": false,
           "instant": false,
           "legendFormat": "Prompt TPS",
@@ -1411,7 +1322,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rate(litellm_total_tokens_metric_total[$__interval]){model=~\"$model\"}",
+          "expr": "rate(vllm:iteration_tokens_total_count[$__interval])",
           "hide": false,
           "instant": false,
           "legendFormat": "Overall Iteration TPS",
@@ -1441,31 +1352,31 @@
       },
       {
         "current": {
-          "text": "avg : Average\n0.50 : P50\n0.95 : P95\n0.99 : P99\n0.999 : Max (Approx)",
-          "value": "avg : Average\n0.50 : P50\n0.95 : P95\n0.99 : P99\n0.999 : Max (Approx)"
+          "text": "avg : Average\n0.50 : P50\n0.90 : P90\n0.99 : P99\n0.999 : Max (Approx)",
+          "value": "avg : Average\n0.50 : P50\n0.90 : P90\n0.99 : P99\n0.999 : Max (Approx)"
         },
         "label": "Aggregation",
         "name": "agg_method",
         "options": [
           {
             "selected": true,
-            "text": "avg : Average\n0.50 : P50\n0.95 : P95\n0.99 : P99\n0.999 : Max (Approx)",
-            "value": "avg : Average\n0.50 : P50\n0.95 : P95\n0.99 : P99\n0.999 : Max (Approx)"
+            "text": "avg : Average\n0.50 : P50\n0.90 : P90\n0.99 : P99\n0.999 : Max (Approx)",
+            "value": "avg : Average\n0.50 : P50\n0.90 : P90\n0.99 : P99\n0.999 : Max (Approx)"
           }
         ],
-        "query": "avg : Average\n0.50 : P50\n0.95 : P95\n0.99 : P99\n0.999 : Max (Approx)",
+        "query": "avg : Average\n0.50 : P50\n0.90 : P90\n0.99 : P99\n0.999 : Max (Approx)",
         "type": "custom"
       },
       {
         "current": {
           "text": [
-            "All"
+            "granite-33-2b-instruct"
           ],
           "value": [
-            "$__all"
+            "granite-33-2b-instruct"
           ]
         },
-        "definition": "label_values(litellm_proxy_total_requests_metric_total,requested_model)",
+        "definition": "label_values(vllm:generation_tokens_total,model_name)",
         "includeAll": true,
         "label": "Deployment_ID",
         "multi": true,
@@ -1473,38 +1384,11 @@
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(litellm_proxy_total_requests_metric_total,requested_model)",
+          "query": "label_values(vllm:generation_tokens_total,model_name)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,
         "regex": "",
-        "type": "query"
-      },
-      {
-        "current": {
-          "selected": false,
-          "text": "All",
-          "value": "$__all"
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${DS_PROMETHEUS}"
-        },
-        "definition": "label_values(vllm:e2e_request_latency_seconds_bucket, model_name)",
-        "hide": 0,
-        "includeAll": true,
-        "label": "Model",
-        "multi": true,
-        "name": "model",
-        "options": [],
-        "query": {
-          "query": "label_values(vllm:e2e_request_latency_seconds_bucket, model_name)",
-          "refId": "StandardVariableQuery"
-        },
-        "refresh": 1,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
         "type": "query"
       }
     ]
@@ -1515,7 +1399,7 @@
   },
   "timezone": "browser",
   "uid": "performance-statistics",
-  "title": "vLLM Performance Statistics",
-  "version": 41,
+  "title": "Performance Statistics",
+  "version": 40,
   "weekStart": ""
 }
