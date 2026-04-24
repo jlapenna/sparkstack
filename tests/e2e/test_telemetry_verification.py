@@ -7,6 +7,7 @@ from loguru import logger
 from tests.e2e.context import E2EContext
 
 
+@pytest.mark.order(14)
 @pytest.mark.asyncio
 async def test_telemetry_verification(ctx: E2EContext):
     max_retries = 6

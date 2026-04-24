@@ -54,9 +54,15 @@ For models >30B parameters, **NVFP4 (4-bit native)** is mandatory. Standard BF16
 
 ### C. The "Zombie" Protocol
 
-Orphaned `VLLM::EngineCore` processes can survive container removal (`docker rm -f`). If loading is slow or RAM is squatting, a manual purge is required:
-`pkill -u $USER -9 -f "VLLM|sparkrun|vllm"`
+**Symptom:** Subsequent model launches hang at 0% loading or fail with OOM errors because orphaned `VLLM::EngineCore` processes survive container shutdown, resulting in persistent GPU VRAM squatting.
+**Solution:** Ensure all orphaned model processes are properly drained and shut down using the orchestrator's stop commands rather than abruptly removing containers. Always verify that GPU VRAM is fully released (via `nvidia-smi`) before attempting to initialize a new model stack.
 
 ### D. Attention Backends
 
 For models with heterogeneous head dimensions (e.g., Gemma-4), use **`--attention-backend TRITON_ATTN`** for numerical stability and kernel compatibility.
+
+### E. Blackwell MoE Optimization
+
+When running NVFP4 MoE models on Blackwell (e.g., Nemotron-3-Super), ensure the following optimizations are applied to prevent initialization OOMs and latency regressions:
+- Set environment variable `VLLM_BLACKWELL_LAYOUT=1` for optimal memory layout.
+- Use `FlashInfer` MoE backend flags: `VLLM_FLASHINFER_MOE_BACKEND='latency'` and `VLLM_USE_FLASHINFER_MOE_MXFP4_MXFP8='1'`.

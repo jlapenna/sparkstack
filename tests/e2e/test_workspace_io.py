@@ -10,6 +10,7 @@ from core.utils import async_run_command
 from tests.e2e.context import E2EContext
 
 
+@pytest.mark.order(12)
 @pytest.mark.asyncio
 async def test_workspace_io(ctx: E2EContext):
     unique_token = str(uuid.uuid4())

@@ -9,9 +9,13 @@ import aiohttp
 from aiohttp import web
 from loguru import logger
 
+import os
+
 # Configuration
 SOCKET_PATH = "/var/run/docker.sock"
-STATSD_ADDR = ("vector", 8125)
+STATSD_HOST = os.environ.get("SPARKRUN_STATSD_HOST", "vector")
+STATSD_PORT = int(os.environ.get("SPARKRUN_STATSD_PORT", "8125"))
+STATSD_ADDR = (STATSD_HOST, STATSD_PORT)
 POLL_INTERVAL = 5.0
 API_PORT = 8126
 

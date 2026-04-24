@@ -1,3 +1,0 @@
-Bytecode compiled 98 files in 82ms
-usage: verify.py [-h] [--stack STACK] [--soak]
-verify.py: error: unrecognized arguments: --verbose

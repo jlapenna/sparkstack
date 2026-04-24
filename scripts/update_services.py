@@ -38,6 +38,41 @@ from scripts.update_sparkrun import SparkrunUpdater
 
 current_service: ContextVar[str] = ContextVar("current_service", default="")
 
+import contextlib
+import os
+
+STATSD_HOST = os.environ.get("SPARKRUN_STATSD_HOST", "127.0.0.1")
+STATSD_PORT = int(os.environ.get("SPARKRUN_STATSD_PORT", "8125"))
+STATSD_ADDR = (STATSD_HOST, STATSD_PORT)
+
+class StatsdClient:
+    def __init__(self) -> None:
+        self.writer: asyncio.StreamWriter | None = None
+        self.lock = asyncio.Lock()
+
+    async def send(self, msg: str) -> None:
+        async with self.lock:
+            if self.writer is None or self.writer.is_closing():
+                try:
+                    _, self.writer = await asyncio.wait_for(
+                        asyncio.open_connection(*STATSD_ADDR), timeout=1.0
+                    )
+                except Exception as e:
+                    logger.debug(f"Failed to connect to StatsD: {e}")
+                    self.writer = None
+                    return
+            try:
+                self.writer.write(msg.encode("utf-8"))
+                await self.writer.drain()
+            except Exception as e:
+                logger.debug(f"StatsD write exception: {e}")
+                if self.writer:
+                    with contextlib.suppress(Exception):
+                        self.writer.close()
+                    self.writer = None
+
+statsd = StatsdClient()
+
 
 class Settings(BaseSettings):
     """Global configuration for service updates."""
@@ -75,8 +110,8 @@ async def cleanup_zombies(settings: Settings):
     console.print("[bold yellow]🧟 Executing Zombie Protocol...[/]")
 
     # 1. Clear stuck OpenClaw tasks
-    from core.constants import OPENCLAW_CONFIG
-    task_db = OPENCLAW_CONFIG / "tasks" / "runs.sqlite"
+    from core.constants import OPENCLAW_HOME
+    task_db = OPENCLAW_HOME / "tasks" / "runs.sqlite"
     if task_db.exists():
         console.print(f"  → Clearing zombie tasks in {task_db}")
         try:
@@ -123,6 +158,8 @@ class ServiceState:
         self.note = task
         if not self.start_time:
             self.start_time = datetime.now()
+        asyncio.create_task(statsd.send(f"update_services_progress:{progress}|g|#service:{self.name}\n"))
+        asyncio.create_task(statsd.send(f"update_services_status:1|g|#service:{self.name}\n"))
 
     def complete(self):
         self.status = ServiceStatus.COMPLETE
@@ -131,6 +168,8 @@ class ServiceState:
         self.note = "Complete."
         logger.success(f"[{self.name}] Service update COMPLETE.")
         self.done_event.set()
+        asyncio.create_task(statsd.send(f"update_services_progress:100.0|g|#service:{self.name}\n"))
+        asyncio.create_task(statsd.send(f"update_services_status:2|g|#service:{self.name}\n"))
 
     def fail(self, error: str):
         self.status = ServiceStatus.FAILED
@@ -139,6 +178,7 @@ class ServiceState:
         self.end_time = datetime.now()
         logger.error(f"[{self.name}] Service update FAILED: {error}")
         self.done_event.set()
+        asyncio.create_task(statsd.send(f"update_services_status:3|g|#service:{self.name}\n"))
 
 
 class Service(ABC):

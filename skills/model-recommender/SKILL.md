@@ -1,4 +1,4 @@
-______________________________________________________________________
+---
 
 name: model-recommender
 description: Specialized discovery, research, and configuration of frontier LLMs for NVIDIA Spark (GB10 Blackwell) using Spark Arena and internet sources.
@@ -17,7 +17,7 @@ triggers:
 - are there any new models that I should consider trying
 - recommend a new model
 
-______________________________________________________________________
+---
 
 # model-recommender
 
@@ -45,7 +45,8 @@ When you find a new model on the internet, your primary job is to figure out **h
 
 1. **Sampling Constraints (Anti-Looping)**: Some architectures (especially Qwen models) are highly susceptible to infinite repetition loops. You must research and define the correct `min_p` (over `top_p`), `presence_penalty`, and `frequency_penalty` required for stability.
 1. **Stop Tokens**: Accurately mapping internal stop tokens (e.g., `<|eot_id|>` vs `<|im_end|>`) is critical to preventing run-on generations. Do not guess; read the tokenizer config or generation documentation.
-1. **Context Length**: Determine the maximum safe RoPE scaled context length.
+1. **Reasoning / Chat Templates**: If the model is a modern reasoning variant (e.g., DeepSeek-R1 derivatives), explicitly identify the required `<think>` tags or tool-calling schema. You must define the necessary `litellm_overrides` needed to parse these reasoning tokens properly.
+1. **Context Length**: Determine the maximum safe RoPE scaled context length. Formulate the exact `max_model_len` limit dynamically based on the leftover VRAM budget after weights are loaded.
 1. **Draft Models**: If the user wants speculative decoding, research which smaller parameter model pairs best with the target architecture (e.g., Llama-3.2-1B for Llama-3.3-70B).
 
 ## Selection Logic (The "Spark Fit" Test)
@@ -61,6 +62,7 @@ Even if a model is amazing on the internet, it still needs to run on the worksta
 Never rely on theoretical parameter math (e.g., 0.5 GB/B). Many mixed-precision models maintain high-precision layers that significantly increase the weight floor.
 
 - **Rule**: If a SparkRun recipe exists or can be simulated, you MUST determine the actual weight footprint and KV cache overhead before recommending. You MUST explicitly write out your math calculation as a codeblock step in your response before formulating the comparison table. (Use `uv run python -m sparkrun.scripts.recipe vram <recipe> --tp 1` if available locally).
+- **Mandatory Quantization Hunting**: You MUST search for an `NVFP4` or heavily optimized quantization (e.g., `AWQ`) variant of the model FIRST. Do not recommend a massive FP16/FP8 base model if an NVFP4 variant exists that fits natively within the workstation's compute budget.
 - **VRAM Ceiling**: The aggregate `gpu-memory-utilization` across all models must stay under **0.80** (working beautifully within the 108GB Spark limit) to prevent system-wide swapping.
 
 #### Logical Math Checkpoints
@@ -140,9 +142,13 @@ I recommend Llama-4-400B FP8. It is amazing. I will schedule the deployment.
 ```markdown
 # GOOD Recommendation
 Let's figure out if [Model-X-120B] fits.
+- Quantization format hunted: `NVFP4` (Base FP8 would be ~130GB, disqualifying it).
 - Parameter load (NVFP4): `120B * 0.55 GB/B overhead = ~66GB`
-- Context cache limit: 64K KV cache takes roughly `12GB`.
-- Total: `78GB`. This easily fits below your 108GB Spark ceiling at `gpu-memory-utilization=0.75`.
+- Leftover VRAM Budget (at 0.80 ceiling limit on 108GB): `86GB - 66GB = 20GB`
+- Context cache footprint: A 64K context window takes roughly `12GB` of KV cache.
+- Dynamic `max_model_len` assignment: `65536` fits perfectly within the remaining 20GB budget.
+- Total footprint: `78GB`.
+- Required Overrides: Needs `<think>` tags parsed via `litellm_overrides: {thinking_format: "qwen-chat-template"}`.
 Here is the configuration.
 ```
 

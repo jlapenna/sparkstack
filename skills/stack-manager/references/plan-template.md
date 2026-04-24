@@ -20,6 +20,15 @@ ______________________________________________________________________
 
 ______________________________________________________________________
 
+## 0.5 Rollback Escape Hatch (PRE-FILLED)
+
+*If the new deployment causes a catastrophic failure, you MUST have the exact rollback commands pre-defined here so the system can be restored instantly without further research.*
+
+- **Previous Stable Stack Name**: [e.g., `core-upgrade-20260320`]
+- **Rollback Command**: `uv run python -m scripts.set_current spark-stack-registry/spark-stack-registry/stacks/[PREVIOUS_STABLE] && cd current && docker compose up -d --force-recreate`
+
+______________________________________________________________________
+
 ## 1. Hardware & Resource Budget (Verification of Constraints)
 
 *Consult **stack-manager** for the strict aggregate memory laws (e.g., 108GB RAM budget) to prevent system hangs.*
@@ -42,6 +51,7 @@ Create or verify the custom `sparkrun` recipe in the registry.
 - **File**: `spark-stack-registry/models/[MODEL_ID].yaml`
 - **VLLM Config Details to Verify**:
   - **Resource Allocation**: Must match the budget calculated above.
+  - **Quantization Format**: Explicitly state the target format (e.g., `NVFP4`, `AWQ`, `FP8`) as this drastically dictates the VRAM footprint and throughput expectations.
   - **Engine & Architecture**: Consult the **stack-manager** "Troubleshooting & Learnings" section for model-specific engine overrides (e.g., V1 vs V0 requirements, attention backends, and reasoning parser plugins).
   - **Hardware Alignment**: Ensure `max_model_len` and `max_num_batched_tokens` are properly aligned per the latest registry standards.
 
@@ -69,6 +79,7 @@ Atomically rotate the containers and sync OpenClaw per the **stack-manager** pro
 1. **Launch**: Activate the new stack.
 1. **Sync**: Synchronize the OpenClaw configuration.
 1. **Network Resolution**: Restart edge networking if necessary to clear tunnel IP caches.
+1. **Telemetry Verification**: Ensure `vllm_model_load_progress` metrics are successfully pushing through the SSH reverse-tunnel (`-R 8125:127.0.0.1:8125`) to Vector by querying the Prometheus `/targets` UI.
 
 ### Phase 5: OpenClaw / Application Configuration
 

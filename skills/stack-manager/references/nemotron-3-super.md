@@ -19,11 +19,12 @@
 
 ### vLLM Specifics
 
-- **Image Requirements**: Native NVFP4 models (`MIXED_PRECISION` modelopt config) currently require `vllm/vllm-openai:cu130-nightly`. The stable `nvcr.io/nvidia/vllm:latest` image will fail to parse the `MIXED_PRECISION` config.
-- **Entrypoint**: Because of argument parsing bugs with the reasoning plugin on the nightly image, you MUST define the entrypoint using `sh -c` rather than direct command execution.
+- **Image Requirements**: Native NVFP4 models currently require `ghcr.io/spark-arena/dgx-vllm-eugr-nightly:latest` to correctly leverage Spark-Arena DGX configurations. The stable `nvcr.io/nvidia/vllm:latest` image will fail to parse the `MIXED_PRECISION` config or lack Spark optimizations.
+- **Entrypoint**: Use `sh -c` for the command execution.
 - **`--attention-backend TRITON_ATTN`**: Required for NVFP4 precision execution on Blackwell GPUs.
 - **`--max-num-seqs 512`**: Increased sequence cap to utilize available throughput capabilities.
-- **Reasoning Parsers**: Requires fetching the specific Python `super_v3_reasoning_parser.py` file from the Hugging Face repository and passing it via `--reasoning-parser-plugin`.
+- **Reasoning Parsers**: vLLM natively supports the Nemotron-3 format. Use `--reasoning-parser nemotron_v3` (Do NOT attempt to use the outdated `super_v3_reasoning_parser.py` plugin).
+- **Tool Calling Parsers**: You must specify `--enable-auto-tool-choice` and `--tool-call-parser qwen3_coder` so vLLM can properly convert the model outputs to OpenAI format.
 
 ## Cache Scaling
 

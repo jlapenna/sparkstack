@@ -1,4 +1,4 @@
-______________________________________________________________________
+---
 
 name: submodule-development
 description: A workflow skill governing how to interact with and develop inside submodules (like sparkrun and openclaw), including configuring defaults, opening PRs, and running local integration branches.
@@ -16,7 +16,7 @@ triggers:
 - "create a PR in the submodule"
 - "push upstream"
 
-______________________________________________________________________
+---
 
 # Submodule Development Workflow
 

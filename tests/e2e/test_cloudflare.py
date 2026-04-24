@@ -5,6 +5,7 @@ from core.utils import async_run_command
 from tests.e2e.context import E2EContext
 
 
+@pytest.mark.order(5)
 @pytest.mark.asyncio
 async def test_cloudflare(ctx: E2EContext):
     logger.info("Checking Cloudflare tunnel container status...")

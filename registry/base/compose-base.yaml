@@ -1,14 +1,14 @@
 services:
   gateway:
     container_name: vllm-gateway
-    image: ghcr.io/berriai/litellm:main-latest
+    image: ghcr.io/berriai/litellm:v1.83.7-stable
     restart: unless-stopped
     deploy:
       resources:
         limits:
           memory: 4G
     ports:
-    - ${VLLM_PORT}:4000
+    - ${VLLM_PORT:-4000}:4000
     volumes:
     - ./litellm-config.yaml:/app/config.yaml
     environment:

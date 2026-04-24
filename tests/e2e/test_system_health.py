@@ -7,6 +7,7 @@ from loguru import logger
 from tests.e2e.context import E2EContext
 
 
+@pytest.mark.order(1)
 @pytest.mark.asyncio
 async def test_system_health(ctx: E2EContext):
     # Check 1: Host zombie processes

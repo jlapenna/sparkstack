@@ -12,7 +12,16 @@ datasources:
       httpMethod: POST
       manageAlerts: true
       prometheusType: Prometheus
+      prometheusVersion: '3.0.0'
       cacheLevel: 'High'
+      # Grafana 13: incremental querying reduces load on re-renders
+      incrementalQuerying: true
+      incrementalQueryOverlapWindow: '10m'
+      # Grafana 13: exemplar trace drill-through via Tempo
+      exemplarTraceIdDestinations:
+        - name: traceID
+          datasourceUid: tempo
+          urlDisplayLabel: 'View Trace in Tempo'
   - name: Tempo
     type: tempo
     access: proxy
@@ -20,3 +29,15 @@ datasources:
     isDefault: false
     editable: true
     uid: tempo
+    jsonData:
+      # Link back to Prometheus for service graph / metrics
+      serviceMap:
+        datasourceUid: prometheus
+      nodeGraph:
+        enabled: true
+      # Grafana 13: search config
+      search:
+        hide: false
+      lokiSearch:
+        datasourceUid: ''
+

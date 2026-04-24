@@ -29,7 +29,7 @@ class PrometheusBuilder:
                     metrics_path="/metrics",
                     static_configs=[
                         StaticConfig(
-                            targets=["vllm-gateway:4000"], labels={"instance": "spark.local"}
+                            targets=[os.getenv("VLLM_GATEWAY_HOST", "vllm-gateway:4000")], labels={"instance": "spark.local"}
                         )
                     ],
                 ),
@@ -38,10 +38,10 @@ class PrometheusBuilder:
                     static_configs=[
                         StaticConfig(
                             targets=[
-                                "cadvisor:8080",
-                                "node-exporter:9100",
-                                "dcgm-exporter:9400",
-                                "vector:9102",
+                                os.getenv("CADVISOR_HOST", "cadvisor:8080"),
+                                os.getenv("NODE_EXPORTER_HOST", "node-exporter:9100"),
+                                os.getenv("DCGM_EXPORTER_HOST", "dcgm-exporter:9400"),
+                                os.getenv("VECTOR_HOST", "vector:9102"),
                             ],
                             labels={"instance": "spark.local"},
                         )
@@ -53,11 +53,6 @@ class PrometheusBuilder:
                             "action": "drop",
                         }
                     ],
-                ),
-                ScrapeConfig(
-                    job_name="home_local",
-                    file_sd_configs=[{"files": ["/prometheus/home_local.json"]}],
-                    relabel_configs=[{"target_label": "instance", "replacement": "home.local"}],
                 ),
         ]
 
@@ -72,7 +67,7 @@ class PrometheusBuilder:
                     relabel_configs=[
                         {"source_labels": ["__address__"], "target_label": "__param_target"},
                         {"source_labels": ["__param_target"], "target_label": "instance"},
-                        {"target_label": "__address__", "replacement": "blackbox-exporter:9115"},
+                        {"target_label": "__address__", "replacement": os.getenv("BLACKBOX_EXPORTER_HOST", "blackbox-exporter:9115")},
                     ],
                 )
             )

@@ -1,4 +1,4 @@
-______________________________________________________________________
+---
 
 name: stack-knowledge
 description: Self-learning Docker knowledge base. Documents the live topology, routing paths, and accumulated incident learnings.
@@ -34,7 +34,7 @@ triggers:
 - connection error docker
 - resolv.conf
 
-______________________________________________________________________
+---
 
 # stack-knowledge
 
@@ -313,21 +313,17 @@ docker exec main_solo tail -n 20 /tmp/sparkrun_serve.log
 
 This would have immediately shown the crash. Instead, 45+ minutes were spent on networking hypotheses.
 
-## TODO — Correct Architecture
+## DONE — Correct Architecture (Fixed 2026-04-24)
 
-The litellm-config.yaml backend URLs should use **direct container names on proxy-tier**, not `host.docker.internal`:
+`build_stack.py` now generates **direct container names on proxy-tier** for `litellm-config.yaml`:
 
 ```yaml
-# WRONG (current):
-api_base: http://host.docker.internal:8001/v1
-
-# CORRECT (direct routing on shared proxy-tier network):
+# build_stack.py now generates:
 api_base: http://main_solo:8001/v1
+api_base: http://embedding_solo:8002/v1
 ```
 
 This eliminates the Docker hairpin NAT issue entirely. Both containers are on proxy-tier and can reach each other directly.
-
-However, this only works when vllm is actually running. The immediate blocker is the vllm OOM/KV-cache crash inside `main_solo`.
 
 ### 2026-04-12T13:50 — Integration Test Hard-Freeze on host.docker.internal
 
@@ -530,3 +526,41 @@ ______________________________________________________________________
 **Learnings:**
 
 - Always run \`docker compose\` with \`--env-file ../../.env\` when operating manually inside the active \`spark-stack-registry/stacks/current\` directory to guarantee port bindings map correctly.
+
+### 2026-04-24T07:10 — Dashboard Telemetry Freeze vs Ephemeral Metrics
+
+- **Scenario**: The "SparkRun Cluster Provisioning" Grafana panel was stuck at 66.7% permanently, and other panels exhibited text clipping.
+- **Hypothesis**: The dashboard queried `vllm_vllm_sparkrun_deploy_progress`, which is an ephemeral metric emitted via StatsD by the `sparkrun` CLI only during the provisioning phase. Once the CLI exits, the metric goes stale but Prometheus retains the last value. Additionally, `stat` panels with `graphMode: area` and small heights (`h=3`) clip the text.
+- **Action**:
+  1. Updated dashboard JSONs to use `avg(vllm_model_load_progress) or max(vllm_vllm_sparkrun_deploy_progress)` so it prioritizes the live metric.
+  2. Increased panel heights to `h=4` and disabled sparklines (`graphMode: "none"`) for deployment progress panels.
+- **Result**: **Successful.** Dashboards now correctly show 100% when models are fully loaded, and no text is clipped.
+
+**Learnings:**
+
+- **Monitoring:** Do not rely on ephemeral CLI-emitted metrics for long-lived dashboard status panels without providing a fallback to a persistent metric. *(Update: Fixed by setting `flush_period_secs: 60` in the Vector `prometheus_exporter` sink so that stale CLI metrics time out automatically, adhering to the original design proposal.)*
+- **Grafana Layouts:** `stat` panels displaying percentages require `h >= 4` to prevent clipping, and should avoid `graphMode: area` (sparklines) if historical tracking is not relevant to the displayed value.
+
+### 2026-04-24T07:33 — Hairpin NAT Resolution via Container Names
+
+- **Scenario**: The LiteLLM gateway (`vllm-gateway`) was failing to route traffic to the vLLM backends, resulting in `ConnectionResetError`s.
+- **Hypothesis**: `scripts/build_stack.py` was generating `api_base: http://host.docker.internal:8001/v1` for the LiteLLM config, triggering Docker's hairpin NAT limitations on Linux.
+- **Action**: Modified `build_stack.py` to use direct container names (`http://main_solo:8001/v1`) since both containers share the `proxy-tier` Docker network.
+- **Result**: **Successful.** Gateway reliably routes to the backends with no connection resets.
+
+**Learnings:**
+
+- **Routing:** Always use direct container hostnames when orchestrating services that reside on the same custom Docker network (e.g., `proxy-tier`). *(Update: Added CI test in `test_proxy_integrity.py` to explicitly assert that generated configs never fall back to `host.docker.internal`.)*
+- **Code Gen:** Configuration generators (`build_stack.py`) must respect the network topology and not default to `host.docker.internal` for internal-only traffic.
+
+### 2026-04-24T08:15 — Tool Parser Whitelist Conflict (nemotron_json vs qwen3_coder)
+
+- **Scenario**: E2E verification failed on tool calling tests because the vLLM engine rejected the `nemotron_json` parser.
+- **Hypothesis**: vLLM has a strict, hardcoded whitelist in `validate_api_server_args` for valid tool parsers. `nemotron_json` was not supported in the active vLLM version.
+- **Action**: Updated `nemotron-3-super-nvfp4-vllm.yaml` recipe to use `qwen3_coder` parser instead.
+- **Result**: **Successful.** Tool calling tests passed flawlessly.
+
+**Learnings:**
+
+- **Validation:** Tool parser configurations in registry recipes must align with the target vLLM container's specific whitelist. *(Update: Implemented static whitelist validation feature directly in `build_stack.py` to prevent orchestrating containers with invalid parsers.)*
+- **Tooling:** Future iterations of `sparkrun` or the stack builder should statically validate the parser argument against the container's known whitelist before attempting deployment.

@@ -5,8 +5,8 @@ from scripts.check_memory_law import check_compliance
 from tests.e2e.context import E2EContext
 
 
+@pytest.mark.order(2)
 @pytest.mark.asyncio
-@pytest.mark.order(1)
 async def test_memory_law(ctx: E2EContext):
     passed = await check_compliance(log_output=True)
     if not passed:

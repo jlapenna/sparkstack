@@ -1,4 +1,4 @@
-______________________________________________________________________
+---
 
 name: stack-manager
 description: Manages model upgrades, STT deployment, and memory rebalancing for NVIDIA Spark workstations with atomic configuration sync using a Model Registry pattern.
@@ -16,7 +16,7 @@ triggers:
 - setup stt on spark
 - refactor vllm models
 
-______________________________________________________________________
+---
 
 # stack-manager
 
@@ -33,7 +33,7 @@ For **ANY** model addition, upgrade, or stack modification, you MUST defer to th
 **Agent Execution Rules:**
 
 1. **Mandatory Checklist Generation**: Before taking any action, you MUST explicitly create and maintain a `task.md` tracking artifact containing checkboxes for all 7 phases laid out in `skills/stack-manager/references/plan-template.md`. Checking off each segment is strictly required.
-1. **Planning & Research**: Use the structure logically defined in `skills/stack-manager/references/plan-template.md` to bootstrap your own implementation plan artifact for the current conversation. You MUST perform a web search to verify parameters and include your findings in the plan.
+1. **Planning & Research**: Use the structure logically defined in `skills/stack-manager/references/plan-template.md` to bootstrap your own implementation plan artifact for the current conversation. **CRITICAL: The reference files and MD docs CAN BE WRONG or outdated. You MUST periodically validate and update the details (like model parameters, container versions, and quirk flags) by exploring recent web posts, changelogs, or documentation for the software via web search before committing to a plan.**
 1. **STOP AND WAIT**: Do absolutely nothing else. Wait for the user's explicit approval of the created implementation plan before proceeding.
 1. **Execution & Verification**: Once approved, execute the plan strictly as written, progressing through all infrastructure, stack orchestration, E2E Verification, and **Formal Benchmarking (Phase 4)** phases detailed in the template.
 1. **ZERO HOT-PATCHING**: If a step fails, **HALT** and inform the user. Do not attempt quiet fixes or ad-hoc hacks.
@@ -77,6 +77,7 @@ _(Refer to `skills/stack-manager/references/plan-template.md` for the exact requ
 - **Physical Math Verification**: The `stack-manager` MUST invoke `sparkrun recipe vram <recipe>` every single time a recipe file is scaffolded or modified _before_ confirming success to the user.
 - **Cluster vs. Standalone Validation**: VRAM estimation calculates load by distributing weight via `shard_factor` (TP\*PP). This is mathematically correct *only* if the user possesses a physical deployment cluster of Spark nodes corresponding to that factor. If deploying to a *single* standalone workstation, do not allow parallelism settings to falsely validate a model footprint that exceeds the single-node 121GB unified limit.
 - **Immediate Failure Halting**: If the VRAM simulator outputs an OOM condition or flags a misaligned distributed size (`TP=1` on a 1T model), you MUST immediately halt and inform the user of the error rather than blindly deploying.
+- **Interpreter Path Verification**: The agent MUST actively verify that the `.venv/bin/python` interpreter exists in the workspace root via a sanity check before executing any Python commands or VS Code integrations, avoiding "interpreter path could not be resolved" failures.
 
 ## Troubleshooting & Learnings
 

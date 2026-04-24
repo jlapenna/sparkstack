@@ -19,6 +19,7 @@ from core.builders.litellm import LiteLLMBuilder
 from core.builders.prometheus import PrometheusBuilder
 from core.constants import (
     BACKEND_START_PORT,
+    BASE_DIR,
     BLACKWELL_MANDATORY_ENV,
     DEFAULT_CONTEXT_WINDOW,
     MAX_DOCKER_MEMORY_GB,
@@ -59,7 +60,7 @@ class ModelRegistry:
     def __init__(self, registry_path: Path):
         self.registry_path = registry_path
         self.models_path = registry_path / "models"
-        self.base_path = registry_path / "base"
+        self.base_path = BASE_DIR / "base"
 
     def load_base_configs(self) -> tuple[dict[str, Any], dict[str, Any]]:
         compose_base_file = self.base_path / "compose-base.yaml"
@@ -291,13 +292,22 @@ class StackBuilder:
 
                 if isinstance(model_config, SparkrunRegistryModel):
                     recipe_dict = model_config.recipe
-                    backend_url = f"http://host.docker.internal:{port}/v1"
-                    prometheus_target = f"host.docker.internal:{port}"
+                    backend_url = f"http://{container_hostname}:{port}/v1"
+                    prometheus_target = f"{container_hostname}:{port}"
 
                     vllm_cfg = recipe_dict.get("vllm_config") or recipe_dict.get("defaults") or {}
 
                     hardware = recipe_dict.get("hardware", {})
                     mem_limit = hardware.get("memory_limit", f"{int(MAX_DOCKER_MEMORY_GB)}G")
+
+                    # Validate Tool Parser Whitelist
+                    command_str = recipe_dict.get("command", "")
+                    VALID_PARSERS = ["chatml", "hermes", "mistral", "qwen", "qwen3_coder", "llama3_json", "pythonic", "internlm2"]
+                    parser_match = re.search(r'--tool-call-parser\s+(\w+)', command_str)
+                    if parser_match:
+                        parser_name = parser_match.group(1)
+                        if parser_name not in VALID_PARSERS:
+                            raise ValueError(f"Invalid tool-call-parser '{parser_name}' in {recipe_name}. Must be one of: {', '.join(VALID_PARSERS)}")
 
                     overrides = req.get("overrides", {})
                     if "memory_limit" in overrides:
@@ -341,13 +351,13 @@ class StackBuilder:
                         str(port),
                         "--tp",
                         "1",
+                        "--served-model-name",
+                        target_role,
+                        "--container-name",
+                        target_role,
                         "--no-follow",
                         "-o",
-                        f"served_model_name={target_role}",
-                        "-o",
                         "network=proxy-tier",
-                        "--executor-args",
-                        f"-p {port}:{port}",
                     ]
 
                     if mem_limit:

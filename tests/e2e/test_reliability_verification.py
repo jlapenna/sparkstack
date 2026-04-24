@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from tests.e2e.context import E2EContext
 
 
+@pytest.mark.order(16)
 @pytest.mark.asyncio
 async def test_reliability_verification(ctx: E2EContext):
     minutes = ctx.soak_minutes

@@ -1,6 +1,6 @@
 global:
-  scrape_interval: 5s
-  evaluation_interval: 5s
+  scrape_interval: 15s
+  evaluation_interval: 15s
 scrape_configs:
 - job_name: vllm-inference
   static_configs:
@@ -18,8 +18,6 @@ scrape_configs:
     - cadvisor:8080
     - node-exporter:9100
     - dcgm-exporter:9400
-    - otel-collector:8889
-    - otel-collector:8888
     - tempo:3200
     - vector:9102
 

@@ -5,6 +5,7 @@ from loguru import logger
 from tests.e2e.context import E2EContext
 
 
+@pytest.mark.order(6)
 @pytest.mark.asyncio
 async def test_proxy_integrity(ctx: E2EContext):
     async with httpx.AsyncClient() as client:
@@ -22,3 +23,16 @@ async def test_proxy_integrity(ctx: E2EContext):
         else:
             logger.error(f"❌ Failure: Gateway returned {res.status_code}")
             raise AssertionError()
+
+@pytest.mark.order(7)
+@pytest.mark.asyncio
+async def test_litellm_config_no_host_docker_internal(ctx: E2EContext):
+    config_path = ctx.stack_dir / "litellm-config.yaml"
+    if config_path.exists():
+        content = config_path.read_text()
+        if "host.docker.internal" in content:
+            logger.error("❌ Failure: host.docker.internal found in litellm-config.yaml")
+            raise AssertionError()
+        logger.info("✅ Pass: litellm-config.yaml does not use host.docker.internal")
+    else:
+        logger.warning(f"⚠️ Skip: litellm-config.yaml not found at {config_path}")

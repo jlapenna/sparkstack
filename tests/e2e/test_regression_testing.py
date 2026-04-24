@@ -8,6 +8,7 @@ from loguru import logger
 from tests.e2e.context import E2EContext
 
 
+@pytest.mark.order(13)
 @pytest.mark.asyncio
 async def test_regression_testing(ctx: E2EContext):
     load_dotenv(ctx.root_dir / ".env")

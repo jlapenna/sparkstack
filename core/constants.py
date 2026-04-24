@@ -7,9 +7,10 @@ from pathlib import Path
 
 # Base paths with environment overrides for portability
 PROJECT_ROOT = Path(os.getenv("SPARK_STACK_ROOT", Path(__file__).resolve().parent.parent)).absolute()
-OPENCLAW_HOME = Path(os.getenv("OPENCLAW_HOME", Path.home() / ".openclaw")).absolute()
+OPENCLAW_HOME = Path(os.getenv("OPENCLAW_CONFIG_DIR", os.getenv("OPENCLAW_HOME", Path.home() / ".openclaw"))).absolute()
 OPENCLAW_CONFIG = OPENCLAW_HOME / "openclaw.json"
-REGISTRY_DIR = Path(os.getenv("SPARK_STACK_REGISTRY", PROJECT_ROOT.parent / "spark-stack-registry")).absolute()
+REGISTRY_DIR = Path(os.getenv("SPARK_STACK_REGISTRY", PROJECT_ROOT / "spark-stack-registry")).absolute()
+BASE_DIR = PROJECT_ROOT / "registry"
 STACKS_DIR = REGISTRY_DIR / "stacks"
 
 # DGX Spark (GB10) Hardware Specifications
@@ -40,7 +41,6 @@ BLACKWELL_MANDATORY_ENV: dict[str, str] = {
     "VLLM_USE_DEEP_GEMM": "0",
     # Tracing
     "VLLM_OTEL_TRACING_ENABLED": "1",
-    "OTEL_EXPORTER_OTLP_ENDPOINT": "http://otel-collector:4317",
 }
 
 # Crash detection patterns shared by LogProbe and ServiceHealthManager

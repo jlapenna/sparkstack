@@ -18,7 +18,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 8,
+  "id": null,
   "links": [],
   "panels": [
     {
@@ -87,7 +87,7 @@
         "x": 0,
         "y": 0
       },
-      "id": 14,
+      "id": null,
       "options": {
         "legend": {
           "calcs": [],
@@ -201,7 +201,7 @@
         "x": 12,
         "y": 0
       },
-      "id": 17,
+      "id": null,
       "maxDataPoints": 30,
       "options": {
         "calculate": false,
@@ -335,7 +335,7 @@
         "x": 0,
         "y": 8
       },
-      "id": 20,
+      "id": null,
       "options": {
         "legend": {
           "calcs": [],
@@ -449,7 +449,7 @@
         "x": 12,
         "y": 8
       },
-      "id": 19,
+      "id": null,
       "maxDataPoints": 30,
       "options": {
         "calculate": false,
@@ -588,7 +588,7 @@
         "x": 0,
         "y": 16
       },
-      "id": 7,
+      "id": null,
       "options": {
         "legend": {
           "calcs": [],
@@ -691,7 +691,7 @@
         "x": 12,
         "y": 16
       },
-      "id": 18,
+      "id": null,
       "options": {
         "legend": {
           "calcs": [],
@@ -789,7 +789,7 @@
         "x": 0,
         "y": 24
       },
-      "id": 11,
+      "id": null,
       "options": {
         "legend": {
           "calcs": [],
@@ -891,7 +891,7 @@
         "x": 12,
         "y": 24
       },
-      "id": 8,
+      "id": null,
       "options": {
         "legend": {
           "calcs": [],

@@ -1,4 +1,4 @@
-______________________________________________________________________
+---
 
 name: pr-gutcheck
 description: "Review a Pull Request to ensure the implementation strictly matches the PR description and comments, and does nothing else."
@@ -14,7 +14,7 @@ triggers:
 - check PR intent
 - evaluate comments
 
-______________________________________________________________________
+---
 
 # PR Gut Check
 

@@ -10,5 +10,15 @@
       "automerge": true,
       "automergeType": "branch"
     }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": ["docker-compose\\.yml$"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[^\\s]+) depName=(?<depName>[^\\s]+)\\n\\s*- [A-Z_]+_VERSION=(?<currentValue>.*?)\\n"
+      ],
+      "extractVersionTemplate": "^v?(?<version>.*)$"
+    }
   ]
 }

@@ -802,7 +802,7 @@
   },
   "timezone": "",
   "title": "Spark GPU",
-  "uid": "spark-gpu-dcgm",
+  "uid": "spark-gpu",
   "variables": {
     "list": []
   },

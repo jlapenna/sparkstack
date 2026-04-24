@@ -17,3 +17,4 @@ sinks:
     inputs: ["vllm_statsd"]
     address: 0.0.0.0:9102
     default_namespace: vllm
+    flush_period_secs: 60

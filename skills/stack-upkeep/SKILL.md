@@ -1,4 +1,4 @@
-______________________________________________________________________
+---
 
 name: stack-upkeep
 description: A maintenance skill dedicated to keeping the NVIDIA Spark stack and OpenClaw ecosystem up to date with the latest stable releases and recipes.
@@ -15,7 +15,7 @@ triggers:
 - upgrade my system
 - keep the stack current
 
-______________________________________________________________________
+---
 
 # stack-upkeep
 
@@ -45,7 +45,7 @@ The underlying vLLM and LiteLLM containers may have received upstream patches.
 
 - **Command:**
   ```bash
-  cd ./spark-stack-registry/stacks/current && docker compose pull
+  cd ./current && docker compose pull
   ```
 - **Behavior:** Ensures the latest container images are downloaded.
 
@@ -55,6 +55,20 @@ If pulling the latest container image introduces a breaking registry change or s
 
 - **Command:** `uv run python -m scripts.set_current spark-stack-registry/spark-stack-registry/stacks/<previous_stable_stack_directory>`
 - **Behavior:** This resets the `current` symlink and rebuilds the active docker-compose configuration using the older, verified images and recipes. Run `cd spark-stack-registry/spark-stack-registry/stacks/current && docker compose up -d --force-recreate` to solidify the restore.
+
+### 4. Manual Version Discovery & Pinning (When Renovate Fails)
+
+While Renovate handles automated PRs for dependencies, you will sometimes need to manually discover and pin the latest stable releases for containers, images, or software versions.
+
+- **Docker Images**: 
+  - Do NOT blindly use `:latest` as it breaks determinism.
+  - Find the latest stable semantic tag (e.g., `v1.2.3`) using Skopeo: `skopeo list-tags docker://<registry>/<image>` or query the registry API (GitHub Container Registry, Quay.io, Docker Hub).
+  - Explicitly edit `docker-compose.yml`, `.env`, or the stack recipe files to replace the old tag with the newly discovered stable tag.
+- **Python/uv Dependencies**:
+  - Run `uv pip list --outdated` to discover stale packages.
+  - Pin the exact version in `pyproject.toml` or `requirements.txt`.
+- **Monitoring Stack**:
+  - For Grafana, Prometheus, or cAdvisor, explicitly run `uv run python -m scripts.update_monitoring`. This script securely queries GitHub/GCR APIs to find the true latest stable semantic versions and automatically pins them in the compose files.
 
 ### 4. Automatic Maintenance (Zombie Protocol)
 

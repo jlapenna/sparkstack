@@ -23,7 +23,7 @@ from core.utils import ServiceHealthManager, async_run_command, parse_cli_json
 
 # Configuration constants
 OPENCLAW_REPO = "openclaw/openclaw"
-INTERNAL_BASE_URL = "http://vllm-gateway:4000/v1"
+INTERNAL_BASE_URL = os.getenv("VLLM_GATEWAY_URL", "http://vllm-gateway:4000/v1")
 DEFAULT_CONFIG_PATH = OPENCLAW_CONFIG
 
 
@@ -234,8 +234,8 @@ class OpenClawUpdater:
         env = os.environ.copy()
         
         from dotenv import dotenv_values
-        from core.constants import OPENCLAW_CONFIG
-        config_dir_path = OPENCLAW_CONFIG
+        from core.constants import OPENCLAW_HOME
+        config_dir_path = OPENCLAW_HOME
         env.setdefault("OPENCLAW_CONFIG_DIR", str(config_dir_path))
         env.setdefault("OPENCLAW_WORKSPACE_DIR", str(config_dir_path / "workspace"))
         
@@ -269,8 +269,8 @@ class OpenClawUpdater:
         logger.info("Executing OpenClaw Zombie Protocol...")
 
         # 1. Clear stuck OpenClaw tasks
-        from core.constants import OPENCLAW_CONFIG
-        task_db = OPENCLAW_CONFIG / "tasks" / "runs.sqlite"
+        from core.constants import OPENCLAW_HOME
+        task_db = OPENCLAW_HOME / "tasks" / "runs.sqlite"
         if task_db.exists():
             logger.info(f"Clearing zombie tasks in {task_db}")
             try:
