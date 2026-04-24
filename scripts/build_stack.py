@@ -59,7 +59,7 @@ def slugify(text: str) -> str:
 class ModelRegistry:
     def __init__(self, registry_path: Path):
         self.registry_path = registry_path
-        self.models_path = registry_path / "models"
+        self.models_path = registry_path / "sparkrun"
         self.base_path = BASE_DIR / "base"
 
     def load_base_configs(self) -> tuple[dict[str, Any], dict[str, Any]]:

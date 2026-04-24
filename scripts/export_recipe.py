@@ -33,7 +33,7 @@ async def main():
 
     # Generate a short SHA256 hash of the recipe content
     content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()[:7]
-    out_dir = REGISTRY_DIR / "models"
+    out_dir = REGISTRY_DIR / "sparkrun"
     out_dir.mkdir(parents=True, exist_ok=True)
     out_file = out_dir / f"{base_name}-{content_hash}.yaml"
 

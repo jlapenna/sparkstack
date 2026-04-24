@@ -55,7 +55,7 @@ async def get_vram_estimate(recipe: str) -> float:
             sparkrun_bin = "sparkrun"
 
         cmd_recipe = recipe
-        local_recipe = ROOT_DIR / "registry" / "models" / f"{recipe}.yaml"
+        local_recipe = ROOT_DIR / "spark-stack-registry" / "sparkrun" / f"{recipe}.yaml"
         if local_recipe.exists():
             cmd_recipe = str(local_recipe)
 
