@@ -1117,14 +1117,27 @@
       "description": "Memory footprint of sparkrun model containers (including offloaded weights)."
     },
     {
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 97,
+        "w": 24,
+        "h": 1
+      },
+      "id": null,
+      "panels": [],
+      "title": "CLOUDFLARE",
+      "type": "row"
+    },
+    {
       "type": "stat",
       "title": "Cloudflare Endpoints",
       "id": null,
       "gridPos": {
-        "x": 16,
-        "y": 31,
-        "w": 8,
-        "h": 6
+        "x": 0,
+        "y": 98,
+        "w": 24,
+        "h": 3
       },
       "datasource": {
         "type": "prometheus",

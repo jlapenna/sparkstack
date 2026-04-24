@@ -44,9 +44,10 @@ Use `--gpu-memory-utilization` to control the pre-allocation size.
 
 Critical operational constraints identified for the NVIDIA Spark (GB10) on the March 2026 driver/vLLM stack:
 
-### A. The "FastSafe" Trap
+### A. The "FastSafe" Trap (INVALIDATED)
 
-**NEVER** use `--load-format fastsafetensors`. This causes persistent 0% loading hangs on the SM 12.1 driver stack. Use `auto` or omit the flag.
+**Update (April 2026)**: The "FastSafe" trap has been invalidated for the Blackwell stack when using modern NVFP4 models like `Cascade-2-30B-A3B-NVFP4` on vLLM. You may safely use `--load-format fastsafetensors`.
+*(Previously: NEVER use `--load-format fastsafetensors` due to persistent 0% loading hangs on the SM 12.1 driver stack).*
 
 ### B. The "NVFP4" Mandate
 
