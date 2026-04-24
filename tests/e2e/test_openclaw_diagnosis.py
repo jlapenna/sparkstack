@@ -1,18 +1,20 @@
-import re
 import json
+import re
+
+import pytest
 from loguru import logger
+
 from core.utils import async_run_command
-from scripts.verify.utils import verify_layer
-from scripts.verify.context import VerifyContext
+from tests.e2e.context import E2EContext
 
 
-@verify_layer("Layer 4: OpenClaw System Diagnosis")
-async def run(ctx: VerifyContext):
+@pytest.mark.asyncio
+async def test_openclaw_diagnosis(ctx: E2EContext):
     result = await async_run_command([str(ctx.oc_bin), "models", "list", "--json"])
     match = re.search(r"\{.*\}", result.stdout, re.DOTALL)
     if not match:
         logger.error("❌ Could not find JSON in 'oc models list' output")
-        return False
+        raise AssertionError()
 
     data = json.loads(match.group(0))
     models = data.get("models", [])
@@ -21,7 +23,7 @@ async def run(ctx: VerifyContext):
 
     if any(m == "spark/main" for m in spark_models):
         logger.info("✅ Pass: OpenClaw System Diagnosis")
-        return True
+        return
     else:
         logger.error("❌ Failure: spark/main not found in OpenClaw")
-        return False
+        raise AssertionError()

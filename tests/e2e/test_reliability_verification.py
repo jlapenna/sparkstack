@@ -1,21 +1,24 @@
+import asyncio
 import os
 import time
 import uuid
-import asyncio
+
 import httpx
+import pytest
 from dotenv import load_dotenv
-from scripts.verify.utils import verify_layer
-from scripts.verify.context import VerifyContext
+
+from tests.e2e.context import E2EContext
 
 
-@verify_layer("Layer 7: Reliability Soak Test")
-async def run(ctx: VerifyContext, minutes: int = 2):
+@pytest.mark.asyncio
+async def test_reliability_verification(ctx: E2EContext):
+    minutes = ctx.soak_minutes
     print(f"Beginning {minutes}-minute soak. Polling every 15s...")
     load_dotenv(ctx.root_dir / ".env")
     api_key = os.getenv("VLLM_SPARK_API_KEY", "")
     if not api_key:
         print("❌ VLLM_SPARK_API_KEY not found in .env")
-        return False
+        raise AssertionError()
 
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
 
@@ -33,7 +36,7 @@ async def run(ctx: VerifyContext, minutes: int = 2):
             )
             if res.status_code != 200:
                 print(f"❌ Failure: Probe {i + 1} failed with {res.status_code}: {res.text}")
-                return False
+                raise AssertionError()
 
             elapsed = time.time() - start_time
             wait_time = max(0.0, interval - elapsed)
@@ -41,4 +44,4 @@ async def run(ctx: VerifyContext, minutes: int = 2):
             await asyncio.sleep(wait_time)
 
     print(f"✅ Pass: Reliability Soak ({minutes} minutes stable)")
-    return True
+    return

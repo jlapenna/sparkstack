@@ -15,8 +15,7 @@ from rich.progress import (
 )
 import sys
 
-from scripts.verify.utils import get_active_services, verify_layer
-from scripts.verify.context import VerifyContext
+from tests.e2e.utils import get_active_services
 
 
 async def wait_for_backends_to_load(stack_dir: Path, timeout: int = 1800) -> bool:
@@ -123,9 +122,7 @@ async def wait_for_backends_to_load(stack_dir: Path, timeout: int = 1800) -> boo
         return False
 
 
-@verify_layer("Layer 1: Backend Readiness (Liveness & Loading Progress)")
-async def run(ctx: VerifyContext):
-    return await wait_for_backends_to_load(ctx.stack_dir)
+# Layer 1 logic has been moved to tests/verify/test_wait_for_backends.py
 
 
 if __name__ == "__main__":

@@ -1,19 +1,21 @@
 import os
+
 import httpx
+import pytest
 from dotenv import load_dotenv
 from loguru import logger
-from scripts.verify.utils import verify_layer
-from scripts.verify.context import VerifyContext
+
+from tests.e2e.context import E2EContext
 
 
-@verify_layer("Layer 8: Regression Testing (Anti-Repetition)")
-async def run(ctx: VerifyContext):
+@pytest.mark.asyncio
+async def test_regression_testing(ctx: E2EContext):
     load_dotenv(ctx.root_dir / ".env")
     api_key = os.getenv("VLLM_SPARK_API_KEY", "")
 
     if not api_key:
         logger.error("❌ VLLM_SPARK_API_KEY not found in .env")
-        return False
+        raise AssertionError()
 
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
     payload = {
@@ -50,12 +52,12 @@ async def run(ctx: VerifyContext):
                         logger.error(
                             f"❌ Failure: Detected infinite text repetition loop (Word '{words[i]}' repeated consecutively).\nText: {content[:200]}"
                         )
-                        return False
+                        raise AssertionError()
                 else:
                     repetition_count = 0
 
             logger.info("✅ Pass: Anti-Repetition Regression Test (Output is natural)")
-            return True
+            return
         else:
             logger.error(f"❌ Failure: Chat completions returned {res.status_code}: {res.text}")
-            return False
+            raise AssertionError()

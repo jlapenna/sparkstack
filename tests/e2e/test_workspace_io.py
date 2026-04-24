@@ -1,15 +1,17 @@
-import uuid
-import time
-import re
 import json
+import re
+import time
+import uuid
+
+import pytest
 from loguru import logger
+
 from core.utils import async_run_command
-from scripts.verify.utils import verify_layer
-from scripts.verify.context import VerifyContext
+from tests.e2e.context import E2EContext
 
 
-@verify_layer("Layer 11: File System Integrity (Workspace IO)")
-async def run(ctx: VerifyContext):
+@pytest.mark.asyncio
+async def test_workspace_io(ctx: E2EContext):
     unique_token = str(uuid.uuid4())
     session_id = f"verifier_fs_{int(time.time())}_{unique_token[:8]}"
     filename = f"workspace_verification_{unique_token[:8]}.txt"
@@ -33,11 +35,9 @@ async def run(ctx: VerifyContext):
     ]
 
     logger.info(f"Requesting workspace write in session {session_id}...")
-    res_write = await async_run_command(cmd_write, check=False)
-    
-    prompt_read = (
-        f"Now, read the file '{filename}' back into memory and reply to me with ONLY the EXACT string you read from the file."
-    )
+    await async_run_command(cmd_write, check=False)
+
+    prompt_read = f"Now, read the file '{filename}' back into memory and reply to me with ONLY the EXACT string you read from the file."
 
     cmd_read = [
         str(ctx.oc_bin),
@@ -58,19 +58,19 @@ async def run(ctx: VerifyContext):
     json_match = re.search(r"(\{.*\})", output, re.DOTALL)
     if not json_match:
         logger.error(f"❌ Failure: No JSON payload found in output.\nRaw Output:\n{output[:500]}")
-        return False
+        raise AssertionError()
 
     try:
         data = json.loads(json_match.group(1))
     except json.JSONDecodeError as e:
         logger.error(f"❌ Failure: Invalid JSON payload: {e}")
-        return False
+        raise AssertionError() from None
 
     if data.get("status") != "ok":
         logger.error(
             f"❌ Failure: Agent status is '{data.get('status')}'. Summary: {data.get('summary')}"
         )
-        return False
+        raise AssertionError() from None
 
     result = data.get("result", {})
     payloads = result.get("payloads", [])
@@ -80,7 +80,7 @@ async def run(ctx: VerifyContext):
         logger.error(
             f"❌ Failure: Agent could not successfully verify File IO with UUID.\nExpected: {unique_token}\nResponse: {assistant_text}"
         )
-        return False
+        raise AssertionError() from None
 
     logger.info("✅ Pass: File System Integrity (Agent successfully executed workspace I/O)")
-    return True
+    return

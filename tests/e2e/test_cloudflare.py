@@ -1,11 +1,12 @@
+import pytest
 from loguru import logger
+
 from core.utils import async_run_command
-from scripts.verify.utils import verify_layer
-from scripts.verify.context import VerifyContext
+from tests.e2e.context import E2EContext
 
 
-@verify_layer("Layer 13: Cloudflare Tunnel Readiness")
-async def run(ctx: VerifyContext):
+@pytest.mark.asyncio
+async def test_cloudflare(ctx: E2EContext):
     logger.info("Checking Cloudflare tunnel container status...")
 
     # 1. Check if container is running
@@ -14,7 +15,7 @@ async def run(ctx: VerifyContext):
 
     if "cloudflared" not in res_ps.stdout:
         logger.error("❌ Failure: Cloudflare tunnel container ('cloudflared') is not running.")
-        return False
+        raise AssertionError()
 
     # 2. Inspect for TUNNEL_TOKEN
     inspect_cmd = [
@@ -31,7 +32,7 @@ async def run(ctx: VerifyContext):
 
     if not token:
         logger.error("❌ Failure: cloudflared is running but TUNNEL_TOKEN is empty or missing.")
-        return False
+        raise AssertionError()
 
     logger.info("✅ Pass: Cloudflare tunnel is running with a valid TUNNEL_TOKEN.")
-    return True
+    return

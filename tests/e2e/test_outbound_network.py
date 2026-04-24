@@ -1,22 +1,23 @@
-import uuid
-import time
-import re
 import json
+import re
+import time
+import uuid
+
+import pytest
 from loguru import logger
+
 from core.utils import async_run_command
-from scripts.verify.utils import verify_layer
-from scripts.verify.context import VerifyContext
+from tests.e2e.context import E2EContext
 
 
-@verify_layer("Layer 9: Tool Calling Verification")
-async def run(ctx: VerifyContext):
+@pytest.mark.asyncio
+async def test_outbound_network(ctx: E2EContext):
     unique_token = str(uuid.uuid4())
-    session_id = f"verifier_tool_{int(time.time())}_{unique_token[:8]}"
+    session_id = f"verifier_net_{int(time.time())}_{unique_token[:8]}"
 
     prompt = (
-        f"Use your bash tool or command execution tool to run the following command exactly: "
-        f"`echo 'tool_check_{unique_token}'`. "
-        f"Then reply to me with ONLY the output you see from the tool."
+        "Use your bash tool or python tool to fetch exactly this URL: "
+        "`https://httpbin.org/uuid` and reply to me with ONLY the JSON output that you received."
     )
 
     tool_cmd = [
@@ -31,39 +32,36 @@ async def run(ctx: VerifyContext):
         "--json",
     ]
 
-    logger.info(f"Requesting tool execution in session {session_id} (timeout 300s)...")
+    logger.info(f"Requesting network fetch in session {session_id} (timeout 300s)...")
     res_tool = await async_run_command(tool_cmd, check=False)
     output = res_tool.stdout + res_tool.stderr
 
     json_match = re.search(r"(\{.*\})", output, re.DOTALL)
     if not json_match:
         logger.error(f"❌ Failure: No JSON payload found in output.\nRaw Output:\n{output[:500]}")
-        return False
+        raise AssertionError()
 
     try:
         data = json.loads(json_match.group(1))
     except json.JSONDecodeError as e:
         logger.error(f"❌ Failure: Invalid JSON payload: {e}")
-        return False
+        raise AssertionError() from None
 
     if data.get("status") != "ok":
         logger.error(
             f"❌ Failure: Agent status is '{data.get('status')}'. Summary: {data.get('summary')}"
         )
-        return False
+        raise AssertionError() from None
 
     result = data.get("result", {})
     payloads = result.get("payloads", [])
     assistant_text = " ".join(p.get("text", "") for p in payloads)
 
-    expected_response = f"tool_check_{unique_token}"
-    if expected_response not in assistant_text:
+    if "uuid" not in assistant_text.lower():
         logger.error(
-            f"❌ Failure: Agent could not successfully return the tool output.\nExpected: {expected_response}\nResponse: {assistant_text}"
+            f"❌ Failure: Agent could not successfully return the network payload.\nResponse: {assistant_text}"
         )
-        return False
+        raise AssertionError() from None
 
-    logger.info(
-        "✅ Pass: Tool Calling Verification (Agent successfully executed and returned tool output)"
-    )
-    return True
+    logger.info("✅ Pass: Outbound Network Integrity (Agent successfully egressed to internet)")
+    return

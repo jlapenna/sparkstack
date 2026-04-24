@@ -331,14 +331,14 @@ However, this only works when vllm is actually running. The immediate blocker is
 
 ### 2026-04-12T13:50 — Integration Test Hard-Freeze on host.docker.internal
 
-- **Scenario**: The `scripts/verify.py` end-to-end integration test completely froze for 3 hours at "Loading host.docker.internal... 0%".
+- **Scenario**: The `pytest tests/e2e/` end-to-end integration test completely froze for 3 hours at "Loading host.docker.internal... 0%".
 - **Hypothesis**: The underlying `vllm` backend processes had crashed out of memory or failed to load tensor parallel blocks.
-- **Action**: Interrogated the native container loop using `docker exec main_solo tail -n 20 /tmp/sparkrun_serve.log` and revealed full health and hundreds of HTTP 200 polls over 3 hours. Then audited the `verify.py` polling routine `get_active_services` to see why it could not read the 100% telemetry status.
+- **Action**: Interrogated the native container loop using `docker exec main_solo tail -n 20 /tmp/sparkrun_serve.log` and revealed full health and hundreds of HTTP 200 polls over 3 hours. Then audited the `tests/e2e/utils.py` polling routine `get_active_services` to see why it could not read the 100% telemetry status.
 - **Result**: `get_active_services` scrapes `litellm-config.yaml` to derive container names via the URL. Because the stack uses `host.docker.internal` as the cross-platform proxy bypass, the integration tester literally passed the string `"host.docker.internal"` to the progress-manager dictionary lookup. The daemon obviously indexes targets by their exact container name (`main_solo`), locking the polling script into tracking a non-existent container forever. I hard-excluded `host.docker.internal` from being parsed as a fallback container string.
 
 **Learnings:**
 
-- Just because a downstream monitor says 0% readiness does not guarantee the upstream target is dead. Integration proxies parse keys strictly. The daemon correctly indexed `main_solo`, but `verify.py` queried `host.docker.internal`.
+- Just because a downstream monitor says 0% readiness does not guarantee the upstream target is dead. Integration proxies parse keys strictly. The daemon correctly indexed `main_solo`, but tests queried `host.docker.internal`.
 - Always verify container health directly with `ps aux` and `tail` before assuming a workload fault.
 
 ### 2026-04-15T18:30 — OpenClaw Sandbox Freeze vs DooD Path Crash

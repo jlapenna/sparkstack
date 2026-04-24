@@ -1,12 +1,14 @@
-import httpx
 import asyncio
+
+import httpx
+import pytest
 from loguru import logger
-from scripts.verify.utils import verify_layer
-from scripts.verify.context import VerifyContext
+
+from tests.e2e.context import E2EContext
 
 
-@verify_layer("Layer 6: Telemetry Verification")
-async def run(ctx: VerifyContext):
+@pytest.mark.asyncio
+async def test_telemetry_verification(ctx: E2EContext):
     max_retries = 6
     async with httpx.AsyncClient() as client:
         for attempt in range(max_retries):
@@ -32,7 +34,7 @@ async def run(ctx: VerifyContext):
                             health = t.get("health", "unknown")
                             logger.info(f"Target: {model} -> {health}")
                         logger.info("✅ Pass: Telemetry Verification")
-                        return True
+                        return
                     else:
                         if attempt < max_retries - 1:
                             logger.debug("Waiting for telemetry targets to sync...")
@@ -44,18 +46,18 @@ async def run(ctx: VerifyContext):
                                 health = t.get("health", "unknown")
                                 logger.info(f"Target: {model} -> {health}")
                             logger.error("❌ Failure: Not all telemetry targets are 'up'")
-                            return False
+                            raise AssertionError()
                 else:
                     if attempt < max_retries - 1:
                         await asyncio.sleep(5)
                         continue
                     else:
                         logger.error(f"❌ Failure: Prometheus returned HTTP {res.status_code}")
-                        return False
+                        raise AssertionError()
             except Exception as e:
                 if attempt < max_retries - 1:
                     await asyncio.sleep(5)
                     continue
                 else:
                     logger.error(f"❌ Failure: Error polling Prometheus: {e}")
-                    return False
+                    raise AssertionError() from None

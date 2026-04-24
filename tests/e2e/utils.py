@@ -1,44 +1,11 @@
-from pathlib import Path
-import os
 import contextlib
-from functools import wraps
+import os
+from pathlib import Path
 from urllib.parse import urlparse
+
 import yaml
-from loguru import logger
 
 from core.discovery import get_container_name_by_port
-
-
-from contextvars import ContextVar
-from typing import Any, Protocol, cast
-from collections.abc import Callable, Coroutine
-
-
-class VerifyLayer(Protocol):
-    layer_name: str
-
-    async def __call__(self, *args: Any, **kwargs: Any) -> bool: ...
-
-
-current_layer = ContextVar("current_layer", default="")
-
-
-def verify_layer(name: str) -> Callable[[Callable[..., Coroutine[Any, Any, Any]]], VerifyLayer]:
-    def decorator(func: Callable[..., Coroutine[Any, Any, Any]]) -> VerifyLayer:
-        @wraps(func)
-        async def wrapper(*args: Any, **kwargs: Any) -> bool:
-            current_layer.set(name)
-            try:
-                return await func(*args, **kwargs)
-            except Exception:
-                logger.exception(f"❌ Error checking {name}")
-                return False
-
-        layer_func = cast(VerifyLayer, wrapper)
-        layer_func.layer_name = name
-        return layer_func
-
-    return decorator
 
 
 async def get_active_services(stack_dir: Path):

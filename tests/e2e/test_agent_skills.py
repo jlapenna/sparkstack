@@ -1,14 +1,16 @@
 import json
 import re
+
+import pytest
 from loguru import logger
-from core.utils import async_run_command
+
 from core.constants import OPENCLAW_HOME
-from scripts.verify.utils import verify_layer
-from scripts.verify.context import VerifyContext
+from core.utils import async_run_command
+from tests.e2e.context import E2EContext
 
 
-@verify_layer("Layer 13: Agent Skill Readiness")
-async def run(ctx: VerifyContext):
+@pytest.mark.asyncio
+async def test_agent_skills(ctx: E2EContext):
     """
     Verify that agents have access to both personal and built-in skills.
     Checks:
@@ -24,7 +26,7 @@ async def run(ctx: VerifyContext):
     match = re.search(r"\{.*\}", result.stdout, re.DOTALL)
     if not match:
         logger.error("❌ Could not find JSON in 'oc skills list' output")
-        return False
+        raise AssertionError()
 
     data = json.loads(match.group(0))
     skills = data.get("skills", [])
@@ -34,7 +36,7 @@ async def run(ctx: VerifyContext):
 
     if builtin_skill not in skill_names:
         logger.error(f"❌ Built-in skill '{builtin_skill}' not found or not ready.")
-        return False
+        raise AssertionError()
 
     logger.info(f"✅ Skills discovered: {builtin_skill}")
 
@@ -60,8 +62,8 @@ async def run(ctx: VerifyContext):
         logger.error(
             f"❌ Gateway is missing the host-absolute mount for {OPENCLAW_HOME}. Path rewriting may have failed."
         )
-        return False
+        raise AssertionError()
     logger.info(f"✅ Gateway verified with host-absolute {OPENCLAW_HOME} mount")
 
     logger.info("✅ Pass: Agent Skill Readiness")
-    return True
+    return
