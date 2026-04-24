@@ -59,6 +59,10 @@ def main():
         for key, value in backend.get("overrides", {}).items():
             cmd.extend(["-o", f"{key}={value}"])
             
+        # Append environment variables
+        for key, value in backend.get("env", {}).items():
+            cmd.extend(["-o", f"env.{key}={value}"])
+            
         # Append labels
         for label in backend.get("labels", []):
             cmd.extend(["--label", label])

@@ -63,13 +63,12 @@ Because the submodules track the main upstream source repositories natively, we 
 
 ## Feature Integration Principles
 
-1. **Feature Worktrees for All Development:** Instead of switching feature branches inside the primary submodule directory, you MUST create a Git worktree for every feature or bug fix branch (e.g., `git worktree add ../<submodule>-<feature-branch> <branch>`). The primary submodule checkout (e.g., `openclaw/` or `sparkrun/`) must remain firmly pinned to either `origin/main` or the `local-dev` integration branch at all times.
-1. **Modify Code Exclusively in Worktrees:** All source code modifications, programmatic file edits, and PR feedback patches MUST be applied strictly from within the isolated feature worktree directory. Never commit or edit feature code directly in the primary submodule checkout.
-1. **Use an integration branch for testing the stack:** Instead of stacking interdependent PRs to test them together, create a `local-dev` branch inside the primary submodule strictly for local execution, which safely merges all active feature branches resulting from your worktrees.
-1. **Keep independent features unstacked:** Unless feature B fundamentally depends on feature A, always branch off `origin/main` for clean PRs.
-1. **No Orphan Commits on `local-dev`:** The `local-dev` branch is strictly a read-only aggregation target. You must **never** author new commits directly onto `local-dev` that aren't also safely contained in a standalone feature worktree.
-1. **Commit isolated integrations to `services`:** The root `services` repo should track the commit of the `local-dev` branch (from the primary submodule) to ensure stability during system-wide testing. However, when committing this pointer update, you MUST NEVER sweep unrelated files from the `services` repository into the commit of the main repository.
-1. **No Unsubmitted Changes:** Never end up with unsubmitted changes in the main submodule directory. Any modifications you make in a worktree must be correctly tracked and fully committed; otherwise, you dirty the state and violate the submodule protocol.
+1. **Build on `local-dev`:** For active daily development, build new features directly on top of the `local-dev` branch in the primary submodule checkout. This allows you to accumulate multiple interdependent or independent features in your local testing environment without losing progress (e.g., you won't lose "change branch A" when starting "new feature C").
+2. **Publish via Feature Worktrees:** When a feature is ready to be published as a Pull Request, do NOT push `local-dev`. Instead, create a new feature worktree based on `origin/main`.
+3. **Migrate to Worktrees:** Port (e.g., via `git cherry-pick` or patch) only the specific changes for that feature from `local-dev` into the clean feature worktree.
+4. **Push from Worktree:** Push the isolated feature branch from the worktree to your fork and create the PR. This ensures PRs are cleanly mergeable on top of `main` without bringing along other unfinished features from `local-dev`.
+5. **Update Existing PRs in Worktrees:** All PR feedback patches and CI fixes MUST be applied strictly from within the isolated feature worktree directory. Once updated and pushed, you can merge those fixes back into `local-dev` to keep your local environment up to date.
+6. **Commit isolated integrations to `services`:** The root `services` repo should track the commit of the `local-dev` branch (from the primary submodule) to ensure stability during system-wide testing. However, when committing this pointer update, you MUST NEVER sweep unrelated files from the `services` repository into the commit of the main repository.
 
 ## Step-by-Step Workflow
 
@@ -77,12 +76,20 @@ Because the submodules track the main upstream source repositories natively, we 
 
 1. Activate the `pr-writer` skill and adhere to it to learn how to structure and write high-quality PR descriptions every time you create or edit a PR.
 
-### 0. Setting Up Feature Worktrees
+### 0. Developing on `local-dev`
 
-If you need to make changes to a submodule, do NOT change branches in the main submodule directory.
+For new features and local testing, build directly on the `local-dev` integration branch.
 
-1. Navigate to the primary submodule directory (e.g. `cd openclaw`).
-1. Add a new worktree for your feature. We conventionally place the worktree inside the `.worktrees/` folder at the root of the repository so it stays within IDE workspaces but remains ignored by `git`. To avoid relative path (`../`) confusion, **always use absolute paths**:
+1. Navigate to the primary submodule directory (e.g., `cd openclaw` or `cd sparkrun`).
+2. Ensure you are on the `local-dev` branch. If it doesn't exist, create it from the upstream base branch (see Syncing section below).
+3. Commit your work continuously to `local-dev` so you don't lose local progress when moving between tasks.
+
+### 1. Publishing a Feature (Worktree Creation)
+
+When a specific feature or fix is ready for review, extract it into a clean PR branch.
+
+1. Navigate to the primary submodule directory.
+2. Add a new worktree for your feature based on the canonical root (`origin/main`). We conventionally place the worktree inside the `.worktrees/` folder at the root of the repository so it stays within IDE workspaces but remains ignored by `git`. To avoid relative path (`../`) confusion, **always use absolute paths**:
    ```bash
    # resolve the absolute root path from the submodule directory
    ROOT_DIR="$(cd .. && pwd)"
@@ -90,77 +97,39 @@ If you need to make changes to a submodule, do NOT change branches in the main s
    # create a new branch and worktree safely within the ignored .worktrees space
    git worktree add -b <feature-name> "$ROOT_DIR/.worktrees/<submodule-name>/<feature-name>" origin/main
    ```
-1. Navigate to the newly created absolute worktree path to perform all coding, testing, and PR creation.
-1. When finished and merged, clean up the worktree using `git worktree remove <absolute-path>`.
+3. Navigate to the newly created absolute worktree path.
+4. **Port Your Changes:** Use `git cherry-pick` (or manual patching) to bring over the specific commits for this feature from your `local-dev` branch into this feature branch.
+5. **Push and PR:** Push the feature branch to your fork (`git push fork <feature-name>`), and open the PR using the `pr-writer` skill.
+6. When finished and merged upstream, clean up the worktree using `git worktree remove <absolute-path>`.
 
-### Updating Existing PRs (Worktree Maintenance)
+### 2. Updating Existing PRs (Worktree Maintenance)
 
-When returning to an active PR to address upstream feedback, fix CI, or perform requested updates, you must execute the entire cycle strictly within its isolated feature worktree:
+When returning to an active PR to address upstream feedback, fix CI, or perform requested updates, execute the entire cycle strictly within its isolated feature worktree:
 
-1. **Review Pending Feedback:** Navigate to the worktree and use `gh pr view` and `gh pr comments` to review the active state of the PR and identify the specific actions required.
-1. **Apply Updates:** Implements fixes directly in the worktree. Run any local tests if applicable.
-1. **Verify Scope (`pr-gutcheck`):** Before committing and pushing, load and execute the `pr-gutcheck` skill against your uncommitted changes or recent local commits to ensure you are strictly resolving the required feedback and haven't introduced out-of-scope logic.
-1. **Commit & Push:** Commit your approved changes and push the updates up to the active fork PR branch (`git push fork <branch>`).
-1. **Resolve Conversations:** Formally address the reviewer threads using GitHub tools (as described in the PR Verification section) and explicitly mark conversations as resolved.
+1. **Review Pending Feedback:** Navigate to the worktree and use `gh pr view` and `gh pr comments` to review the active state of the PR.
+2. **Apply Updates:** Implements fixes directly in the worktree. Run any local tests if applicable.
+3. **Verify Scope (`pr-gutcheck`):** Before committing and pushing, load and execute the `pr-gutcheck` skill against your uncommitted changes to ensure you haven't introduced out-of-scope logic.
+4. **Commit & Push:** Commit your approved changes and push the updates up to the active fork PR branch (`git push fork <branch>`).
+5. **Resolve Conversations:** Formally address reviewer threads and run the thread resolution script.
+6. **Sync Back:** (Optional) If the fixes are needed locally, merge or cherry-pick the updated feature branch back into your primary `local-dev` branch.
 
-### 1. Identify the Submodule and Open PRs
+### 3. Synchronizing the `local-dev` Branch
 
-Ensure you are inside the primary submodule directory (e.g., `cd openclaw` or `cd sparkrun`).
-
-**Verify Remotes:** Before starting, verify your Git remotes (`git remote -v`). This workflow assumes `origin` points to the main upstream repository.
-
-List the active PR branches you wish to test (or use `gh pr list` generally to find other contributors' PRs):
-
-```bash
-gh pr list --author "@me"
-```
-
-### 2. Prepare the `local-dev` Branch
-
-Ensure you are synchronized with the `origin` repository and create a fresh `local-dev` branch based on the designated canonical root for each specific proxy framework:
+To ensure your local environment doesn't drift too far from upstream, or if you need to start fresh, update the `local-dev` branch:
 
 > [!IMPORTANT]
 > **Base Branch Differentiation**
 >
-> - **For `sparkrun`**: `local-dev` MUST ALWAYS be based on the tip of the development branch (`origin/main`).
-> - **For `openclaw`**: `local-dev` MUST ALWAYS be based on the latest stable production tag (bypassing betas). Do not use `origin/main` for openclaw.
+> - **For `sparkrun`**: `local-dev` should track the tip of the development branch (`origin/main`).
+> - **For `openclaw`**: `local-dev` should track the latest stable production tag (bypassing betas).
 
 ```bash
 git fetch --tags origin
-# For sparkrun:
-git checkout -B local-dev origin/main
 
-# For openclaw:
-# Automatically find the newest stable v2026.x tag (excluding -beta and -rc)
-LATEST_STABLE=$(git tag --sort=-creatordate | grep -E '^v[0-9]{4}\.[0-9]+\.[0-9]+$' | head -n 1)
-git checkout -B local-dev "$LATEST_STABLE"
+# To update your existing local-dev onto upstream:
+git rebase origin/main
 ```
-
-_(Using `-B` forcefully resets `local-dev` to the canonical root if it already exists, clearing out old unmerged artifacts)._
-
-### 3. Merge the Feature Branches
-
-**Check All Worktrees First:** You MUST explicitly check all active feature worktrees (e.g. inside `.worktrees/<submodule>/`) and rebase them onto `origin/main` before merging. This prevents them from falling behind upstream, ensuring they are always clean and ready for PR submission.
-
-Because your remote is the main upstream repository, rather than fetching individual branches from forks, you will seamlessly pull the exact head state of any PR directly from GitHub's internal pull refs. **Always merge sequentially (one by one)**.
-
-If you are merging local worktrees that haven't been pushed yet, you can merge them directly by branch name from within the primary submodule directory.
-
-For PRs already upstream, run the following:
-
-```bash
-git fetch origin pull/<PR-ID>/head
-git merge --no-edit FETCH_HEAD
-# (Repeat for each PR)
-```
-
-For local feature worktree branches:
-
-```bash
-git merge --no-edit <feature-branch>
-```
-
-_Note: If there are merge conflicts between features, resolve them locally on `local-dev` after the failing merge command. Merging sequentially ensures you know exactly which PR introduced the collision._
+*(For openclaw, rebase onto the newest stable tag instead of `origin/main`.)*
 
 ### 4. Verify Clean Submodule State
 
@@ -186,7 +155,7 @@ Do not embed dynamic markdown tables inside this skill document, as they become 
 
 The submodule process is only considered complete when:
 
-1. All primary submodules have been successfully restored to their `local-dev` branches.
+1. All primary submodules are checked out to their `local-dev` branches.
 1. There are absolutely no dangling (untracked, modified, or staged) files left in the primary submodules or affecting the root workspace from the process.
 
 ## Prerequisites

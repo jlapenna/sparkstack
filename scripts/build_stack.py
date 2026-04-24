@@ -175,7 +175,7 @@ class StackBuilder:
 
         self.total_vram = 0.0
         self.total_memory_gb = 0.0
-        self.sparkrun_commands = []
+        self.stack_backends = []
 
     def _get_gateway_ip(self) -> str:
         return "proxy-tier"
@@ -350,96 +350,46 @@ class StackBuilder:
                             f"Dynamically scaled gpu_memory_utilization to {util} for {recipe_name}"
                         )
 
-                    cmd_args = [
-                        "uv",
-                        "run",
-                        "sparkrun",
-                        "run",
-                        str(model_config.recipe_path),
-                        "--hosts",
-                        "localhost",
-                        "--port",
-                        str(port),
-                        "--tp",
-                        "1",
-                        "--served-model-name",
-                        target_role,
-                        "--container-name",
-                        target_role,
-                        "--no-follow",
-                        "-o",
-                        "network=proxy-tier",
-                    ]
-
+                    backend = {
+                        "name": target_role,
+                        "recipe": f"sparkrun/{model_config.recipe_path.name if hasattr(model_config.recipe_path, 'name') else Path(model_config.recipe_path).name}",
+                        "target": "localhost",
+                        "port": port,
+                        "env": {},
+                        "overrides": {}
+                    }
                     if mem_limit:
-                        cmd_args.extend(["--memory-limit", str(mem_limit)])
-
-                    self.total_memory_gb += self._parse_memory_gb(mem_limit)
+                        backend["memory_limit"] = mem_limit
 
                     for k, v in overrides.items():
-                        vllm_cfg[k] = v
+                        backend["overrides"][k] = v
 
                     for k, v in recipe_dict.get("env", {}).items():
-                        cmd_args.extend(["-o", f"env.{k}={v}"])
+                        backend["env"][k] = v
 
                     for k, v in BLACKWELL_MANDATORY_ENV.items():
                         if k not in recipe_dict.get("env", {}):
-                            cmd_args.extend(["-o", f"env.{k}={v}"])
+                            backend["env"][k] = v
 
                     if "OTEL_SERVICE_NAME" not in recipe_dict.get("env", {}):
-                        cmd_args.extend(["-o", f"env.OTEL_SERVICE_NAME=vllm-{target_role}"])
+                        backend["env"]["OTEL_SERVICE_NAME"] = f"vllm-{target_role}"
 
                     if "otlp_traces_endpoint" not in recipe_dict.get("defaults", {}):
-                        cmd_args.extend(["-o", "otlp_traces_endpoint=http://otel-collector:4317"])
+                        backend["overrides"]["otlp_traces_endpoint"] = "http://otel-collector:4317"
 
                     if "tensor_parallel_size" not in vllm_cfg and "tensor_parallel" not in vllm_cfg:
-                        cmd_args.extend(["--tp", "1"])
+                        backend["overrides"]["tensor_parallel"] = "1"
 
-                    mapping = {
-                        "gpu_memory_utilization": "--gpu-mem",
-                        "tensor_parallel_size": "--tp",
-                        "tensor_parallel": "--tp",
-                        "max_model_len": "--max-model-len",
-                        "expert_parallel": "--ep-size",
-                        "otlp_traces_endpoint": "--otlp-traces-endpoint",
-                        "port": None,
-                    }
                     for k, v in vllm_cfg.items():
-                        if k in ["port", "served_model_name", "network"]:
-                            continue
-                        opt = mapping.get(k)
-                        if opt:
-                            cmd_args.extend([opt, str(v)])
-                        else:
-                            cmd_args.extend(["-o", f"{k}={v}"])
-
-                    cmd_args.extend(["-o", f"port={port}"])
-                    cmd_args.extend(
-                        [
-                            "--cluster",
-                            f"{target_role}",
-                            "--label",
-                            f"sparkrun.role={target_role}",
-                            "--label",
-                            "sparkrun.monitoring=true",
-                        ]
-                    )
+                        if k not in ["port", "served_model_name", "network", "tensor_parallel", "tensor_parallel_size"]:
+                            backend["overrides"][k] = v
 
                     if recipe_dict.get("runtime") == "sglang":
-                        cmd_args.extend(
-                            [
-                                "--",
-                                "--attention-backend",
-                                "triton",
-                                "--enable-metrics",
-                                "--mem-fraction-static",
-                                "0.8",
-                            ]
-                        )
-
-                    escaped_args = [shlex.quote(str(a)) for a in cmd_args]
-                    cmd = " \\\n  ".join(escaped_args)
-                    self.sparkrun_commands.append(cmd)
+                        backend["overrides"]["attention_backend"] = "triton"
+                        backend["overrides"]["enable_metrics"] = "true"
+                        backend["overrides"]["mem_fraction_static"] = "0.8"
+                        
+                    self.stack_backends.append(backend)
 
                     self.prometheus_builder.add_target(prometheus_target, target_role)
 
@@ -552,6 +502,18 @@ class StackBuilder:
         )
 
     def _generate_launcher_script(self):
+        stack_yaml = {
+            "version": "1",
+            "name": self.stack_name,
+            "globals": {"network": "proxy-tier"},
+            "backends": self.stack_backends,
+            "services": {"compose_file": "docker-compose.yaml"}
+        }
+        
+        stack_yaml_path = self.stack_dir / "stack.yaml"
+        with open(stack_yaml_path, "w") as f:
+            yaml.dump(stack_yaml, f, sort_keys=False, default_flow_style=False)
+
         lines = [
             "#!/bin/bash",
             "set -e",
@@ -569,27 +531,8 @@ class StackBuilder:
             "# Prevent uv from failing if it inherits a relative UV_ENV_FILE from the parent shell",
             "unset UV_ENV_FILE",
             "",
-            'echo "🧹 Cleaning up old containers..."',
-            "docker rm -f vllm-gateway vllm-progress main_solo embedding_solo 2>/dev/null || true",
-            'docker compose --env-file "$PARENT_ENV" -f "$CDIR/docker-compose.yaml" down --remove-orphans 2>/dev/null || true',
-            "",
-            'echo "🧟 Purging orphaned VLLM/EngineCore processes..."',
-            'pkill -9 -f "VLLM|sparkrun|vllm" 2>/dev/null || true',
-            "sleep 2",
-            "",
-            'echo "🚀 Launching model instances via sparkrun..."',
+            'uv run python "$CDIR/../../../scripts/launch.py" "$CDIR"'
         ]
-        lines.extend(self.sparkrun_commands)
-
-        lines.extend(
-            [
-                "",
-                'echo "📦 Starting gateway and monitoring via docker compose..."',
-                'cd "$CDIR"',
-                'docker compose --env-file "$PARENT_ENV" up -d 2>/dev/null || docker compose up -d',
-                'echo "✅ Stack is operational."',
-            ]
-        )
         launcher_path = self.stack_dir / "launch.sh"
         launcher_path.write_text("\n".join(lines))
         launcher_path.chmod(0o755)

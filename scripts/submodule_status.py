@@ -36,7 +36,7 @@ def get_pr_status(submodule_dir):
 
 def main():
     root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    submodules = ["openclaw", "sparkrun"]
+    submodules = ["openclaw", "sparkrun", "spark-stack-registry"]
 
     print("### 1. Pending Pull Requests\n")
     print("| Repository | PR ID / Link | Branch | Title | Updated At |")
