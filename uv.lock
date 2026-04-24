@@ -1590,7 +1590,7 @@ wheels = [
 
 [[package]]
 name = "sparkrun"
-version = "0.2.28"
+version = "0.2.24"
 source = { editable = "sparkrun" }
 dependencies = [
     { name = "click" },
@@ -1620,6 +1620,7 @@ provides-extras = ["dev"]
 [package.metadata.requires-dev]
 dev = [
     { name = "pre-commit", specifier = ">=4.5.1" },
+    { name = "pyright", specifier = ">=1.1.350" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "ruff", specifier = ">=0.15.9" },
 ]

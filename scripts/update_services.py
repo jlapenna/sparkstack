@@ -75,7 +75,8 @@ async def cleanup_zombies(settings: Settings):
     console.print("[bold yellow]🧟 Executing Zombie Protocol...[/]")
 
     # 1. Clear stuck OpenClaw tasks
-    task_db = settings.project_root.parent / ".openclaw" / "tasks" / "runs.sqlite"
+    from core.constants import OPENCLAW_CONFIG
+    task_db = OPENCLAW_CONFIG / "tasks" / "runs.sqlite"
     if task_db.exists():
         console.print(f"  → Clearing zombie tasks in {task_db}")
         try:

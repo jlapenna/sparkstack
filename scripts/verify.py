@@ -15,6 +15,7 @@ from rich.live import Live
 from rich.table import Table
 
 from scripts.verify.context import VerifyContext
+from core.constants import PROJECT_ROOT, STACKS_DIR
 from scripts.verify import (
     memory_law,
     proxy_integrity,
@@ -106,10 +107,11 @@ class VerifyOrchestrator:
 
 class StackVerifier:
     def __init__(self, stack_name: str | None = None):
-        root_dir = Path(__file__).parent.parent.absolute()
-        stack_dir = root_dir / "spark-stack-registry" / "stacks" / stack_name if stack_name else root_dir / "current"
+        import shutil
+        root_dir = PROJECT_ROOT
+        stack_dir = STACKS_DIR / stack_name if stack_name else root_dir / "current"
 
-        oc_bin = Path.home() / "bin" / "oc"
+        oc_bin = Path(shutil.which("oc") or Path.home() / "bin" / "oc")
         gateway_url = "http://localhost:4000/v1"
         telemetry_url = "http://localhost:9090/api/v1/targets"
 

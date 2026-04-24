@@ -232,6 +232,22 @@ class OpenClawUpdater:
         logger.info("Deploying OpenClaw via Docker Compose...")
 
         env = os.environ.copy()
+        
+        from dotenv import dotenv_values
+        from core.constants import OPENCLAW_CONFIG
+        config_dir_path = OPENCLAW_CONFIG
+        env.setdefault("OPENCLAW_CONFIG_DIR", str(config_dir_path))
+        env.setdefault("OPENCLAW_WORKSPACE_DIR", str(config_dir_path / "workspace"))
+        
+        # Load .env from openclaw config dir so docker compose interpolates correctly
+        oc_env = config_dir_path / ".env"
+        if oc_env.exists():
+            parsed = dotenv_values(oc_env)
+            env.update({k: v for k, v in parsed.items() if v is not None})
+            
+        # Ensure these are always the host paths for docker compose volume resolution
+        env["OPENCLAW_CONFIG_DIR"] = str(config_dir_path)
+        env["OPENCLAW_WORKSPACE_DIR"] = str(config_dir_path / "workspace")
 
         cmd = ["docker", "compose", "-f", "docker-compose.yml"]
         override_yml = self.settings.project_root / "docker-compose.override.yml"
@@ -253,7 +269,8 @@ class OpenClawUpdater:
         logger.info("Executing OpenClaw Zombie Protocol...")
 
         # 1. Clear stuck OpenClaw tasks
-        task_db = self.settings.project_root.parent / ".openclaw" / "tasks" / "runs.sqlite"
+        from core.constants import OPENCLAW_CONFIG
+        task_db = OPENCLAW_CONFIG / "tasks" / "runs.sqlite"
         if task_db.exists():
             logger.info(f"Clearing zombie tasks in {task_db}")
             try:

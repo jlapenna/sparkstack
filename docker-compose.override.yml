@@ -19,10 +19,10 @@ services:
 
     volumes:
       # DooD identical volume map: the gateway uses Docker-out-of-Docker
-      # to create sandbox containers. update_openclaw.py rewrites internal
-      # /home/node/ paths to /home/jlapenna/ so Docker evaluates bind
-      # mounts against the host filesystem correctly. This map ensures
-      # the rewritten paths resolve inside the gateway container too.
+      # to create sandbox containers. The internal /home/node/ paths are
+      # mapped to the host's native configuration directories so Docker 
+      # evaluates bind mounts against the host filesystem correctly. This 
+      # map ensures the rewritten paths resolve inside the gateway container too.
       - ${OPENCLAW_CONFIG_DIR}:${OPENCLAW_CONFIG_DIR}
       - /var/run/docker.sock:/var/run/docker.sock
 

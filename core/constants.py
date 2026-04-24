@@ -6,11 +6,11 @@ import os
 from pathlib import Path
 
 # Base paths with environment overrides for portability
-PROJECT_ROOT = Path(os.getenv("SPARK_PROJECT_ROOT", "/home/jlapenna/services")).absolute()
+PROJECT_ROOT = Path(os.getenv("SPARK_STACK_ROOT", Path(__file__).resolve().parent.parent)).absolute()
 OPENCLAW_HOME = Path(os.getenv("OPENCLAW_HOME", Path.home() / ".openclaw")).absolute()
 OPENCLAW_CONFIG = OPENCLAW_HOME / "openclaw.json"
-STACKS_DIR = PROJECT_ROOT / "spark-stack-registry" / "stacks"
-REGISTRY_DIR = PROJECT_ROOT / "spark-stack-registry"
+REGISTRY_DIR = Path(os.getenv("SPARK_STACK_REGISTRY", PROJECT_ROOT.parent / "spark-stack-registry")).absolute()
+STACKS_DIR = REGISTRY_DIR / "stacks"
 
 # DGX Spark (GB10) Hardware Specifications
 TOTAL_SHARED_RAM_GB = 128.0

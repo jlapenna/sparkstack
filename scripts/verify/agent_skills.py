@@ -2,6 +2,7 @@ import json
 import re
 from loguru import logger
 from core.utils import async_run_command
+from core.constants import OPENCLAW_HOME
 from scripts.verify.utils import verify_layer
 from scripts.verify.context import VerifyContext
 
@@ -53,14 +54,14 @@ async def run(ctx: VerifyContext):
     )
     mounts = inspect_result.stdout.strip().split("\n")
 
-    # We look for the absolute host path /home/jlapenna/.openclaw
-    has_personal_mount = any("/home/jlapenna/.openclaw" in m for m in mounts)
+    # We look for the absolute host path matching OPENCLAW_HOME
+    has_personal_mount = any(str(OPENCLAW_HOME) in m for m in mounts)
     if not has_personal_mount:
         logger.error(
-            "❌ Gateway is missing the host-absolute mount for ~/.openclaw. Path rewriting may have failed."
+            f"❌ Gateway is missing the host-absolute mount for {OPENCLAW_HOME}. Path rewriting may have failed."
         )
         return False
-    logger.info("✅ Gateway verified with host-absolute ~/.openclaw mount")
+    logger.info(f"✅ Gateway verified with host-absolute {OPENCLAW_HOME} mount")
 
     logger.info("✅ Pass: Agent Skill Readiness")
     return True

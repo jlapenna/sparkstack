@@ -8,9 +8,7 @@ from loguru import logger
 
 # Add root directory to path to allow importing core
 from core.utils import async_run_command
-
-ROOT_DIR = Path(__file__).parent.parent.absolute()
-STACKS_DIR = ROOT_DIR / "spark-stack-registry" / "stacks"
+from core.constants import PROJECT_ROOT as ROOT_DIR, STACKS_DIR
 
 
 async def main():

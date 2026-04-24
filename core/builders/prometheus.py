@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 
 import yaml
@@ -22,10 +23,7 @@ class PrometheusBuilder:
         self.scrape_targets.append({"targets": [target], "labels": {"model": model_name}})
 
     def write(self):
-        config = PrometheusConfig(
-            global_config={"scrape_interval": "15s"},
-            scrape_configs=self.scrape_configs
-            + [
+        base_configs = self.scrape_configs + [
                 ScrapeConfig(
                     job_name="litellm-gateway",
                     metrics_path="/metrics",
@@ -61,29 +59,27 @@ class PrometheusBuilder:
                     file_sd_configs=[{"files": ["/prometheus/home_local.json"]}],
                     relabel_configs=[{"target_label": "instance", "replacement": "home.local"}],
                 ),
+        ]
+
+        monitor_domains = [d.strip() for d in os.getenv("SPARK_STACK_MONITOR_DOMAINS", "").split(",") if d.strip()]
+        if monitor_domains:
+            base_configs.append(
                 ScrapeConfig(
                     job_name="blackbox",
                     metrics_path="/probe",
                     params={"module": ["http_2xx"]},
-                    static_configs=[
-                        StaticConfig(targets=["https://c.jlapenna.net", "https://m.jlapenna.net"])
-                    ],
+                    static_configs=[StaticConfig(targets=monitor_domains)],
                     relabel_configs=[
-                        {
-                            "source_labels": ["__address__"],
-                            "target_label": "__param_target",
-                        },
-                        {
-                            "source_labels": ["__param_target"],
-                            "target_label": "instance",
-                        },
-                        {
-                            "target_label": "__address__",
-                            "replacement": "blackbox-exporter:9115",
-                        },
+                        {"source_labels": ["__address__"], "target_label": "__param_target"},
+                        {"source_labels": ["__param_target"], "target_label": "instance"},
+                        {"target_label": "__address__", "replacement": "blackbox-exporter:9115"},
                     ],
-                ),
-            ],
+                )
+            )
+
+        config = PrometheusConfig(
+            global_config={"scrape_interval": "15s"},
+            scrape_configs=base_configs,
         )
 
         targets = []
