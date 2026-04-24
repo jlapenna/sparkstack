@@ -24,7 +24,7 @@ ______________________________________________________________________
 
 *If the new deployment causes a catastrophic failure, you MUST have the exact rollback commands pre-defined here so the system can be restored instantly without further research.*
 
-- **Previous Stable Stack Name**: [e.g., `core-upgrade-20260320`]
+- **Previous Stable Stack Name**: \[e.g., `core-upgrade-20260320`\]
 - **Rollback Command**: `uv run python -m scripts.set_current spark-stack-registry/spark-stack-registry/stacks/[PREVIOUS_STABLE] && cd current && docker compose up -d --force-recreate`
 
 ______________________________________________________________________

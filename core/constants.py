@@ -6,10 +6,16 @@ import os
 from pathlib import Path
 
 # Base paths with environment overrides for portability
-PROJECT_ROOT = Path(os.getenv("SPARK_STACK_ROOT", Path(__file__).resolve().parent.parent)).absolute()
-OPENCLAW_HOME = Path(os.getenv("OPENCLAW_CONFIG_DIR", os.getenv("OPENCLAW_HOME", Path.home() / ".openclaw"))).absolute()
+PROJECT_ROOT = Path(
+    os.getenv("SPARK_STACK_ROOT", Path(__file__).resolve().parent.parent)
+).absolute()
+OPENCLAW_HOME = Path(
+    os.getenv("OPENCLAW_CONFIG_DIR", os.getenv("OPENCLAW_HOME", Path.home() / ".openclaw"))
+).absolute()
 OPENCLAW_CONFIG = OPENCLAW_HOME / "openclaw.json"
-REGISTRY_DIR = Path(os.getenv("SPARK_STACK_REGISTRY", PROJECT_ROOT / "spark-stack-registry")).absolute()
+REGISTRY_DIR = Path(
+    os.getenv("SPARK_STACK_REGISTRY", PROJECT_ROOT / "spark-stack-registry")
+).absolute()
 BASE_DIR = PROJECT_ROOT / "registry"
 STACKS_DIR = REGISTRY_DIR / "stacks"
 

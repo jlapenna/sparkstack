@@ -1,4 +1,4 @@
----
+______________________________________________________________________
 
 name: stack-verification
 description: Orchestrates the E2E verification testing suite for the Spark Stack using pytest.
@@ -14,7 +14,7 @@ triggers:
 - test wait for backends
 - verify proxy connectivity
 
----
+______________________________________________________________________
 
 # Spark Stack Verification
 
@@ -34,7 +34,7 @@ To manage and execute the End-to-End (E2E) verification suite located in `tests/
 ### 2. Environment Portability
 
 - **No Hardcoded Paths**: Ensure no absolute paths to user home directories or specific hostnames are baked into tests. Rely on `E2EContext` injection.
-- **Decoupled Verification**: Test suite execution should rely entirely on `pytest` fixtures mapping to the decoupled orchestration architecture. 
+- **Decoupled Verification**: Test suite execution should rely entirely on `pytest` fixtures mapping to the decoupled orchestration architecture.
 
 ### 3. Debugging Test Failures
 
@@ -44,4 +44,4 @@ To manage and execute the End-to-End (E2E) verification suite located in `tests/
 ## Prerequisites
 
 1. Active Python environment (`.venv/bin/python`).
-2. Stack must be actively running via `docker compose`.
+1. Stack must be actively running via `docker compose`.

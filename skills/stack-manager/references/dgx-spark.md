@@ -64,5 +64,6 @@ For models with heterogeneous head dimensions (e.g., Gemma-4), use **`--attentio
 ### E. Blackwell MoE Optimization
 
 When running NVFP4 MoE models on Blackwell (e.g., Nemotron-3-Super), ensure the following optimizations are applied to prevent initialization OOMs and latency regressions:
+
 - Set environment variable `VLLM_BLACKWELL_LAYOUT=1` for optimal memory layout.
 - Use `FlashInfer` MoE backend flags: `VLLM_FLASHINFER_MOE_BACKEND='latency'` and `VLLM_USE_FLASHINFER_MOE_MXFP4_MXFP8='1'`.

@@ -1,4 +1,4 @@
----
+______________________________________________________________________
 
 name: stack-knowledge
 description: Self-learning Docker knowledge base. Documents the live topology, routing paths, and accumulated incident learnings.
@@ -34,7 +34,7 @@ triggers:
 - connection error docker
 - resolv.conf
 
----
+______________________________________________________________________
 
 # stack-knowledge
 
@@ -533,7 +533,7 @@ ______________________________________________________________________
 - **Hypothesis**: The dashboard queried `vllm_vllm_sparkrun_deploy_progress`, which is an ephemeral metric emitted via StatsD by the `sparkrun` CLI only during the provisioning phase. Once the CLI exits, the metric goes stale but Prometheus retains the last value. Additionally, `stat` panels with `graphMode: area` and small heights (`h=3`) clip the text.
 - **Action**:
   1. Updated dashboard JSONs to use `avg(vllm_model_load_progress) or max(vllm_vllm_sparkrun_deploy_progress)` so it prioritizes the live metric.
-  2. Increased panel heights to `h=4` and disabled sparklines (`graphMode: "none"`) for deployment progress panels.
+  1. Increased panel heights to `h=4` and disabled sparklines (`graphMode: "none"`) for deployment progress panels.
 - **Result**: **Successful.** Dashboards now correctly show 100% when models are fully loaded, and no text is clipped.
 
 **Learnings:**

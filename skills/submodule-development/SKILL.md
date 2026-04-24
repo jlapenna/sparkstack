@@ -1,4 +1,4 @@
----
+______________________________________________________________________
 
 name: submodule-development
 description: A workflow skill governing how to interact with and develop inside submodules (like sparkrun and openclaw), including configuring defaults, opening PRs, and running local integration branches.
@@ -16,7 +16,7 @@ triggers:
 - "create a PR in the submodule"
 - "push upstream"
 
----
+______________________________________________________________________
 
 # Submodule Development Workflow
 
@@ -121,6 +121,7 @@ Ensure you are synchronized with the `origin` repository and create a fresh `loc
 
 > [!IMPORTANT]
 > **Base Branch Differentiation**
+>
 > - **For `sparkrun`**: `local-dev` MUST ALWAYS be based on the tip of the development branch (`origin/main`).
 > - **For `openclaw`**: `local-dev` MUST ALWAYS be based on the latest stable production tag (bypassing betas). Do not use `origin/main` for openclaw.
 

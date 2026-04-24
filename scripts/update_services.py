@@ -45,6 +45,7 @@ STATSD_HOST = os.environ.get("SPARKRUN_STATSD_HOST", "127.0.0.1")
 STATSD_PORT = int(os.environ.get("SPARKRUN_STATSD_PORT", "8125"))
 STATSD_ADDR = (STATSD_HOST, STATSD_PORT)
 
+
 class StatsdClient:
     def __init__(self) -> None:
         self.writer: asyncio.StreamWriter | None = None
@@ -70,6 +71,7 @@ class StatsdClient:
                     with contextlib.suppress(Exception):
                         self.writer.close()
                     self.writer = None
+
 
 statsd = StatsdClient()
 
@@ -111,6 +113,7 @@ async def cleanup_zombies(settings: Settings):
 
     # 1. Clear stuck OpenClaw tasks
     from core.constants import OPENCLAW_HOME
+
     task_db = OPENCLAW_HOME / "tasks" / "runs.sqlite"
     if task_db.exists():
         console.print(f"  → Clearing zombie tasks in {task_db}")
@@ -158,7 +161,9 @@ class ServiceState:
         self.note = task
         if not self.start_time:
             self.start_time = datetime.now()
-        asyncio.create_task(statsd.send(f"update_services_progress:{progress}|g|#service:{self.name}\n"))
+        asyncio.create_task(
+            statsd.send(f"update_services_progress:{progress}|g|#service:{self.name}\n")
+        )
         asyncio.create_task(statsd.send(f"update_services_status:1|g|#service:{self.name}\n"))
 
     def complete(self):

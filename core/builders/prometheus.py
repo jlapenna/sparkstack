@@ -24,39 +24,42 @@ class PrometheusBuilder:
 
     def write(self):
         base_configs = self.scrape_configs + [
-                ScrapeConfig(
-                    job_name="litellm-gateway",
-                    metrics_path="/metrics",
-                    static_configs=[
-                        StaticConfig(
-                            targets=[os.getenv("VLLM_GATEWAY_HOST", "vllm-gateway:4000")], labels={"instance": "spark.local"}
-                        )
-                    ],
-                ),
-                ScrapeConfig(
-                    job_name="monitoring",
-                    static_configs=[
-                        StaticConfig(
-                            targets=[
-                                os.getenv("CADVISOR_HOST", "cadvisor:8080"),
-                                os.getenv("NODE_EXPORTER_HOST", "node-exporter:9100"),
-                                os.getenv("DCGM_EXPORTER_HOST", "dcgm-exporter:9400"),
-                                os.getenv("VECTOR_HOST", "vector:9102"),
-                            ],
-                            labels={"instance": "spark.local"},
-                        )
-                    ],
-                    metric_relabel_configs=[
-                        {
-                            "source_labels": ["__name__"],
-                            "regex": "DCGM_FI_DEV_XID_ERRORS",
-                            "action": "drop",
-                        }
-                    ],
-                ),
+            ScrapeConfig(
+                job_name="litellm-gateway",
+                metrics_path="/metrics",
+                static_configs=[
+                    StaticConfig(
+                        targets=[os.getenv("VLLM_GATEWAY_HOST", "vllm-gateway:4000")],
+                        labels={"instance": "spark.local"},
+                    )
+                ],
+            ),
+            ScrapeConfig(
+                job_name="monitoring",
+                static_configs=[
+                    StaticConfig(
+                        targets=[
+                            os.getenv("CADVISOR_HOST", "cadvisor:8080"),
+                            os.getenv("NODE_EXPORTER_HOST", "node-exporter:9100"),
+                            os.getenv("DCGM_EXPORTER_HOST", "dcgm-exporter:9400"),
+                            os.getenv("VECTOR_HOST", "vector:9102"),
+                        ],
+                        labels={"instance": "spark.local"},
+                    )
+                ],
+                metric_relabel_configs=[
+                    {
+                        "source_labels": ["__name__"],
+                        "regex": "DCGM_FI_DEV_XID_ERRORS",
+                        "action": "drop",
+                    }
+                ],
+            ),
         ]
 
-        monitor_domains = [d.strip() for d in os.getenv("SPARK_STACK_MONITOR_DOMAINS", "").split(",") if d.strip()]
+        monitor_domains = [
+            d.strip() for d in os.getenv("SPARK_STACK_MONITOR_DOMAINS", "").split(",") if d.strip()
+        ]
         if monitor_domains:
             base_configs.append(
                 ScrapeConfig(
@@ -67,7 +70,12 @@ class PrometheusBuilder:
                     relabel_configs=[
                         {"source_labels": ["__address__"], "target_label": "__param_target"},
                         {"source_labels": ["__param_target"], "target_label": "instance"},
-                        {"target_label": "__address__", "replacement": os.getenv("BLACKBOX_EXPORTER_HOST", "blackbox-exporter:9115")},
+                        {
+                            "target_label": "__address__",
+                            "replacement": os.getenv(
+                                "BLACKBOX_EXPORTER_HOST", "blackbox-exporter:9115"
+                            ),
+                        },
                     ],
                 )
             )

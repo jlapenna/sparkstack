@@ -24,6 +24,7 @@ async def test_proxy_integrity(ctx: E2EContext):
             logger.error(f"❌ Failure: Gateway returned {res.status_code}")
             raise AssertionError()
 
+
 @pytest.mark.order(7)
 @pytest.mark.asyncio
 async def test_litellm_config_no_host_docker_internal(ctx: E2EContext):

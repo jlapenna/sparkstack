@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import asyncio
 import contextlib
+import os
 import re
 from collections.abc import AsyncGenerator
 from typing import Any
@@ -8,8 +9,6 @@ from typing import Any
 import aiohttp
 from aiohttp import web
 from loguru import logger
-
-import os
 
 # Configuration
 SOCKET_PATH = "/var/run/docker.sock"
@@ -359,7 +358,10 @@ async def process_log_chunk(container_name: str, chunk: str, enforce_eager: bool
 
 async def check_readiness(url: str) -> bool:
     try:
-        async with aiohttp.ClientSession() as session, session.get(url, timeout=aiohttp.ClientTimeout(total=2.0)) as response:
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(url, timeout=aiohttp.ClientTimeout(total=2.0)) as response,
+        ):
             return response.status == 200
     except Exception:
         return False

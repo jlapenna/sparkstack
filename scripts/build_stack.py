@@ -302,12 +302,23 @@ class StackBuilder:
 
                     # Validate Tool Parser Whitelist
                     command_str = recipe_dict.get("command", "")
-                    VALID_PARSERS = ["chatml", "hermes", "mistral", "qwen", "qwen3_coder", "llama3_json", "pythonic", "internlm2"]
-                    parser_match = re.search(r'--tool-call-parser\s+(\w+)', command_str)
+                    VALID_PARSERS = [
+                        "chatml",
+                        "hermes",
+                        "mistral",
+                        "qwen",
+                        "qwen3_coder",
+                        "llama3_json",
+                        "pythonic",
+                        "internlm2",
+                    ]
+                    parser_match = re.search(r"--tool-call-parser\s+(\w+)", command_str)
                     if parser_match:
                         parser_name = parser_match.group(1)
                         if parser_name not in VALID_PARSERS:
-                            raise ValueError(f"Invalid tool-call-parser '{parser_name}' in {recipe_name}. Must be one of: {', '.join(VALID_PARSERS)}")
+                            raise ValueError(
+                                f"Invalid tool-call-parser '{parser_name}' in {recipe_name}. Must be one of: {', '.join(VALID_PARSERS)}"
+                            )
 
                     overrides = req.get("overrides", {})
                     if "memory_limit" in overrides:
@@ -374,10 +385,10 @@ class StackBuilder:
                     for k, v in BLACKWELL_MANDATORY_ENV.items():
                         if k not in recipe_dict.get("env", {}):
                             cmd_args.extend(["-o", f"env.{k}={v}"])
-                    
+
                     if "OTEL_SERVICE_NAME" not in recipe_dict.get("env", {}):
                         cmd_args.extend(["-o", f"env.OTEL_SERVICE_NAME=vllm-{target_role}"])
-                    
+
                     if "otlp_traces_endpoint" not in recipe_dict.get("defaults", {}):
                         cmd_args.extend(["-o", "otlp_traces_endpoint=http://otel-collector:4317"])
 
@@ -536,7 +547,9 @@ class StackBuilder:
         self.litellm_builder.write()
         self.prometheus_builder.write()
         self._generate_launcher_script()
-        logger.info(f"🚀 Stack '{self.stack_name}' built successfully in spark-stack-registry/stacks/{self.stack_name}")
+        logger.info(
+            f"🚀 Stack '{self.stack_name}' built successfully in spark-stack-registry/stacks/{self.stack_name}"
+        )
 
     def _generate_launcher_script(self):
         lines = [

@@ -1,4 +1,4 @@
----
+______________________________________________________________________
 
 name: stack-upkeep
 description: A maintenance skill dedicated to keeping the NVIDIA Spark stack and OpenClaw ecosystem up to date with the latest stable releases and recipes.
@@ -15,7 +15,7 @@ triggers:
 - upgrade my system
 - keep the stack current
 
----
+______________________________________________________________________
 
 # stack-upkeep
 
@@ -60,7 +60,7 @@ If pulling the latest container image introduces a breaking registry change or s
 
 While Renovate handles automated PRs for dependencies, you will sometimes need to manually discover and pin the latest stable releases for containers, images, or software versions.
 
-- **Docker Images**: 
+- **Docker Images**:
   - Do NOT blindly use `:latest` as it breaks determinism.
   - Find the latest stable semantic tag (e.g., `v1.2.3`) using Skopeo: `skopeo list-tags docker://<registry>/<image>` or query the registry API (GitHub Container Registry, Quay.io, Docker Hub).
   - Explicitly edit `docker-compose.yml`, `.env`, or the stack recipe files to replace the old tag with the newly discovered stable tag.

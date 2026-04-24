@@ -1,4 +1,4 @@
----
+______________________________________________________________________
 
 name: observability-stack
 description: Manages the Grafana/Prometheus monitoring stack, container updates, telemetry pipelines, and safe dashboard integration.
@@ -16,7 +16,7 @@ triggers:
 - update grafana templates
 - fix monitoring containers
 
----
+______________________________________________________________________
 
 # Observability Stack Management
 
@@ -68,8 +68,8 @@ The monitoring stack is defined in `monitoring/docker-compose.yml` and consists 
 - **SSH Reverse Tunnel Architecture**: Worker nodes push telemetry to the central Vector aggregator securely via an SSH reverse tunnel (`-R 8125:127.0.0.1:8125`) initialized by `sparkrun`. This preserves the agentless execution model by avoiding resident daemons on worker nodes.
 - **Troubleshooting**: If `vllm_model_load_progress` is missing from Prometheus, explicitly test the pipeline:
   1. Test StatsD reception inside Vector: `docker exec -it vector nc -u -v localhost 8125`
-  2. Verify Prometheus targets are alive: Query `up` in the Prometheus UI to ensure jobs are correctly discovered.
-  3. Check the progress manager logs: `docker compose logs vllm-progress-manager`.
+  1. Verify Prometheus targets are alive: Query `up` in the Prometheus UI to ensure jobs are correctly discovered.
+  1. Check the progress manager logs: `docker compose logs vllm-progress-manager`.
 - **Deadlock Shields**: System deadlocks can be triggered by `vllm-progress-manager` or resource contention during Docker container startup. Ensure `gpu_memory_utilization` limits are strictly respected to prevent the host OS or orchestrator from hanging during heavy CUDA graph capture.
 
 ### 4. Decoupled Orchestration Integration (`build_stack.py`)

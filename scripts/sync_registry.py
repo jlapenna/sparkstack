@@ -30,6 +30,7 @@ async def sync_registry(
     # Build Spark provider
     # We still validate the models.json source since it's purely internal schema
     import os
+
     spark_source["baseUrl"] = os.getenv("VLLM_GATEWAY_URL", "http://vllm-gateway:4000/v1")
     provider_model = SparkProvider.model_validate(spark_source)
 

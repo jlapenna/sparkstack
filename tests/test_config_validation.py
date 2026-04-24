@@ -1,7 +1,8 @@
 import json
-import yaml
-import pytest
 from pathlib import Path
+
+import pytest
+import yaml
 
 PROJECT_ROOT = Path(__file__).parent.parent
 EXCLUDE_DIRS = {
@@ -13,8 +14,9 @@ EXCLUDE_DIRS = {
     "__pycache__",
     ".worktrees",
     "sparkrun",
-    "openclaw"
+    "openclaw",
 }
+
 
 def get_config_files(extensions):
     files = []
@@ -26,18 +28,20 @@ def get_config_files(extensions):
             files.append(p)
     return files
 
+
 @pytest.mark.parametrize("filepath", get_config_files({".json"}))
 def test_json_files_are_valid(filepath: Path):
     try:
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding="utf-8") as f:
             json.load(f)
     except Exception as e:
         pytest.fail(f"Invalid JSON file {filepath.relative_to(PROJECT_ROOT)}: {e}")
 
+
 @pytest.mark.parametrize("filepath", get_config_files({".yaml", ".yml"}))
 def test_yaml_files_are_valid(filepath: Path):
     try:
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding="utf-8") as f:
             # Safely load all YAML documents if there are multiple separated by ---
             list(yaml.safe_load_all(f))
     except Exception as e:
