@@ -362,10 +362,10 @@ This eliminates the Docker hairpin NAT issue entirely. Both containers are on pr
 
 ### 2026-04-17T17:50 — OpenClaw Split-Brain Session Persistence
 
-- **Scenario**: `oc doctor` continuously reported: "Multiple state directories detected. This can split session history. ~/.openclaw vs Active state dir: /path/to/host/.openclaw".
+- **Scenario**: `openclaw doctor` continuously reported: "Multiple state directories detected. This can split session history. ~/.openclaw vs Active state dir: /path/to/host/.openclaw".
 - **Hypothesis**: Because the internal `openclaw-gateway` container executes natively as `node`, its fallback string for `~/.openclaw` implicitly targets `/home/node/.openclaw`. While major sandbox/log paths were successfully rewritten as Host-absolute to obey identical volume maps, implicit undocumented engine fallbacks (like `.cache` or `.db`) continue slipping into `/home/node/` which is not mapped externally.
-- **Action**: Modified `docker-compose.override.yml` to explicitly pass `OPENCLAW_STATE_DIR=${OPENCLAW_CONFIG_DIR}` into the gateway's environment payload, forcing the engine's hidden fallbacks onto the bound volume. *(Note: Later reverted upon user request to preserve standard base container paths)*.
-- **Result**: Injecting `OPENCLAW_STATE_DIR` correctly silences the `oc doctor` warning and homogenizes all internal container write streams directly onto the explicit identically-bound Docker volume, preventing stateless deletion upon container rebuilds.
+- **Action**: Modified `docker-compose.override.yml` to explicitly pass `OPENCLAW_STATE_DIR=${OPENCLAW_CONFIG_DIR}` into the gateway's environment payload, forcing the engine's hidden fallbacks onto the bound volume.
+- **Result**: Injecting `OPENCLAW_STATE_DIR` correctly silences the `openclaw doctor` warning and homogenizes all internal container write streams directly onto the explicit identically-bound Docker volume, preventing stateless deletion upon container rebuilds.
 
 **Learnings:**
 
