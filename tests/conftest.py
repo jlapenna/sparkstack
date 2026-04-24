@@ -17,7 +17,7 @@ def ctx(request):
 
     import shutil
 
-    root_dir = Path(__file__).parent.parent.parent.absolute()
+    root_dir = Path(__file__).parent.parent.absolute()
     if stack == "current":
         stack_dir = root_dir / "current"
     else:

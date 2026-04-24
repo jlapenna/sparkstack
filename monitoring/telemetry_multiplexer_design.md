@@ -33,7 +33,7 @@ Enable real-time, distributed deployment and status telemetry across DGX Spark c
 
 To maintain strict alignment with `sparkrun`'s agentless philosophy, telemetry will be orchestrated using a centralized **Fleet Multiplexer** combined with **SSH Local Port Forwarding**. 
 
-Instead of running a sidecar container on the worker node to push metrics back, the head node will securely pull logs from the remote worker's Docker daemon. When `sparkrun` initiates an execution on a worker node, it establishes an SSH forward tunnel (`-L <random_port>:/var/run/docker.sock`), exposing the worker's Docker API locally on the head node. `sparkrun` then registers this local port with the centralized `vllm-progress-manager` Fleet Multiplexer.
+Instead of running a sidecar container on the worker node to push metrics back, the head node will securely query container states, execution outputs, and inference health APIs directly from the remote worker's Docker daemon. When `sparkrun` initiates an execution on a worker node, it establishes an SSH forward tunnel (`-L <random_port>:/var/run/docker.sock`), exposing the worker's Docker API locally on the head node. `sparkrun` then registers this local port with the centralized `vllm-progress-manager` Fleet Multiplexer.
 
 ### 3.1 Architecture Diagram
 
@@ -56,46 +56,52 @@ flowchart LR
     end
 
     subgraph Worker1 ["Worker Node 1"]
-        DockerSocket1[/var/run/docker.sock]
+        DockerSocket1["/var/run/docker.sock"]
     end
 
     subgraph WorkerN ["Worker Node N"]
-        DockerSocketN[/var/run/docker.sock]
+        DockerSocketN["/var/run/docker.sock"]
     end
 
-    Multiplexer == "Polls via ssh -L 8001:/var/run/docker.sock" ==> DockerSocket1
-    Multiplexer == "Polls via ssh -L 8002:/var/run/docker.sock" ==> DockerSocketN
+    Multiplexer == "Streams via ssh -L 8001:/var/run/docker.sock" ==> DockerSocket1
+    Multiplexer == "Streams via ssh -L 8002:/var/run/docker.sock" ==> DockerSocketN
 ```
 
-### 3.2 Execution Flow
-1. **Connection Initialization:** When `sparkrun` connects to a remote host, it appends the flag `-L <random_port>:/var/run/docker.sock` to the SSH command.
-2. **Registration:** `sparkrun` makes a REST call to the head node's `vllm-progress-manager` (the Fleet Multiplexer) to register the newly established local port mapped to the worker.
-3. **Remote Polling:** The Fleet Multiplexer instantiates an isolated `DockerHostMonitor` task. This task connects to the forwarded local port, querying the worker's Docker API to parse logs and track phase progressions for containers labelled `sparkrun.monitoring=true`.
-4. **Local Pushing:** The Fleet Multiplexer pushes parsed metrics to its local Vector ingestion port (`127.0.0.1:8125`), tagging the metrics with the appropriate `host` and `model_id`.
-5. **Clean Teardown:** Once the bash script finishes, `sparkrun` unregisters the worker from the Multiplexer. The SSH connection closes, instantly tearing down the socket tunnel and preventing any lingering external access to the worker's Docker daemon.
+### 3.2 Execution Flow and Detached Tunnels
+1. **Connection Initialization:** When `sparkrun` connects to a remote host to start a container, it establishes a background SSH forward tunnel (`-N -L <random_port>:/var/run/docker.sock`).
+2. **Daemonization:** Because containers are often launched in a detached state (fire-and-forget), the SSH tunnel process is daemonized. Its PID is saved to a state file on the head node (`/tmp/sparkrun-telemetry-<host>.pid`).
+3. **Registration:** `sparkrun` makes a REST call to the head node's `vllm-progress-manager` (the Fleet Multiplexer) to register the newly established local port mapped to the worker.
+4. **Remote Streaming:** The Fleet Multiplexer instantiates an isolated `DockerHostMonitor` task. This task connects to the forwarded local port (via `tcp://host.docker.internal:<port>`), and opens continuous HTTP streams to the worker's Docker API (using `follow=1`). This continuous stream is used to execute health checks, parse container states, and track phase progressions for containers labelled `sparkrun.monitoring=true` without inefficient polling loops.
+5. **Local Pushing:** The Fleet Multiplexer pushes parsed metrics to its local Vector ingestion port (`127.0.0.1:8125`), tagging the metrics with the appropriate `host` and `model_id`.
+6. **Clean Teardown:** When a user executes `sparkrun stop <host>`, the orchestrator reads the PID file, terminates the SSH tunnel daemon, and sends a `DELETE` request to the Fleet Multiplexer to unregister the node.
 
 ---
 
-## 4. Rejected Alternatives
+### 3.3 Tunnel Persistence Options
 
-### 4.1 Option 2: Distributed Vector/Telegraf Daemons
-**Design:** Deploy a lightweight `vector` daemon on every worker node in the cluster. Workers push to `localhost:8125`, and the local daemon forwards the metrics to the head node.
+To keep the telemetry tunnel alive while the container runs in a detached state (after `sparkrun run` exits), two architectural options were considered:
+
+#### Option 1: Client-Side Daemonized Tunnels (Selected)
+In this approach, `sparkrun run` spawns the SSH tunnel as a background daemon, saving its PID to a local file. The `sparkrun stop` command is later responsible for reading the PID and killing the tunnel.
+
+**Why this approach is superior:**
+- **Security:** Private SSH keys and credentials remain strictly on the host executing `sparkrun`. They are never transmitted over the network or stored in the monitoring stack.
+- **Separation of Concerns:** The Fleet Multiplexer doesn't need to know anything about SSH, authentication, or network boundaries—it just receives generic HTTP traffic.
+- **Simpler Docker Image:** The `vllm-progress-manager` container remains a lightweight Python process without needing SSH binaries or key mounts.
+
+*Risk Mitigation:* The primary risk of this approach is dangling processes if the host reboots or `sparkrun stop` fails. We mitigate this through robust state management in `/tmp/`.
+
+#### Option 2: Server-Side Tunnels (Rejected)
+In this approach, `sparkrun run` sends the SSH connection details (Host IP, Username) to the Fleet Multiplexer API. The Multiplexer then spawns and manages its own SSH tunnels to the remote nodes.
 **Why it was rejected:**
-- **Violates NFR1 (Agentless):** `sparkrun` is designed to orchestrate raw nodes. Forcing a DaemonSet installation creates heavy prerequisite requirements for compute nodes.
-- **Lifecycle Management:** Requires handling daemon upgrades, configuration drift, and crash loop backoffs on workers.
+- **Secret Management:** Supplying SSH keys to the containerized Fleet Multiplexer is highly complex and a major security risk.
+- **Scope Creep:** The Multiplexer container would need an SSH client and subprocess management, making it significantly heavier.
 
-### 4.2 Option 3: Centralized Prometheus Pushgateway
-**Design:** Expose an HTTP Prometheus Pushgateway on the head node (`http://head-node-ip:9091`). Worker scripts use `curl` to push metrics.
-**Why it was rejected:**
-- **Violates NFR3 (Network Agnostic):** Worker nodes in DGX clusters often have complex topologies (InfiniBand vs. Management interfaces). Dynamically injecting a guaranteed-routable IP into the script is highly brittle.
-- **Violates NFR4 (Ephemeral State):** Pushgateway never expires metrics. If a `sparkrun` job crashes before sending an HTTP `DELETE`, the dashboard will be permanently polluted with stale "50% loaded" metrics.
-- **Violates NFR2 (Secure):** Requires opening an unauthenticated HTTP port on the head node's firewall.
-- **Performance Risk:** HTTP handshakes block the execution script. If the Pushgateway is slow, the actual deployment pipeline is artificially delayed.
+---
 
+### 3.4 Implementation Details
 
-### 3.3 Implementation Details
-
-The `sparkrun` orchestrator will wrap its deployment logic using a context manager (`TelemetryTunnel`) to safely negotiate port selection, establish the `-L` forward tunnel in the background, register the endpoint via REST, and tear it all down deterministically upon exit:
+The `sparkrun` orchestrator launches the tunnel and daemonizes the process if running in detached mode:
 
 ```python
 import socket
@@ -103,54 +109,63 @@ import subprocess
 import time
 import urllib.request
 import json
+import os
 
 class TelemetryTunnel:
-    """Context manager to establish a forward tunnel for remote Docker telemetry."""
+    """Manages the creation and daemonization of an SSH forward tunnel for remote Docker telemetry."""
 
     def __init__(self, host: str, ssh_user: str | None = None, ssh_key: str | None = None, ssh_options: list[str] | None = None):
-        self.host = host
+        self.host = getattr(host, "name", str(host))
         self.ssh_user = ssh_user
         self.ssh_key = ssh_key
         self.ssh_options = ssh_options
-        self.local_port: int | None = None
-        self.tunnel_proc: subprocess.Popen | None = None
 
-    def __enter__(self):
-        # 1. Find an open ephemeral port
+    def establish_detached(self):
+        # 1. Find an open ephemeral port binding to 0.0.0.0
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(("127.0.0.1", 0))
-            self.local_port = s.getsockname()[1]
+            s.bind(("0.0.0.0", 0))
+            local_port = s.getsockname()[1]
 
-        # 2. Start SSH forward tunnel: ssh -f -N -L local_port:/var/run/docker.sock host
+        # 2. Start SSH forward tunnel: ssh -N -L 0.0.0.0:local_port:/var/run/docker.sock host
         cmd = build_ssh_cmd(self.host, self.ssh_user, self.ssh_key, self.ssh_options)
-        cmd.extend(["-N", "-L", f"{self.local_port}:/var/run/docker.sock"])
-        self.tunnel_proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        cmd.extend(["-N", "-L", f"0.0.0.0:{local_port}:/var/run/docker.sock"])
+        
+        # Launch detached
+        tunnel_proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        # Save PID to state file
+        pid_file = f"/tmp/sparkrun-telemetry-{self.host}.pid"
+        with open(pid_file, "w") as f:
+            f.write(str(tunnel_proc.pid))
+            
         time.sleep(1)
 
-        # 3. Register with Fleet Multiplexer API
-        req = urllib.request.Request("http://127.0.0.1:8126/api/nodes", method="POST")
-        req.add_header("Content-Type", "application/json")
-        data = json.dumps({"host_id": self.host, "docker_url": f"tcp://127.0.0.1:{self.local_port}"}).encode()
+        # 3. Register with Fleet Multiplexer API (using host.docker.internal)
         try:
+            req = urllib.request.Request("http://127.0.0.1:8126/api/nodes", method="POST")
+            req.add_header("Content-Type", "application/json")
+            data = json.dumps({"host_id": self.host, "docker_url": f"tcp://host.docker.internal:{local_port}"}).encode("utf-8")
             urllib.request.urlopen(req, data=data, timeout=2.0)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Failed to register node: {e}")
 
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    @staticmethod
+    def cleanup(host: str):
         # 1. Deregister from Fleet Multiplexer
-        req = urllib.request.Request(f"http://127.0.0.1:8126/api/nodes/{self.host}", method="DELETE")
         try:
+            req = urllib.request.Request(f"http://127.0.0.1:8126/api/nodes/{host}", method="DELETE")
             urllib.request.urlopen(req, timeout=2.0)
         except Exception:
             pass
 
         # 2. Kill the SSH tunnel
-        if self.tunnel_proc:
-            self.tunnel_proc.terminate()
+        pid_file = f"/tmp/sparkrun-telemetry-{host}.pid"
+        if os.path.exists(pid_file):
+            with open(pid_file, "r") as f:
+                pid = int(f.read().strip())
             try:
-                self.tunnel_proc.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                self.tunnel_proc.kill()
+                os.kill(pid, 15)  # SIGTERM
+            except ProcessLookupError:
+                pass
+            os.remove(pid_file)
 ```
