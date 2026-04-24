@@ -113,7 +113,7 @@ After applying updates and verifying functionality, run the full `spark-arena-v1
 
 - **Command:**
   ```bash
-  uv run sparkrun benchmark /path/to/spark-stack-registry/models/<YOUR_ACTIVE_MAIN_MODEL>.yaml \
+  uv run sparkrun benchmark /path/to/spark-stack-registry/sparkrun/<YOUR_ACTIVE_MAIN_MODEL>.yaml \
       --profile spark-arena-v1 \
       --skip-run \
       --port 8001 \

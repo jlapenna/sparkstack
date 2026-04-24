@@ -48,7 +48,7 @@ ______________________________________________________________________
 
 Create or verify the custom `sparkrun` recipe in the registry.
 
-- **File**: `spark-stack-registry/models/[MODEL_ID].yaml`
+- **File**: `spark-stack-registry/sparkrun/[MODEL_ID].yaml`
 - **VLLM Config Details to Verify**:
   - **Resource Allocation**: Must match the budget calculated above.
   - **Quantization Format**: Explicitly state the target format (e.g., `NVFP4`, `AWQ`, `FP8`) as this drastically dictates the VRAM footprint and throughput expectations.
