@@ -45,6 +45,10 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+exclude = [
+    "openclaw",
+    "sparkrun",
+]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -66,8 +70,7 @@ venvPath = "."
 venv = ".venv"
 exclude = [
     "openclaw",
-    "sparkrun/tests",
-    "sparkrun/.venv",
+    "sparkrun",
     "monitoring",
     "registry",
     ".venv",
