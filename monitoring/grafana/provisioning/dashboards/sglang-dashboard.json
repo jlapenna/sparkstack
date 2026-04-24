@@ -18,14 +18,13 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": null,
+  "id": 8,
   "links": [],
   "panels": [
     {
       "datasource": {
         "default": true,
-        "type": "prometheus",
-        "uid": "prometheus"
+        "type": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -87,7 +86,7 @@
         "x": 0,
         "y": 0
       },
-      "id": null,
+      "id": 14,
       "options": {
         "legend": {
           "calcs": [],
@@ -131,7 +130,7 @@
           "hide": false,
           "includeNullMetadata": true,
           "instant": false,
-          "legendFormat": "P95",
+          "legendFormat": "P90",
           "range": true,
           "refId": "B",
           "useBackend": false
@@ -177,8 +176,7 @@
     {
       "datasource": {
         "default": true,
-        "type": "prometheus",
-        "uid": "prometheus"
+        "type": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -201,7 +199,7 @@
         "x": 12,
         "y": 0
       },
-      "id": null,
+      "id": 17,
       "maxDataPoints": 30,
       "options": {
         "calculate": false,
@@ -227,7 +225,7 @@
           "color": "rgba(255,0,255,0.7)"
         },
         "filterValues": {
-          "le": 1e-09
+          "le": 1e-9
         },
         "legend": {
           "show": true
@@ -272,8 +270,7 @@
     {
       "datasource": {
         "default": true,
-        "type": "prometheus",
-        "uid": "prometheus"
+        "type": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -335,7 +332,7 @@
         "x": 0,
         "y": 8
       },
-      "id": null,
+      "id": 20,
       "options": {
         "legend": {
           "calcs": [],
@@ -379,7 +376,7 @@
           "hide": false,
           "includeNullMetadata": true,
           "instant": false,
-          "legendFormat": "P95",
+          "legendFormat": "P90",
           "range": true,
           "refId": "B",
           "useBackend": false
@@ -425,8 +422,7 @@
     {
       "datasource": {
         "default": true,
-        "type": "prometheus",
-        "uid": "prometheus"
+        "type": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -449,7 +445,7 @@
         "x": 12,
         "y": 8
       },
-      "id": null,
+      "id": 19,
       "maxDataPoints": 30,
       "options": {
         "calculate": false,
@@ -479,7 +475,7 @@
           "color": "rgba(255,0,255,0.7)"
         },
         "filterValues": {
-          "le": 1e-09
+          "le": 1e-9
         },
         "legend": {
           "show": true
@@ -525,8 +521,7 @@
     {
       "datasource": {
         "default": true,
-        "type": "prometheus",
-        "uid": "prometheus"
+        "type": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -588,7 +583,7 @@
         "x": 0,
         "y": 16
       },
-      "id": null,
+      "id": 7,
       "options": {
         "legend": {
           "calcs": [],
@@ -628,8 +623,7 @@
     {
       "datasource": {
         "default": true,
-        "type": "prometheus",
-        "uid": "prometheus"
+        "type": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -691,7 +685,7 @@
         "x": 12,
         "y": 16
       },
-      "id": null,
+      "id": 18,
       "options": {
         "legend": {
           "calcs": [],
@@ -726,8 +720,7 @@
     {
       "datasource": {
         "default": true,
-        "type": "prometheus",
-        "uid": "prometheus"
+        "type": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -789,7 +782,7 @@
         "x": 0,
         "y": 24
       },
-      "id": null,
+      "id": 11,
       "options": {
         "legend": {
           "calcs": [],
@@ -828,8 +821,7 @@
     {
       "datasource": {
         "default": true,
-        "type": "prometheus",
-        "uid": "prometheus"
+        "type": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -891,7 +883,7 @@
         "x": 12,
         "y": 24
       },
-      "id": null,
+      "id": 8,
       "options": {
         "legend": {
           "calcs": [],
@@ -940,8 +932,7 @@
           "value": "127.0.0.1:30000"
         },
         "datasource": {
-          "type": "prometheus",
-          "uid": "prometheus"
+          "type": "prometheus"
         },
         "definition": "label_values(instance)",
         "includeAll": false,
@@ -963,8 +954,7 @@
           "value": "meta-llama/Llama-3.1-8B-Instruct"
         },
         "datasource": {
-          "type": "prometheus",
-          "uid": "prometheus"
+          "type": "prometheus"
         },
         "definition": "label_values(model_name)",
         "includeAll": false,
