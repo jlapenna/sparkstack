@@ -22,231 +22,6 @@
   "links": [],
   "panels": [
     {
-      "collapsed": true,
-      "gridPos": {
-        "x": 0,
-        "y": 0,
-        "w": 24,
-        "h": 1
-      },
-      "id": 1000,
-      "panels": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "max": 100,
-              "min": 0,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "red",
-                    "value": null
-                  },
-                  {
-                    "color": "yellow",
-                    "value": 20
-                  },
-                  {
-                    "color": "green",
-                    "value": 100
-                  }
-                ]
-              },
-              "unit": "percent"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "x": 0,
-            "y": 1,
-            "w": 12,
-            "h": 6
-          },
-          "id": 1001,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "textMode": "auto"
-          },
-          "pluginVersion": "10.4.1",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "editorMode": "code",
-              "expr": "avg(vllm_model_load_progress) or max(vllm_vllm_sparkrun_deploy_progress)",
-              "legendFormat": "SparkRun Cluster Provisioning",
-              "range": true,
-              "refId": "A"
-            }
-          ],
-          "title": "SparkRun Cluster Provisioning",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "max": 100,
-              "min": 0,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "red",
-                    "value": null
-                  },
-                  {
-                    "color": "yellow",
-                    "value": 20
-                  },
-                  {
-                    "color": "green",
-                    "value": 100
-                  }
-                ]
-              },
-              "unit": "percent"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "x": 12,
-            "y": 1,
-            "w": 12,
-            "h": 6
-          },
-          "id": 1002,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "textMode": "auto"
-          },
-          "pluginVersion": "10.4.1",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-              },
-              "editorMode": "code",
-              "expr": "min(vllm_model_load_progress) or max(vllm_vllm_sparkrun_deploy_step_progress)",
-              "legendFormat": "Update Services Provisioning",
-              "range": true,
-              "refId": "A"
-            }
-          ],
-          "title": "Update Services Provisioning",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "drawStyle": "line",
-                "fillOpacity": 15,
-                "lineWidth": 1,
-                "pointSize": 3,
-                "spanNulls": true,
-                "gradientMode": "scheme"
-              },
-              "mappings": [],
-              "max": 100,
-              "min": 0,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "blue",
-                    "value": null
-                  },
-                  {
-                    "color": "green",
-                    "value": 100
-                  }
-                ]
-              },
-              "unit": "percent"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "x": 0,
-            "y": 16,
-            "w": 20,
-            "h": 6
-          },
-          "id": null,
-          "options": {
-            "legend": {
-              "displayMode": "list",
-              "placement": "right",
-              "calcs": [
-                "lastNotNull"
-              ]
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "targets": [
-            {
-              "expr": "max by (model_id) (vllm_model_load_progress)",
-              "legendFormat": "{{model_id}}",
-              "refId": "A"
-            }
-          ],
-          "title": "Loading Progress",
-          "type": "timeseries",
-          "description": "Real-time loading percentage of model weights into GPU VRAM."
-        }
-      ],
-      "title": "DEPLOYMENT STATUS",
-      "type": "row"
-    },
-    {
       "collapsed": false,
       "gridPos": {
         "x": 0,
@@ -625,10 +400,234 @@
       "description": "Percentage of KV Cache blocks currently utilized by the models."
     },
     {
-      "collapsed": false,
       "gridPos": {
         "x": 0,
         "y": 20,
+        "w": 24,
+        "h": 1
+      },
+      "id": 1000,
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "max": 100,
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 20
+                  },
+                  {
+                    "color": "green",
+                    "value": 100
+                  }
+                ]
+              },
+              "unit": "percent"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 21,
+            "w": 12,
+            "h": 6
+          },
+          "id": 1001,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "10.4.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "avg(vllm_model_load_progress) or max(vllm_vllm_sparkrun_deploy_progress)",
+              "legendFormat": "SparkRun Cluster Provisioning",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "SparkRun Cluster Provisioning",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "max": 100,
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 20
+                  },
+                  {
+                    "color": "green",
+                    "value": 100
+                  }
+                ]
+              },
+              "unit": "percent"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 21,
+            "w": 12,
+            "h": 6
+          },
+          "id": 1002,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "10.4.1",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "editorMode": "code",
+              "expr": "min(vllm_model_load_progress) or max(vllm_vllm_sparkrun_deploy_step_progress)",
+              "legendFormat": "Update Services Provisioning",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Update Services Provisioning",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 15,
+                "lineWidth": 1,
+                "pointSize": 3,
+                "spanNulls": true,
+                "gradientMode": "scheme"
+              },
+              "mappings": [],
+              "max": 100,
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 100
+                  }
+                ]
+              },
+              "unit": "percent"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 36,
+            "w": 20,
+            "h": 6
+          },
+          "id": null,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "right",
+              "calcs": [
+                "lastNotNull"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "expr": "max by (model_id) (vllm_model_load_progress)",
+              "legendFormat": "{{model_id}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Loading Progress",
+          "type": "timeseries",
+          "description": "Real-time loading percentage of model weights into GPU VRAM."
+        }
+      ],
+      "title": "DEPLOYMENT STATUS",
+      "type": "row"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 41,
         "w": 24,
         "h": 1
       },
@@ -679,7 +678,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 21,
+        "y": 42,
         "w": 12,
         "h": 8
       },
@@ -732,7 +731,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 21,
+        "y": 42,
         "w": 12,
         "h": 8
       },
@@ -785,7 +784,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 29,
+        "y": 50,
         "w": 24,
         "h": 8
       },
@@ -819,7 +818,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 41,
+        "y": 62,
         "w": 24,
         "h": 1
       },
@@ -849,7 +848,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 42,
+        "y": 63,
         "w": 12,
         "h": 8
       },
@@ -888,7 +887,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 42,
+        "y": 63,
         "w": 12,
         "h": 8
       },
@@ -927,7 +926,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 50,
+        "y": 71,
         "w": 24,
         "h": 8
       },
@@ -947,7 +946,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 58,
+        "y": 79,
         "w": 24,
         "h": 1
       },
@@ -977,7 +976,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 59,
+        "y": 80,
         "w": 12,
         "h": 8
       },
@@ -1014,7 +1013,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 59,
+        "y": 80,
         "w": 12,
         "h": 8
       },
@@ -1034,7 +1033,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 67,
+        "y": 88,
         "w": 24,
         "h": 1
       },
@@ -1064,7 +1063,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 68,
+        "y": 89,
         "w": 12,
         "h": 8
       },
@@ -1101,7 +1100,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 68,
+        "y": 89,
         "w": 12,
         "h": 8
       },
@@ -1123,7 +1122,7 @@
       "id": null,
       "gridPos": {
         "x": 16,
-        "y": 10,
+        "y": 31,
         "w": 8,
         "h": 6
       },
