@@ -621,7 +621,8 @@
         }
       ],
       "title": "DEPLOYMENT STATUS",
-      "type": "row"
+      "type": "row",
+      "repeat": "active_deployment"
     },
     {
       "collapsed": false,
@@ -1234,6 +1235,27 @@
         "query": "label_values(node_cpu_seconds_total, instance)",
         "refresh": 1,
         "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": null,
+        "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "query_result(avg(vllm_model_load_progress) < 100 or max(vllm_vllm_sparkrun_deploy_step_progress) < 100)",
+        "hide": 2,
+        "includeAll": false,
+        "label": "",
+        "multi": false,
+        "name": "active_deployment",
+        "options": [],
+        "query": "query_result(avg(vllm_model_load_progress) < 100 or max(vllm_vllm_sparkrun_deploy_step_progress) < 100)",
+        "refresh": 2,
+        "regex": "/.*/",
         "skipUrlSync": false,
         "sort": 1,
         "type": "query"
