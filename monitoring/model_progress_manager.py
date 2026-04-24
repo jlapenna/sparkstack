@@ -120,7 +120,7 @@ async def docker_api_get(endpoint: str) -> tuple[int, Any]:
         return resp.status, None
 
 
-async def docker_api_post(endpoint: str, json_data: dict = None) -> tuple[int, Any]:
+async def docker_api_post(endpoint: str, json_data: dict | None = None) -> tuple[int, Any]:
     async with (
         get_docker_session() as session,
         session.post(f"http://localhost{endpoint}", json=json_data) as resp,
@@ -355,7 +355,7 @@ async def process_log_chunk(container_name: str, chunk: str, enforce_eager: bool
 
 async def check_readiness(url: str) -> bool:
     try:
-        async with aiohttp.ClientSession() as session, session.get(url, timeout=2.0) as response:
+        async with aiohttp.ClientSession() as session, session.get(url, timeout=aiohttp.ClientTimeout(total=2.0)) as response:
             return response.status == 200
     except Exception:
         return False
@@ -406,19 +406,18 @@ async def monitor_container_logic(container_name: str) -> None:
     last_known_pct.setdefault(container_name, 0)
     last_known_phase.setdefault(container_name, "Initializing...")
 
+    tasks = [
+        asyncio.create_task(log_tailer_task(container_name, info)),
+        asyncio.create_task(readiness_poller_task(container_name, info)),
+    ]
     try:
-        tasks = [
-            asyncio.create_task(log_tailer_task(container_name, info)),
-            asyncio.create_task(readiness_poller_task(container_name, info)),
-        ]
         await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+    except Exception:
+        logger.exception(f"Monitor error in {container_name}")
+    finally:
         for t in tasks:
             if not t.done():
                 t.cancel()
-            with contextlib.suppress(Exception):
-                await t
-    except Exception:
-        logger.exception(f"Monitor error in {container_name}")
 
 
 async def monitor_container(container_name: str) -> None:

@@ -31,6 +31,7 @@ from scripts.verify import (
     tracing_verification,
     cloudflare,
     agent_skills,
+    system_health,
 )
 from scripts.verify.utils import current_layer
 from scripts import wait_for_backends
@@ -170,6 +171,7 @@ class StackVerifier:
             (tracing_verification.run.layer_name, tracing_verification.run(self.ctx)),
             (cloudflare.run.layer_name, cloudflare.run(self.ctx)),
             (agent_skills.run.layer_name, agent_skills.run(self.ctx)),
+            (system_health.run.layer_name, system_health.run(self.ctx)),
             (
                 reliability_verification.run.layer_name,
                 reliability_verification.run(self.ctx, minutes=30 if run_soak else 2),
