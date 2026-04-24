@@ -26,7 +26,7 @@ async def test_agent_skills(ctx: E2EContext):
     result = await async_run_command([str(ctx.oc_bin), "skills", "list", "--json"])
     match = re.search(r"\{.*\}", result.stdout, re.DOTALL)
     if not match:
-        logger.error("❌ Could not find JSON in 'oc skills list' output")
+        logger.error("❌ Could not find JSON in 'openclaw skills list' output")
         raise AssertionError()
 
     data = json.loads(match.group(0))
