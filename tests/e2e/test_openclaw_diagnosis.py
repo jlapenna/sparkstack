@@ -14,7 +14,7 @@ async def test_openclaw_diagnosis(ctx: E2EContext):
     result = await async_run_command([str(ctx.oc_bin), "models", "list", "--json"])
     match = re.search(r"\{.*\}", result.stdout, re.DOTALL)
     if not match:
-        logger.error("❌ Could not find JSON in 'oc models list' output")
+        logger.error("❌ Could not find JSON in 'openclaw models list' output")
         raise AssertionError()
 
     data = json.loads(match.group(0))

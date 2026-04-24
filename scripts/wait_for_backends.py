@@ -66,7 +66,16 @@ async def wait_for_backends_to_load(stack_dir: Path, timeout: int = 1800) -> boo
                             status_data = res.json()
                             all_ready = True
                             for c in expected_containers:
-                                c_data = status_data.get(c, {})
+                                # status_data might be nested by node (e.g., {"head-node": {"main_solo": ...}}) or flat
+                                c_data = {}
+                                if c in status_data:
+                                    c_data = status_data[c]
+                                else:
+                                    for node_data in status_data.values():
+                                        if isinstance(node_data, dict) and c in node_data:
+                                            c_data = node_data[c]
+                                            break
+
                                 if isinstance(c_data, dict):
                                     pct = c_data.get("pct", 0)
                                     phase = c_data.get("phase", "")

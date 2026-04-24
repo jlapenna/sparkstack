@@ -17,13 +17,13 @@ def ctx(request):
 
     import shutil
 
-    root_dir = Path(__file__).parent.parent.parent.absolute()
+    root_dir = Path(__file__).parent.parent.absolute()
     if stack == "current":
         stack_dir = root_dir / "current"
     else:
         stack_dir = root_dir / "spark-stack-registry" / "stacks" / stack
 
-    oc_bin = Path(shutil.which("oc") or Path.home() / "bin" / "oc")
+    oc_bin = Path(shutil.which("openclaw") or Path.home() / "bin" / "openclaw")
     gateway_url = "http://localhost:4000/v1"
     telemetry_url = "http://localhost:9090/api/v1/targets"
 

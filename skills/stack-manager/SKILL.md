@@ -65,7 +65,7 @@ _(Refer to `skills/stack-manager/references/plan-template.md` for the exact requ
 
 ### 4. OpenClaw Hygiene
 
-- **Sync Tooling**: ALWAYS use `~/bin/oc config set` for manual edits to ensure schema validation.
+- **Sync Tooling**: ALWAYS use `~/bin/openclaw config set` for manual edits to ensure schema validation.
 
 ### 5. Git & Repository Hygiene
 
