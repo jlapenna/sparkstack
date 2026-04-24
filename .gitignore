@@ -60,6 +60,4 @@ blobs/
 /.worktrees/
 
 # Logs
-update_services.log
-verify.log
-deployment.log
+*.log
