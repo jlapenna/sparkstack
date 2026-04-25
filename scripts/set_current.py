@@ -1,14 +1,16 @@
 #!/usr/bin/env -S uv run --env-file .env --frozen --offline python3
-from pathlib import Path
 import argparse
 import asyncio
 import sys
+from pathlib import Path
 
 from loguru import logger
 
+from core.constants import PROJECT_ROOT as ROOT_DIR
+from core.constants import STACKS_DIR
+
 # Add root directory to path to allow importing core
 from core.utils import async_run_command
-from core.constants import PROJECT_ROOT as ROOT_DIR, STACKS_DIR
 
 
 async def main():

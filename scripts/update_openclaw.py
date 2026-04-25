@@ -1,23 +1,21 @@
 #!/usr/bin/env -S uv run --env-file .env --frozen --offline python3
-from pathlib import Path
-
 """
 update_openclaw.py - Secure, schema-safe OpenClaw configuration management.
 """
 
-
 import asyncio
 import os
-from dotenv import load_dotenv
+import shutil
+from pathlib import Path
 
-load_dotenv()
+from dotenv import dotenv_values
 
 # Add parent directory to path to allow importing core
 from loguru import logger
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from core.constants import OPENCLAW_CONFIG
+from core.constants import OPENCLAW_CONFIG, OPENCLAW_HOME
 from core.schemas import OpenClawModel
 from core.utils import ServiceHealthManager, async_run_command, parse_cli_json
 
@@ -170,8 +168,6 @@ class OpenClawUpdater:
             stream_output=self.verbose,
         )
 
-        import shutil
-
         for fragment in ["docker-compose.extra.yml", "docker-compose.sandbox.yml"]:
             src = self.settings.openclaw_dir / fragment
             dest = self.settings.project_root / fragment
@@ -233,9 +229,6 @@ class OpenClawUpdater:
 
         env = os.environ.copy()
 
-        from dotenv import dotenv_values
-        from core.constants import OPENCLAW_HOME
-
         config_dir_path = OPENCLAW_HOME
         env.setdefault("OPENCLAW_CONFIG_DIR", str(config_dir_path))
         env.setdefault("OPENCLAW_WORKSPACE_DIR", str(config_dir_path / "workspace"))
@@ -270,7 +263,6 @@ class OpenClawUpdater:
         logger.info("Executing OpenClaw Zombie Protocol...")
 
         # 1. Clear stuck OpenClaw tasks
-        from core.constants import OPENCLAW_HOME
 
         task_db = OPENCLAW_HOME / "tasks" / "runs.sqlite"
         if task_db.exists():
@@ -388,10 +380,31 @@ class OpenClawUpdater:
         except Exception:
             logger.exception("Error during model verification")
 
+    async def sync_local_skills(self) -> None:
+        """Synchronize new or updated skills from upstream to the local skills directory."""
+
+        local_skills_dir = OPENCLAW_HOME / "skills"
+        upstream_skills_dir = self.settings.openclaw_dir / "skills"
+
+        if upstream_skills_dir.exists():
+            logger.info(f"Synchronizing upstream skills to {local_skills_dir}...")
+            local_skills_dir.mkdir(parents=True, exist_ok=True)
+            try:
+                # -a: archive mode (preserves permissions, times, etc)
+                # We don't use --delete so custom local skills remain.
+                # Trailing slash ensures we copy contents into the target directory.
+                await async_run_command(
+                    ["rsync", "-a", f"{upstream_skills_dir}/", f"{local_skills_dir}/"],
+                    check=False
+                )
+            except Exception as e:
+                logger.warning(f"Failed to synchronize skills: {e}")
+
     async def run(self) -> None:
         """Full automated update lifecycle."""
         try:
             await self.update_source()
+            await self.sync_local_skills()
             if self.settings.run_setup:
                 await self.bootstrap_setup()
             await self.build_gateway_image()

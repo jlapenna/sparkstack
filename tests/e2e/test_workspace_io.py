@@ -15,11 +15,12 @@ from tests.e2e.context import E2EContext
 async def test_workspace_io(ctx: E2EContext):
     unique_token = str(uuid.uuid4())
     session_id = f"verifier_fs_{int(time.time())}_{unique_token[:8]}"
-    filename = f"workspace_verification_{unique_token[:8]}.txt"
+    filename = f"tmp/workspace_verification_{unique_token[:8]}.txt"
 
     prompt_write = (
         f"Use your bash tool or file tool to write exactly this string: '{unique_token}' "
-        f"to a file named '{filename}' in your active current directory. "
+        f"to a file at path '{filename}' relative to your active current directory. "
+        f"Create the 'tmp' directory if it doesn't already exist. "
         f"Confirm ONLY with 'DONE' when the file is written."
     )
 
@@ -38,7 +39,11 @@ async def test_workspace_io(ctx: E2EContext):
     logger.info(f"Requesting workspace write in session {session_id}...")
     await async_run_command(cmd_write, check=False)
 
-    prompt_read = f"Now, read the file '{filename}' back into memory and reply to me with ONLY the EXACT string you read from the file."
+    prompt_read = (
+        f"Now, read the file '{filename}' back into memory. "
+        f"After reading it, you MUST delete the file '{filename}'. "
+        f"Reply to me with ONLY the EXACT string you read from the file."
+    )
 
     cmd_read = [
         str(ctx.oc_bin),

@@ -1,12 +1,11 @@
 #!/usr/bin/env -S uv run --env-file .env --frozen --offline python3
-from pathlib import Path
-
 """
 update_sparkrun.py - Submodule management and rebase logic for SparkRun.
 """
 
-
+import argparse
 import asyncio
+from pathlib import Path
 
 # Add parent directory to path to allow importing core
 from loguru import logger
@@ -87,7 +86,6 @@ class SparkrunUpdater:
 
 
 async def main():
-    import argparse
 
     parser = argparse.ArgumentParser(description="SparkRun submodule manager.")
     parser.add_argument("--pull-latest", action="store_true", help="Pull latest/rebase.")

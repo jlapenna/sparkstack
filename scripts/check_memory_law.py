@@ -1,8 +1,8 @@
 #!/usr/bin/env -S uv run --env-file .env --frozen --offline python3
-from pathlib import Path
 import asyncio
 import json
 import sys
+from pathlib import Path
 
 import yaml
 from loguru import logger

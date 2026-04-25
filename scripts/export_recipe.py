@@ -1,10 +1,9 @@
 #!/usr/bin/env -S uv run --env-file .env --frozen --offline python3
-from pathlib import Path
-import sys
-
 import argparse
 import asyncio
 import hashlib
+import sys
+from pathlib import Path
 
 from core.constants import REGISTRY_DIR
 from core.utils import CommandError, async_run_command

@@ -1,11 +1,12 @@
 #!/usr/bin/env -S uv run --env-file .env --frozen --offline python3
-from pathlib import Path
-
 """
 update_services.py - Modern, async-first service orchestration.
 """
 
+import argparse
 import asyncio
+import contextlib
+import os
 import signal
 import sys
 import termios
@@ -13,17 +14,17 @@ import tty
 from abc import ABC, abstractmethod
 from contextvars import ContextVar
 from datetime import datetime
-import psutil
+from pathlib import Path
 
+import psutil
 from loguru import logger
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from rich.console import Console
+from rich.live import Live
 from rich.table import Table
 
-# Inject root dir for core imports
-
-from core.constants import PROJECT_ROOT
+from core.constants import OPENCLAW_HOME, PROJECT_ROOT
 from core.schemas import ServiceStatus
 from core.utils import (
     CommandError,
@@ -33,13 +34,14 @@ from core.utils import (
     ServiceHealthManager,
     async_run_command,
 )
+from scripts.sync_registry import sync_registry
 from scripts.update_openclaw import OpenClawUpdater
 from scripts.update_sparkrun import SparkrunUpdater
+from scripts.wait_for_backends import wait_for_backends_to_load
+
+# Inject root dir for core imports
 
 current_service: ContextVar[str] = ContextVar("current_service", default="")
-
-import contextlib
-import os
 
 STATSD_HOST = os.environ.get("SPARKRUN_STATSD_HOST", "127.0.0.1")
 STATSD_PORT = int(os.environ.get("SPARKRUN_STATSD_PORT", "8125"))
@@ -112,7 +114,6 @@ async def cleanup_zombies(settings: Settings):
     console.print("[bold yellow]🧟 Executing Zombie Protocol...[/]")
 
     # 1. Clear stuck OpenClaw tasks
-    from core.constants import OPENCLAW_HOME
 
     task_db = OPENCLAW_HOME / "tasks" / "runs.sqlite"
     if task_db.exists():
@@ -327,7 +328,6 @@ class RegistrySyncService(Service):
 
     async def update(self) -> None:
         self.state.set_task("Syncing models to gateway", 50)
-        from scripts.sync_registry import sync_registry
 
         await sync_registry(project_root=self.settings.project_root)
         self.state.complete()
@@ -454,8 +454,6 @@ class Orchestrator:
         tasks = [asyncio.create_task(self.run_service(s, semaphore)) for s in self.services]
 
         # Use rich.live to constantly refresh the dashboard
-        from rich.live import Live
-        import contextlib
 
         @contextlib.contextmanager
         def prevent_tty_echo():
@@ -511,7 +509,6 @@ class Orchestrator:
 
 
 async def main():
-    import argparse
 
     parser = argparse.ArgumentParser(description="Professional service updater.")
     parser.add_argument("--pull-latest", action="store_true", help="Pull latest images.")
@@ -541,8 +538,6 @@ async def main():
     logger.add(ui_sink, level="INFO")
 
     await orchestrator.run()
-
-    from scripts.wait_for_backends import wait_for_backends_to_load
 
     stack_dir = settings.project_root / "current"
     if stack_dir.exists():

@@ -1,19 +1,20 @@
 #!/usr/bin/env -S uv run --env-file .env --frozen --offline python3
-import asyncio
 import argparse
+import asyncio
+import sys
 from pathlib import Path
+
 import httpx
 from loguru import logger
 from rich.progress import (
     BarColumn,
     Progress,
+    SpinnerColumn,
     TaskProgressColumn,
     TextColumn,
-    SpinnerColumn,
     TimeElapsedColumn,
     TimeRemainingColumn,
 )
-import sys
 
 from tests.e2e.utils import get_active_services
 

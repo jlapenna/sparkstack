@@ -1,8 +1,9 @@
-import os
-import sys
-import yaml
 import subprocess
+import sys
 from pathlib import Path
+
+import yaml
+
 
 def run_command(cmd, cwd=None):
     print(f"🚀 Running: {' '.join(cmd)}")
@@ -12,7 +13,7 @@ def main():
     if len(sys.argv) < 2:
         print("❌ Error: stack directory not provided.")
         sys.exit(1)
-        
+
     stack_dir = Path(sys.argv[1]).resolve()
     repo_root = Path(__file__).parent.parent.resolve()
     stack_yaml_path = stack_dir / "stack.yaml"
@@ -21,19 +22,19 @@ def main():
         print(f"❌ Error: {stack_yaml_path} not found.")
         sys.exit(1)
 
-    with open(stack_yaml_path, "r") as f:
+    with open(stack_yaml_path) as f:
         stack = yaml.safe_load(f)
 
     # Clean up old instances
     print("🧹 Cleaning up old containers...")
     subprocess.run(["docker", "rm", "-f", "vllm-gateway", "vllm-progress"] + [b["name"] + "_solo" for b in stack.get("backends", [])], stderr=subprocess.DEVNULL)
-    
+
     parent_env = repo_root / ".env"
     subprocess.run(["docker", "compose", "--env-file", str(parent_env), "-f", str(stack_dir / "docker-compose.yaml"), "down", "--remove-orphans"], stderr=subprocess.DEVNULL)
-    
+
     print("🧟 Purging orphaned VLLM/EngineCore processes...")
     subprocess.run(["pkill", "-9", "-f", "VLLM|sparkrun|vllm"], stderr=subprocess.DEVNULL)
-    
+
     # Launch backends
     print("🚀 Launching model instances via sparkrun...")
     global_network = stack.get("globals", {}).get("network", "proxy-tier")
@@ -58,11 +59,11 @@ def main():
         # Append overrides
         for key, value in backend.get("overrides", {}).items():
             cmd.extend(["-o", f"{key}={value}"])
-            
+
         # Append environment variables
         for key, value in backend.get("env", {}).items():
             cmd.extend(["-o", f"env.{key}={value}"])
-            
+
         # Append labels
         for label in backend.get("labels", []):
             cmd.extend(["--label", label])

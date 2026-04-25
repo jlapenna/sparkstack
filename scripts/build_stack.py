@@ -1,14 +1,12 @@
 #!/usr/bin/env -S uv run --env-file .env --frozen --offline python3
-from pathlib import Path
-
 import argparse
 import asyncio
 import copy
 import json
 import re
-import shlex
 import shutil
 import urllib.request
+from pathlib import Path
 from typing import Any
 
 import yaml
@@ -388,7 +386,7 @@ class StackBuilder:
                         backend["overrides"]["attention_backend"] = "triton"
                         backend["overrides"]["enable_metrics"] = "true"
                         backend["overrides"]["mem_fraction_static"] = "0.8"
-                        
+
                     self.stack_backends.append(backend)
 
                     self.prometheus_builder.add_target(prometheus_target, target_role)
@@ -509,7 +507,7 @@ class StackBuilder:
             "backends": self.stack_backends,
             "services": {"compose_file": "docker-compose.yaml"}
         }
-        
+
         stack_yaml_path = self.stack_dir / "stack.yaml"
         with open(stack_yaml_path, "w") as f:
             yaml.dump(stack_yaml, f, sort_keys=False, default_flow_style=False)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-import subprocess
 import json
 import os
+import subprocess
 
 
 def run_cmd(cmd, cwd=None):
