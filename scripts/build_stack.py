@@ -350,7 +350,7 @@ class StackBuilder:
 
                     backend = {
                         "name": target_role,
-                        "recipe": f"sparkrun/{model_config.recipe_path.name if hasattr(model_config.recipe_path, 'name') else Path(model_config.recipe_path).name}",
+                        "recipe": f"sparkrun/{Path(model_config.recipe_path).name}",
                         "target": "localhost",
                         "port": port,
                         "env": {},
