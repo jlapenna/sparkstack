@@ -1,4 +1,5 @@
 import os
+import string
 
 import httpx
 import pytest
@@ -41,7 +42,6 @@ async def test_regression_testing(ctx: E2EContext):
             content = content or ""
 
             # Check for "or-or-or-or" or word repeated 5+ times consecutively
-            import string
 
             clean_content = content.translate(str.maketrans("", "", string.punctuation)).lower()
             words = clean_content.split()

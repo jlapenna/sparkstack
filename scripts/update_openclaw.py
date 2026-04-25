@@ -394,8 +394,7 @@ class OpenClawUpdater:
                 # We don't use --delete so custom local skills remain.
                 # Trailing slash ensures we copy contents into the target directory.
                 await async_run_command(
-                    ["rsync", "-a", f"{upstream_skills_dir}/", f"{local_skills_dir}/"],
-                    check=False
+                    ["rsync", "-a", f"{upstream_skills_dir}/", f"{local_skills_dir}/"], check=False
                 )
             except Exception as e:
                 logger.warning(f"Failed to synchronize skills: {e}")

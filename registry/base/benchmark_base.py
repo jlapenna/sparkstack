@@ -10,6 +10,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 
 def get_container_name(target: str) -> str:
     """Resolve target name to actual container name (hybrid support)."""
@@ -26,8 +28,6 @@ def get_container_name(target: str) -> str:
         litellm_file = stack_dir / "litellm-config.yaml"
         if litellm_file.exists():
             with open(litellm_file) as f:
-                import yaml
-
                 config = yaml.safe_load(f)
             for model in config.get("model_list", []):
                 if model.get("model_name") == target:

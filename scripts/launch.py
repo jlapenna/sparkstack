@@ -9,6 +9,7 @@ def run_command(cmd, cwd=None):
     print(f"🚀 Running: {' '.join(cmd)}")
     subprocess.run(cmd, check=True, cwd=cwd)
 
+
 def main():
     if len(sys.argv) < 2:
         print("❌ Error: stack directory not provided.")
@@ -27,10 +28,26 @@ def main():
 
     # Clean up old instances
     print("🧹 Cleaning up old containers...")
-    subprocess.run(["docker", "rm", "-f", "vllm-gateway", "vllm-progress"] + [b["name"] + "_solo" for b in stack.get("backends", [])], stderr=subprocess.DEVNULL)
+    subprocess.run(
+        ["docker", "rm", "-f", "vllm-gateway", "vllm-progress"]
+        + [b["name"] + "_solo" for b in stack.get("backends", [])],
+        stderr=subprocess.DEVNULL,
+    )
 
     parent_env = repo_root / ".env"
-    subprocess.run(["docker", "compose", "--env-file", str(parent_env), "-f", str(stack_dir / "docker-compose.yaml"), "down", "--remove-orphans"], stderr=subprocess.DEVNULL)
+    subprocess.run(
+        [
+            "docker",
+            "compose",
+            "--env-file",
+            str(parent_env),
+            "-f",
+            str(stack_dir / "docker-compose.yaml"),
+            "down",
+            "--remove-orphans",
+        ],
+        stderr=subprocess.DEVNULL,
+    )
 
     print("🧟 Purging orphaned VLLM/EngineCore processes...")
     subprocess.run(["pkill", "-9", "-f", "VLLM|sparkrun|vllm"], stderr=subprocess.DEVNULL)
@@ -42,15 +59,24 @@ def main():
     for backend in stack.get("backends", []):
         recipe_path = repo_root / "spark-stack-registry" / backend["recipe"]
         cmd = [
-            "uv", "run", "sparkrun", "run",
+            "uv",
+            "run",
+            "sparkrun",
+            "run",
             str(recipe_path),
-            "--hosts", backend.get("target", "localhost"),
-            "--port", str(backend.get("port", 8000)),
-            "--tp", str(backend.get("tensor_parallel", 1)),
-            "--served-model-name", backend["name"],
-            "--container-name", backend["name"],
+            "--hosts",
+            backend.get("target", "localhost"),
+            "--port",
+            str(backend.get("port", 8000)),
+            "--tp",
+            str(backend.get("tensor_parallel", 1)),
+            "--served-model-name",
+            backend["name"],
+            "--container-name",
+            backend["name"],
             "--no-follow",
-            "-o", f"network={global_network}"
+            "-o",
+            f"network={global_network}",
         ]
 
         if "memory_limit" in backend:
@@ -73,8 +99,21 @@ def main():
     # Launch compose services
     print("📦 Starting gateway and monitoring via docker compose...")
     compose_file = stack.get("services", {}).get("compose_file", "docker-compose.yaml")
-    run_command(["docker", "compose", "--env-file", str(parent_env), "-f", str(stack_dir / compose_file), "up", "-d"], cwd=stack_dir)
+    run_command(
+        [
+            "docker",
+            "compose",
+            "--env-file",
+            str(parent_env),
+            "-f",
+            str(stack_dir / compose_file),
+            "up",
+            "-d",
+        ],
+        cwd=stack_dir,
+    )
     print("✅ Stack is operational.")
+
 
 if __name__ == "__main__":
     main()

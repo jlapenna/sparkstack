@@ -354,7 +354,7 @@ class StackBuilder:
                         "target": "localhost",
                         "port": port,
                         "env": {},
-                        "overrides": {}
+                        "overrides": {},
                     }
                     if mem_limit:
                         backend["memory_limit"] = mem_limit
@@ -379,7 +379,13 @@ class StackBuilder:
                         backend["overrides"]["tensor_parallel"] = "1"
 
                     for k, v in vllm_cfg.items():
-                        if k not in ["port", "served_model_name", "network", "tensor_parallel", "tensor_parallel_size"]:
+                        if k not in [
+                            "port",
+                            "served_model_name",
+                            "network",
+                            "tensor_parallel",
+                            "tensor_parallel_size",
+                        ]:
                             backend["overrides"][k] = v
 
                     if recipe_dict.get("runtime") == "sglang":
@@ -505,7 +511,7 @@ class StackBuilder:
             "name": self.stack_name,
             "globals": {"network": "proxy-tier"},
             "backends": self.stack_backends,
-            "services": {"compose_file": "docker-compose.yaml"}
+            "services": {"compose_file": "docker-compose.yaml"},
         }
 
         stack_yaml_path = self.stack_dir / "stack.yaml"
@@ -529,7 +535,7 @@ class StackBuilder:
             "# Prevent uv from failing if it inherits a relative UV_ENV_FILE from the parent shell",
             "unset UV_ENV_FILE",
             "",
-            'uv run python "$CDIR/../../../scripts/launch.py" "$CDIR"'
+            'uv run python "$CDIR/../../../scripts/launch.py" "$CDIR"',
         ]
         launcher_path = self.stack_dir / "launch.sh"
         launcher_path.write_text("\n".join(lines))

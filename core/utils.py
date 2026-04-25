@@ -57,7 +57,6 @@ class CommandResult:
 
 def parse_cli_json(stdout: str) -> dict[str, Any]:
     """Robustly extract and parse a JSON object from CLI stdout (ignoring preambles/warnings)."""
-    import re
 
     match = re.search(r"\{.*\}", stdout, re.DOTALL)
     if not match:
@@ -109,8 +108,6 @@ async def async_run_command(
     try:
         stdout_bytes, stderr_bytes = await process.communicate()
     except asyncio.CancelledError:
-        import contextlib
-
         with contextlib.suppress(Exception):
             process.terminate()
             await process.wait()

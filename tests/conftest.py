@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 
 import pytest
@@ -14,8 +15,6 @@ def pytest_addoption(parser):
 def ctx(request):
     stack = request.config.getoption("--stack")
     soak = request.config.getoption("--soak")
-
-    import shutil
 
     root_dir = Path(__file__).parent.parent.absolute()
     if stack == "current":
