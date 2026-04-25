@@ -65,6 +65,8 @@ ignore = ["E501"]
 known-first-party = ["utils"]
 
 [tool.pyright]
+venvPath = "."
+venv = ".venv"
 exclude = [
     "openclaw",
     "sparkrun",

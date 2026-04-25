@@ -68,7 +68,8 @@ Because the submodules track the main upstream source repositories natively, we 
 3. **Migrate to Worktrees:** Port (e.g., via `git cherry-pick` or patch) only the specific changes for that feature from `local-dev` into the clean feature worktree.
 4. **Push from Worktree:** Push the isolated feature branch from the worktree to your fork and create the PR. This ensures PRs are cleanly mergeable on top of `main` without bringing along other unfinished features from `local-dev`.
 5. **Update Existing PRs in Worktrees:** All PR feedback patches and CI fixes MUST be applied strictly from within the isolated feature worktree directory. Once updated and pushed, you can merge those fixes back into `local-dev` to keep your local environment up to date.
-6. **Commit isolated integrations to `services`:** The root `services` repo should track the commit of the `local-dev` branch (from the primary submodule) to ensure stability during system-wide testing. However, when committing this pointer update, you MUST NEVER sweep unrelated files from the `services` repository into the commit of the main repository.
+6. **Handle Closed PRs:** PRs that are closed are considered abandoned. You MUST NOT apply them to the `local-dev` integration branch. If they exist in your local `local-dev` branch, they MUST be reverted locally.
+7. **Commit isolated integrations to `services`:** The root `services` repo should track the commit of the `local-dev` branch (from the primary submodule) to ensure stability during system-wide testing. However, when committing this pointer update, you MUST NEVER sweep unrelated files from the `services` repository into the commit of the main repository.
 
 ## Step-by-Step Workflow
 
