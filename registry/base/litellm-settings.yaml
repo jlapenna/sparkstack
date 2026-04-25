@@ -1,6 +1,7 @@
 litellm_settings:
   drop_params: True
   pass_through_stream_options: True
+  pass_through_headers: ["traceparent", "tracestate"]
   set_verbose: False
   telemetry: False
   callbacks: ["prometheus", "otel"]
