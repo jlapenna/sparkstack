@@ -7,12 +7,12 @@ from pathlib import Path
 
 from loguru import logger
 
-from core.constants import OPENCLAW_CONFIG, PROJECT_ROOT
+from core.env import OPENCLAW_CONFIG_PATH, PROJECT_ROOT
 from core.schemas import SparkProvider
 
 
 async def sync_registry(
-    project_root: Path = PROJECT_ROOT, config_path: Path = OPENCLAW_CONFIG
+    project_root: Path = PROJECT_ROOT, config_path: Path = OPENCLAW_CONFIG_PATH
 ) -> None:
     logger.info("Syncing models to openclaw.json...")
     models_json = project_root / "current" / "models.json"

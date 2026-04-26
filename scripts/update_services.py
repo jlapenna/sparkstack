@@ -24,7 +24,7 @@ from rich.console import Console
 from rich.live import Live
 from rich.table import Table
 
-from core.constants import OPENCLAW_HOME, PROJECT_ROOT
+from core.env import OPENCLAW_CONFIG_DIR, PROJECT_ROOT
 from core.schemas import ServiceStatus
 from core.utils import (
     CommandError,
@@ -84,7 +84,6 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     project_root: Path = Field(default_factory=lambda: PROJECT_ROOT)
-    vllm_spark_api_key: str | None = Field(default=None, alias="VLLM_SPARK_API_KEY")
     pull_latest: bool = False
 
 
@@ -115,7 +114,7 @@ async def cleanup_zombies(settings: Settings):
 
     # 1. Clear stuck OpenClaw tasks
 
-    task_db = OPENCLAW_HOME / "tasks" / "runs.sqlite"
+    task_db = OPENCLAW_CONFIG_DIR / "tasks" / "runs.sqlite"
     if task_db.exists():
         console.print(f"  → Clearing zombie tasks in {task_db}")
         try:
@@ -152,7 +151,6 @@ class ServiceState:
         self.error = None
         self.note = ""
         self.start_time = None
-        self.end_time = None
         self.done_event = asyncio.Event()
 
     def set_task(self, task: str, progress: float = 0.0):
@@ -170,7 +168,6 @@ class ServiceState:
     def complete(self):
         self.status = ServiceStatus.COMPLETE
         self.progress = 100.0
-        self.end_time = datetime.now()
         self.note = "Complete."
         logger.success(f"[{self.name}] Service update COMPLETE.")
         self.done_event.set()
@@ -181,7 +178,6 @@ class ServiceState:
         self.status = ServiceStatus.FAILED
         self.error = error
         self.note = str(error)
-        self.end_time = datetime.now()
         logger.error(f"[{self.name}] Service update FAILED: {error}")
         self.done_event.set()
         asyncio.create_task(statsd.send(f"update_services_status:3|g|#service:{self.name}\n"))

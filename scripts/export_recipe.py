@@ -5,7 +5,7 @@ import hashlib
 import sys
 from pathlib import Path
 
-from core.constants import REGISTRY_DIR
+from core.env import REGISTRY_DIR
 from core.utils import CommandError, async_run_command
 
 

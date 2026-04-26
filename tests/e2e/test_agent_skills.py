@@ -4,7 +4,7 @@ import re
 import pytest
 from loguru import logger
 
-from core.constants import OPENCLAW_HOME
+from core.env import OPENCLAW_CONFIG_DIR
 from core.utils import async_run_command
 from tests.e2e.context import E2EContext
 
@@ -57,14 +57,14 @@ async def test_agent_skills(ctx: E2EContext):
     )
     mounts = inspect_result.stdout.strip().split("\n")
 
-    # We look for the absolute host path matching OPENCLAW_HOME
-    has_personal_mount = any(str(OPENCLAW_HOME) in m for m in mounts)
+    # We look for the absolute host path matching OPENCLAW_CONFIG_DIR
+    has_personal_mount = any(str(OPENCLAW_CONFIG_DIR) in m for m in mounts)
     if not has_personal_mount:
         logger.error(
-            f"❌ Gateway is missing the host-absolute mount for {OPENCLAW_HOME}. Path rewriting may have failed."
+            f"❌ Gateway is missing the host-absolute mount for {OPENCLAW_CONFIG_DIR}. Path rewriting may have failed."
         )
         raise AssertionError()
-    logger.info(f"✅ Gateway verified with host-absolute {OPENCLAW_HOME} mount")
+    logger.info(f"✅ Gateway verified with host-absolute {OPENCLAW_CONFIG_DIR} mount")
 
     logger.info("✅ Pass: Agent Skill Readiness")
     return

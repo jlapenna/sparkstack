@@ -25,7 +25,7 @@ repos:
     rev: v1.1.408
     hooks:
       - id: pyright
-        entry: bash -c 'pyright "$@" || true' --
+        entry: bash -c 'pyright --pythonpath .venv/bin/python "$@" || true' --
         verbose: true
         args: [ core/, scripts/, tests/ ]
         additional_dependencies:

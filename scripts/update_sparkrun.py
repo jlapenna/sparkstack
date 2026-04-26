@@ -12,7 +12,7 @@ from loguru import logger
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from core.constants import PROJECT_ROOT
+from core.env import PROJECT_ROOT
 from core.utils import CommandError, async_run_command
 
 
@@ -23,7 +23,6 @@ class SparkrunSettings(BaseSettings):
 
     project_root: Path = Field(default=PROJECT_ROOT)
     sparkrun_dir: Path = Field(default=PROJECT_ROOT / "sparkrun")
-    feature_branch: str = "main"
     pull_latest: bool = False
 
 

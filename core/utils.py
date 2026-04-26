@@ -17,8 +17,6 @@ from typing import Any
 import httpx
 from loguru import logger
 
-from core.constants import CRASH_PATTERNS
-
 # Move type alias here to avoid circular imports from schemas.py
 AsyncValidator = Callable[[httpx.Response], Awaitable[bool]]
 
@@ -137,17 +135,7 @@ async def async_run_command(
 class DockerClient:
     """Generic wrapper for Docker CLI operations."""
 
-    @staticmethod
-    async def inspect(container: str) -> dict[str, Any] | None:
-        """Get full container metadata via docker inspect."""
-        try:
-            result = await async_run_command(["docker", "inspect", container], check=False)
-            if result.returncode == 0:
-                data = json.loads(result.stdout)
-                return data[0] if data else None
-        except Exception:
-            pass
-        return None
+
 
     @staticmethod
     async def get_status(container: str) -> tuple[str, str]:
@@ -170,23 +158,7 @@ class DockerClient:
         except Exception:
             return "unknown", "none"
 
-    @staticmethod
-    async def get_container_ip(container: str, network: str = "proxy-tier") -> str | None:
-        """Resolves the internal IP address of a container on a specified network."""
-        try:
-            cmd = [
-                "docker",
-                "inspect",
-                container,
-                "--format",
-                f'{{{{range $k, $v := .NetworkSettings.Networks}}}}{{{{if eq $k "{network}"}}}}{{{{$v.IPAddress}}}}{{{{end}}}}{{{{end}}}}',
-            ]
-            result = await async_run_command(cmd, check=False)
-            ip = result.stdout.strip()
-            return ip if ip else None
-        except Exception:
-            logger.exception(f"Failed to resolve {container} IP on network {network}")
-            return None
+
 
 
 class HealthProbe:
@@ -242,6 +214,15 @@ class HttpProbe(HealthProbe):
                 return HealthStatus.STARTING
             except (OSError, httpx.HTTPError):
                 return HealthStatus.STARTING
+# Crash detection patterns shared by LogProbe and ServiceHealthManager
+CRASH_PATTERNS: list[str] = [
+    r"Traceback \(most recent call last\):",
+    r"FATAL:",
+    r"ERROR:.*failed",
+    r"RuntimeError:",
+    r"NotImplementedError:",
+    r"AssertionError:",
+]
 
 
 class LogProbe(HealthProbe):
@@ -295,13 +276,6 @@ class ServiceHealthManager:
                 await asyncio.sleep(2)
 
         async def tail_for_crashes():
-            # Use shared crash patterns from core.constants
-            crash_strings = [
-                "Traceback (most recent call last):",
-                "RuntimeError:",
-                "NotImplementedError:",
-                "AssertionError:",
-            ]
 
             if "sparkrun" in self.container:
                 cmd = [
@@ -330,8 +304,8 @@ class ServiceHealthManager:
                     line_str = line.decode(errors="replace").strip()
                     if line_str:
                         logger.debug(f"[{self.container}] {line_str}")
-                        for crash_str in crash_strings:
-                            if crash_str in line_str:
+                        for pattern in CRASH_PATTERNS:
+                            if re.search(pattern, line_str, re.IGNORECASE):
                                 logger.error(
                                     f"❌ FATAL ERROR DETECTED IN {self.container}: {line_str}"
                                 )

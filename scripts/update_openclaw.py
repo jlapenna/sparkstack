@@ -8,28 +8,14 @@ import os
 import shutil
 from pathlib import Path
 
-from dotenv import dotenv_values
-
-# Add parent directory to path to allow importing core
 from loguru import logger
-from pydantic import BaseModel, Field
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from core.constants import OPENCLAW_CONFIG, OPENCLAW_HOME
-from core.schemas import OpenClawModel
+from core.env import OPENCLAW_CONFIG_DIR, OPENCLAW_CONFIG_PATH, OPENCLAW_ENV
 from core.utils import ServiceHealthManager, async_run_command, parse_cli_json
 
-# Configuration constants
-OPENCLAW_REPO = "openclaw/openclaw"
-INTERNAL_BASE_URL = os.getenv("VLLM_GATEWAY_URL", "http://vllm-gateway:4000/v1")
-DEFAULT_CONFIG_PATH = OPENCLAW_CONFIG
-
-
-class ProviderConfig(BaseModel):
-    api: str = "openai-completions"
-    baseUrl: str = INTERNAL_BASE_URL
-    models: list[OpenClawModel] = Field(default_factory=list)
-    role_map: dict[str, str] | None = None
+OPENCLAW_REPO = "https://github.com/google/openclaw.git"
 
 
 class UpdaterSettings(BaseSettings):
@@ -38,7 +24,7 @@ class UpdaterSettings(BaseSettings):
     openclaw_dir: Path = Field(
         default_factory=lambda: Path(__file__).parent.parent.absolute() / "openclaw"
     )
-    config_path: Path = Field(default=DEFAULT_CONFIG_PATH)
+    config_path: Path = Field(default=OPENCLAW_CONFIG_PATH)
     pull_latest: bool = False
     run_setup: str | None = None
     openclaw_branch: str | None = Field(default=None, alias="OPENCLAW_BRANCH")
@@ -57,7 +43,7 @@ class OpenClawUpdater:
             pull_latest=pull_latest,
             run_setup=run_setup,
             project_root=project_root or Path(__file__).parent.parent.absolute(),
-            config_path=config_path or DEFAULT_CONFIG_PATH,
+            config_path=config_path or OPENCLAW_CONFIG_PATH,
         )
         self.config_path = self.settings.config_path
         self.verbose = verbose
@@ -72,7 +58,7 @@ class OpenClawUpdater:
         # 1. Ensure the repo exists
         if not self.settings.openclaw_dir.exists():
             await async_run_command(
-                ["git", "clone", f"https://github.com/{OPENCLAW_REPO}.git", "openclaw"],
+                ["git", "clone", OPENCLAW_REPO, "openclaw"],
                 cwd=self.settings.project_root,
                 stream_output=True,
             )
@@ -224,24 +210,18 @@ class OpenClawUpdater:
             stream_output=self.verbose,
         )
 
+    def _get_compose_env(self) -> dict:
+        env = os.environ.copy()
+
+        # Load .env from openclaw config dir so docker compose interpolates correctly
+        env.update({k: str(v) for k, v in OPENCLAW_ENV.items() if v is not None})
+
+        return env
+
     async def run_compose_up(self) -> None:
         logger.info("Deploying OpenClaw via Docker Compose...")
 
-        env = os.environ.copy()
-
-        config_dir_path = OPENCLAW_HOME
-        env.setdefault("OPENCLAW_CONFIG_DIR", str(config_dir_path))
-        env.setdefault("OPENCLAW_WORKSPACE_DIR", str(config_dir_path / "workspace"))
-
-        # Load .env from openclaw config dir so docker compose interpolates correctly
-        oc_env = config_dir_path / ".env"
-        if oc_env.exists():
-            parsed = dotenv_values(oc_env)
-            env.update({k: v for k, v in parsed.items() if v is not None})
-
-        # Ensure these are always the host paths for docker compose volume resolution
-        env["OPENCLAW_CONFIG_DIR"] = str(config_dir_path)
-        env["OPENCLAW_WORKSPACE_DIR"] = str(config_dir_path / "workspace")
+        env = self._get_compose_env()
 
         cmd = ["docker", "compose", "-f", "docker-compose.yml"]
         override_yml = self.settings.project_root / "docker-compose.override.yml"
@@ -264,7 +244,7 @@ class OpenClawUpdater:
 
         # 1. Clear stuck OpenClaw tasks
 
-        task_db = OPENCLAW_HOME / "tasks" / "runs.sqlite"
+        task_db = OPENCLAW_CONFIG_DIR / "tasks" / "runs.sqlite"
         if task_db.exists():
             logger.info(f"Clearing zombie tasks in {task_db}")
             try:
@@ -297,6 +277,7 @@ class OpenClawUpdater:
             result = await async_run_command(
                 ["docker", "compose", "ps", "openclaw-gateway", "--format", "{{.Name}}"],
                 cwd=self.settings.openclaw_dir,
+                env=self._get_compose_env(),
                 check=False,
             )
             if result.returncode == 0 and result.stdout.strip():
@@ -329,6 +310,7 @@ class OpenClawUpdater:
                     "--all",
                 ],
                 cwd=self.settings.openclaw_dir,
+                env=self._get_compose_env(),
                 check=False,
             )
             if result.returncode != 0:
@@ -356,6 +338,7 @@ class OpenClawUpdater:
                     "--json",
                 ],
                 cwd=self.settings.openclaw_dir,
+                env=self._get_compose_env(),
                 check=False,
             )
             if result.returncode == 0:
@@ -383,7 +366,7 @@ class OpenClawUpdater:
     async def sync_local_skills(self) -> None:
         """Synchronize new or updated skills from upstream to the local skills directory."""
 
-        local_skills_dir = OPENCLAW_HOME / "skills"
+        local_skills_dir = OPENCLAW_CONFIG_DIR / "skills"
         upstream_skills_dir = self.settings.openclaw_dir / "skills"
 
         if upstream_skills_dir.exists():

@@ -6,8 +6,8 @@ from pathlib import Path
 
 from loguru import logger
 
-from core.constants import PROJECT_ROOT as ROOT_DIR
-from core.constants import STACKS_DIR
+from core.env import PROJECT_ROOT as ROOT_DIR
+from core.env import STACKS_DIR
 
 # Add root directory to path to allow importing core
 from core.utils import async_run_command

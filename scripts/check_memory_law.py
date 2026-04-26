@@ -7,7 +7,7 @@ from pathlib import Path
 import yaml
 from loguru import logger
 
-from core.constants import (
+from core.env import (
     MAX_DOCKER_MEMORY_GB,
     MAX_VRAM_UTILIZATION,
     USABLE_SPARK_MEMORY_GB,

@@ -3,6 +3,7 @@ import argparse
 import asyncio
 import copy
 import json
+import os
 import re
 import shutil
 import urllib.request
@@ -15,11 +16,8 @@ from loguru import logger
 from core.builders.compose import ComposeBuilder
 from core.builders.litellm import LiteLLMBuilder
 from core.builders.prometheus import PrometheusBuilder
-from core.constants import (
-    BACKEND_START_PORT,
+from core.env import (
     BASE_DIR,
-    BLACKWELL_MANDATORY_ENV,
-    DEFAULT_CONTEXT_WINDOW,
     MAX_DOCKER_MEMORY_GB,
     MAX_VRAM_UTILIZATION,
     REGISTRY_DIR,
@@ -33,6 +31,27 @@ from core.schemas import (
     SparkrunRegistryModel,
 )
 from core.utils import async_run_command
+
+# Default Context Window
+DEFAULT_CONTEXT_WINDOW = int(os.getenv("DEFAULT_CONTEXT_WINDOW", 32768))
+
+# Ports
+BACKEND_START_PORT = int(os.getenv("BACKEND_START_PORT", 8001))
+
+VLLM_ENV: dict[str, str] = {
+    # Tracing
+    "VLLM_OTEL_TRACING_ENABLED": "1",
+}
+
+# NVIDIA Blackwell mandatory environment variables for vLLM
+BLACKWELL_MANDATORY_ENV: dict[str, str] = VLLM_ENV | {
+    "VLLM_ATTENTION_BACKEND": "FLASHINFER",
+    "VLLM_FLASHINFER_MOE_BACKEND": "latency",
+    "VLLM_BLACKWELL_LAYOUT": "1",
+    "VLLM_BLACKWELL_UMA_OVERLAP": "1",
+    "VLLM_USE_FLASHINFER_MOE_MXFP4_MXFP8": "1",
+    "VLLM_USE_DEEP_GEMM": "0",
+}
 
 
 def resolve_latest_image_tag(repo: str, filter_string: str = "cu13") -> str | None:
@@ -174,9 +193,6 @@ class StackBuilder:
         self.total_vram = 0.0
         self.total_memory_gb = 0.0
         self.stack_backends = []
-
-    def _get_gateway_ip(self) -> str:
-        return "proxy-tier"
 
     def _inject_blackwell_vars(self, service_cfg: dict[str, Any], role: str | None = None):
         env = {

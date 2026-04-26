@@ -59,34 +59,3 @@ async def get_container_name_by_port(port: int) -> str | None:
         logger.exception(f"Error resolving container for port {port}")
 
     return None
-
-
-async def remove_zombies(
-    active_names: set[str], pattern: str = "sparkrun|vllm|nemotron|llama|qwen"
-):
-    """Hunt and eliminate containers matching pattern that are NOT in active_names."""
-    logger.info(f"Zombie hunt started (pattern: {pattern})")
-    try:
-        # Optimization: use format to get names directly
-        result = await async_run_command(
-            ["docker", "ps", "--format", "{{.ID}}|{{.Names}}", "-f", f"name={pattern}"], check=False
-        )
-        lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
-
-        to_remove = []
-        for line in lines:
-            cid, name = line.split("|")
-            if name not in active_names:
-                logger.warning(f"Marking zombie container for termination: {name} ({cid})")
-                to_remove.append(cid)
-
-        if to_remove:
-            # Delete all zombies in a single batch
-            await async_run_command(["docker", "rm", "-f"] + to_remove, check=False)
-            logger.info(f"Eliminated {len(to_remove)} zombie containers.")
-        else:
-            logger.debug("No zombies found.")
-        return len(to_remove)
-    except Exception:
-        logger.exception("Zombie hunt failed")
-        return 0
