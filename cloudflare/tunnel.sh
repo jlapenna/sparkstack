@@ -11,7 +11,7 @@ if [[ ! -f "$PARENT_ENV" ]]; then
   exit 1
 fi
 
-exec docker compose --env-file "$PARENT_ENV" "$@"
+docker compose --env-file "$PARENT_ENV" "$@"
 
 # Verification Step: If 'up' was called, verify the container is actually running
 if [[ "$*" == *"up"* ]]; then

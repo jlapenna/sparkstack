@@ -134,6 +134,8 @@ services:
     restart: unless-stopped
     depends_on:
     - alloy
+    environment:
+    - SPARKRUN_STATSD_HOST=alloy
   blackbox-exporter:
     image: quay.io/prometheus/blackbox-exporter:v0.28.0
     container_name: blackbox-exporter
@@ -158,7 +160,6 @@ services:
       - monitoring
       - proxy-tier
     restart: unless-stopped
-
 
 networks:
   monitoring:

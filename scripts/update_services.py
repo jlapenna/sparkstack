@@ -245,6 +245,8 @@ class SparkrunService(Service):
 
 
 class CloudflareService(Service):
+    dependencies = ["OpenClaw", "Monitoring"]
+
     async def update(self) -> None:
         cf_dir = self.settings.project_root / "cloudflare"
         tunnel_sh = cf_dir / "tunnel.sh"
@@ -256,7 +258,7 @@ class CloudflareService(Service):
             )
 
         self.state.set_task("Deploying tunnel", 60)
-        await async_run_command([str(tunnel_sh), "up", "-d"], cwd=cf_dir)
+        await async_run_command([str(tunnel_sh), "up", "-d", "--force-recreate"], cwd=cf_dir)
 
         self.state.set_task("Probing health", 80)
         manager = ServiceHealthManager("cloudflared")

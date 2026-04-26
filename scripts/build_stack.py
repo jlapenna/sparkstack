@@ -371,6 +371,7 @@ class StackBuilder:
                         "port": port,
                         "env": {},
                         "overrides": {},
+                        "labels": [f"sparkrun.role={target_role}", "sparkrun.monitoring=true"],
                     }
                     if mem_limit:
                         backend["memory_limit"] = mem_limit
