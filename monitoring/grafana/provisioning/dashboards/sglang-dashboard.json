@@ -95,9 +95,8 @@
           "showLegend": true
         },
         "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
+          "mode": "multi",
+          "sort": "desc"
         }
       },
       "pluginVersion": "11.6.0",
@@ -171,7 +170,8 @@
         }
       ],
       "title": "End-to-End Request Latency",
-      "type": "timeseries"
+      "type": "timeseries",
+      "transparent": true
     },
     {
       "datasource": {
@@ -225,7 +225,7 @@
           "color": "rgba(255,0,255,0.7)"
         },
         "filterValues": {
-          "le": 1e-9
+          "le": 1e-09
         },
         "legend": {
           "show": true
@@ -265,7 +265,8 @@
         }
       ],
       "title": "End-to-End Request Latency(s) Heatmap",
-      "type": "heatmap"
+      "type": "heatmap",
+      "transparent": true
     },
     {
       "datasource": {
@@ -341,9 +342,8 @@
           "showLegend": true
         },
         "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
+          "mode": "multi",
+          "sort": "desc"
         }
       },
       "pluginVersion": "11.6.0",
@@ -417,7 +417,8 @@
         }
       ],
       "title": "Time-To-First-Token Latency",
-      "type": "timeseries"
+      "type": "timeseries",
+      "transparent": true
     },
     {
       "datasource": {
@@ -475,7 +476,7 @@
           "color": "rgba(255,0,255,0.7)"
         },
         "filterValues": {
-          "le": 1e-9
+          "le": 1e-09
         },
         "legend": {
           "show": true
@@ -516,7 +517,8 @@
         }
       ],
       "title": "Time-To-First-Token Seconds Heatmap",
-      "type": "heatmap"
+      "type": "heatmap",
+      "transparent": true
     },
     {
       "datasource": {
@@ -592,9 +594,8 @@
           "showLegend": true
         },
         "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
+          "mode": "multi",
+          "sort": "desc"
         }
       },
       "pluginVersion": "11.6.0",
@@ -618,7 +619,8 @@
         }
       ],
       "title": "Num Running Requests",
-      "type": "timeseries"
+      "type": "timeseries",
+      "transparent": true
     },
     {
       "datasource": {
@@ -694,9 +696,8 @@
           "showLegend": true
         },
         "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
+          "mode": "multi",
+          "sort": "desc"
         }
       },
       "pluginVersion": "11.6.0",
@@ -715,7 +716,8 @@
         }
       ],
       "title": "Token Generation Throughput (Tokens / S)",
-      "type": "timeseries"
+      "type": "timeseries",
+      "transparent": true
     },
     {
       "datasource": {
@@ -791,9 +793,8 @@
           "showLegend": true
         },
         "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
+          "mode": "multi",
+          "sort": "desc"
         }
       },
       "pluginVersion": "11.6.0",
@@ -816,7 +817,8 @@
         }
       ],
       "title": "Cache Hit Rate",
-      "type": "timeseries"
+      "type": "timeseries",
+      "transparent": true
     },
     {
       "datasource": {
@@ -892,9 +894,8 @@
           "showLegend": true
         },
         "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
+          "mode": "multi",
+          "sort": "desc"
         }
       },
       "pluginVersion": "11.6.0",
@@ -917,7 +918,8 @@
         }
       ],
       "title": "Number Queued Requests",
-      "type": "timeseries"
+      "type": "timeseries",
+      "transparent": true
     }
   ],
   "preload": false,

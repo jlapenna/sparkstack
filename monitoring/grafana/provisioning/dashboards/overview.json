@@ -122,7 +122,8 @@
       ],
       "title": "Gateway Traffic",
       "type": "stat",
-      "description": "Aggregate request rates and errors across the LiteLLM proxy gateway."
+      "description": "Aggregate request rates and errors across the LiteLLM proxy gateway.",
+      "transparent": true
     },
     {
       "datasource": {
@@ -192,7 +193,8 @@
       ],
       "title": "LLM Latency",
       "type": "stat",
-      "description": "P95 and P50 End-to-End Response Latency (LiteLLM)"
+      "description": "P95 and P50 End-to-End Response Latency (LiteLLM)",
+      "transparent": true
     },
     {
       "datasource": {
@@ -262,7 +264,8 @@
       ],
       "title": "Time To First Token",
       "type": "stat",
-      "description": "P95 and P50 Time to First Token (TTFT)"
+      "description": "P95 and P50 Time to First Token (TTFT)",
+      "transparent": true
     },
     {
       "datasource": {
@@ -330,7 +333,8 @@
       ],
       "title": "Active & Queued Requests",
       "type": "timeseries",
-      "description": "Requests currently being actively processed or sitting in the backlog waiting for KV cache."
+      "description": "Requests currently being actively processed or sitting in the backlog waiting for KV cache.",
+      "transparent": true
     },
     {
       "datasource": {
@@ -397,7 +401,8 @@
       ],
       "title": "KV Cache %",
       "type": "stat",
-      "description": "Percentage of KV Cache blocks currently utilized by the models."
+      "description": "Percentage of KV Cache blocks currently utilized by the models.",
+      "transparent": true
     },
     {
       "gridPos": {
@@ -489,7 +494,8 @@
             }
           ],
           "title": "Provisioning Status",
-          "type": "stat"
+          "type": "stat",
+          "transparent": true
         },
         {
           "datasource": {
@@ -560,7 +566,8 @@
           ],
           "title": "Loading Progress",
           "type": "timeseries",
-          "description": "Real-time loading percentage of model weights into GPU VRAM."
+          "description": "Real-time loading percentage of model weights into GPU VRAM.",
+          "transparent": true
         }
       ],
       "title": "DEPLOYMENT STATUS",
@@ -649,7 +656,8 @@
       ],
       "title": "GPU Utilization",
       "type": "timeseries",
-      "description": "Hardware-level GPU compute utilization across the cluster (DCGM)."
+      "description": "Hardware-level GPU compute utilization across the cluster (DCGM).",
+      "transparent": true
     },
     {
       "datasource": {
@@ -702,7 +710,8 @@
       ],
       "title": "GPU Power Draw",
       "type": "timeseries",
-      "description": "Hardware-level GPU power consumption."
+      "description": "Hardware-level GPU power consumption.",
+      "transparent": true
     },
     {
       "datasource": {
@@ -756,7 +765,8 @@
       ],
       "title": "GPU Thermals",
       "type": "timeseries",
-      "description": "Hardware-level GPU temperatures."
+      "description": "Hardware-level GPU temperatures.",
+      "transparent": true
     },
     {
       "collapsed": false,
@@ -806,7 +816,14 @@
       ],
       "title": "Host CPU Usage",
       "type": "timeseries",
-      "description": "Physical Host CPU utilization percentage."
+      "description": "Physical Host CPU utilization percentage.",
+      "transparent": true,
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
     },
     {
       "datasource": {
@@ -845,7 +862,14 @@
       ],
       "title": "Host Memory Usage",
       "type": "timeseries",
-      "description": "Physical Host RAM utilization percentage."
+      "description": "Physical Host RAM utilization percentage.",
+      "transparent": true,
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
     },
     {
       "datasource": {
@@ -884,7 +908,14 @@
       ],
       "title": "Host GPU Usage",
       "type": "timeseries",
-      "description": "Physical Host average GPU utilization percentage."
+      "description": "Physical Host average GPU utilization percentage.",
+      "transparent": true,
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
     },
     {
       "collapsed": false,
@@ -934,7 +965,14 @@
       ],
       "title": "Container CPU Usage",
       "type": "timeseries",
-      "description": "CPU utilization by core infrastructure and management containers."
+      "description": "CPU utilization by core infrastructure and management containers.",
+      "transparent": true,
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
     },
     {
       "datasource": {
@@ -971,7 +1009,14 @@
       ],
       "title": "Container Memory Usage",
       "type": "timeseries",
-      "description": "Memory footprint of core infrastructure and management containers."
+      "description": "Memory footprint of core infrastructure and management containers.",
+      "transparent": true,
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
     },
     {
       "collapsed": false,
@@ -1021,7 +1066,14 @@
       ],
       "title": "Model Container CPU Usage",
       "type": "timeseries",
-      "description": "CPU utilization by sparkrun model containers."
+      "description": "CPU utilization by sparkrun model containers.",
+      "transparent": true,
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
     },
     {
       "datasource": {
@@ -1058,7 +1110,14 @@
       ],
       "title": "Model Container Memory Usage",
       "type": "timeseries",
-      "description": "Memory footprint of sparkrun model containers (including offloaded weights)."
+      "description": "Memory footprint of sparkrun model containers (including offloaded weights).",
+      "transparent": true,
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
     },
     {
       "collapsed": false,
@@ -1141,10 +1200,11 @@
           }
         },
         "overrides": []
-      }
+      },
+      "transparent": true
     }
   ],
-  "schemaVersion": 40,
+  "schemaVersion": 41,
   "style": "dark",
   "tags": [
     "overview",
@@ -1205,5 +1265,6 @@
       }
     ]
   },
-  "refresh": "auto"
+  "refresh": "auto",
+  "timezone": "browser"
 }

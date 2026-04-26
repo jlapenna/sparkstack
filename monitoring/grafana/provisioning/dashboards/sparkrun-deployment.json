@@ -494,7 +494,7 @@
     }
   ],
   "refresh": "5s",
-  "schemaVersion": 40,
+  "schemaVersion": 41,
   "style": "dark",
   "tags": [
     "deployment"
@@ -562,7 +562,7 @@
     "to": "now"
   },
   "timepicker": {},
-  "timezone": "",
+  "timezone": "browser",
   "title": "SparkRun Deployment Progress",
   "uid": "sparkrun-deployment",
   "version": 1

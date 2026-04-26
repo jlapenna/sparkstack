@@ -112,8 +112,8 @@
           "showLegend": true
         },
         "tooltip": {
-          "mode": "single",
-          "sort": "none"
+          "mode": "multi",
+          "sort": "desc"
         }
       },
       "pluginVersion": "11.3.0",
@@ -132,7 +132,8 @@
         }
       ],
       "title": "E2E Latency over Time",
-      "type": "timeseries"
+      "type": "timeseries",
+      "transparent": true
     },
     {
       "datasource": {
@@ -200,7 +201,8 @@
         }
       ],
       "title": "E2E Latency (P99)",
-      "type": "stat"
+      "type": "stat",
+      "transparent": true
     },
     {
       "datasource": {
@@ -268,7 +270,8 @@
         }
       ],
       "title": "E2E Latency (P90)",
-      "type": "stat"
+      "type": "stat",
+      "transparent": true
     },
     {
       "datasource": {
@@ -336,7 +339,8 @@
         }
       ],
       "title": "E2E Latency (Avg)",
-      "type": "stat"
+      "type": "stat",
+      "transparent": true
     },
     {
       "datasource": {
@@ -404,7 +408,8 @@
         }
       ],
       "title": "E2E Latency (P50)",
-      "type": "stat"
+      "type": "stat",
+      "transparent": true
     },
     {
       "collapsed": false,
@@ -497,8 +502,8 @@
           "showLegend": true
         },
         "tooltip": {
-          "mode": "single",
-          "sort": "none"
+          "mode": "multi",
+          "sort": "desc"
         }
       },
       "pluginVersion": "11.3.0",
@@ -513,7 +518,8 @@
         }
       ],
       "title": "TTFT Over Time",
-      "type": "timeseries"
+      "type": "timeseries",
+      "transparent": true
     },
     {
       "datasource": {
@@ -581,7 +587,8 @@
         }
       ],
       "title": "TTFT (P99)",
-      "type": "stat"
+      "type": "stat",
+      "transparent": true
     },
     {
       "datasource": {
@@ -649,7 +656,8 @@
         }
       ],
       "title": "TTFT (P90)",
-      "type": "stat"
+      "type": "stat",
+      "transparent": true
     },
     {
       "datasource": {
@@ -717,7 +725,8 @@
         }
       ],
       "title": "TTFT (Avg)",
-      "type": "stat"
+      "type": "stat",
+      "transparent": true
     },
     {
       "datasource": {
@@ -783,7 +792,8 @@
         }
       ],
       "title": "TTFT (P50)",
-      "type": "stat"
+      "type": "stat",
+      "transparent": true
     },
     {
       "collapsed": false,
@@ -876,8 +886,8 @@
           "showLegend": true
         },
         "tooltip": {
-          "mode": "single",
-          "sort": "none"
+          "mode": "multi",
+          "sort": "desc"
         }
       },
       "pluginVersion": "11.3.0",
@@ -930,7 +940,8 @@
         }
       ],
       "title": "ITL (Time Per Output Token) Over Time",
-      "type": "timeseries"
+      "type": "timeseries",
+      "transparent": true
     },
     {
       "datasource": {
@@ -997,7 +1008,8 @@
         }
       ],
       "title": "ITL (P90)",
-      "type": "stat"
+      "type": "stat",
+      "transparent": true
     },
     {
       "datasource": {
@@ -1064,7 +1076,8 @@
         }
       ],
       "title": "ITL (P99)",
-      "type": "stat"
+      "type": "stat",
+      "transparent": true
     },
     {
       "datasource": {
@@ -1131,7 +1144,8 @@
         }
       ],
       "title": "ITL (Avg)",
-      "type": "stat"
+      "type": "stat",
+      "transparent": true
     },
     {
       "datasource": {
@@ -1198,7 +1212,8 @@
         }
       ],
       "title": "ITL (P50)",
-      "type": "stat"
+      "type": "stat",
+      "transparent": true
     },
     {
       "collapsed": false,
@@ -1290,8 +1305,8 @@
           "showLegend": true
         },
         "tooltip": {
-          "mode": "single",
-          "sort": "none"
+          "mode": "multi",
+          "sort": "desc"
         }
       },
       "pluginVersion": "11.3.0",
@@ -1331,11 +1346,12 @@
         }
       ],
       "title": "TPS (Tokens Per Second) Over Time",
-      "type": "timeseries"
+      "type": "timeseries",
+      "transparent": true
     }
   ],
   "preload": false,
-  "schemaVersion": 40,
+  "schemaVersion": 41,
   "tags": [],
   "templating": {
     "list": [
@@ -1389,7 +1405,11 @@
         },
         "refresh": 1,
         "regex": "",
-        "type": "query"
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        }
       }
     ]
   },

@@ -104,7 +104,8 @@
         }
       ],
       "title": "OpenClaw Status",
-      "type": "stat"
+      "type": "stat",
+      "transparent": true
     },
     {
       "datasource": {
@@ -145,7 +146,8 @@
         }
       ],
       "title": "Gateway Uptime",
-      "type": "stat"
+      "type": "stat",
+      "transparent": true
     },
     {
       "datasource": {
@@ -203,7 +205,8 @@
         }
       ],
       "title": "Restarts (1h)",
-      "type": "stat"
+      "type": "stat",
+      "transparent": true
     },
     {
       "collapsed": false,
@@ -245,7 +248,14 @@
         }
       ],
       "title": "Session State Transitions",
-      "type": "timeseries"
+      "type": "timeseries",
+      "transparent": true,
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
     },
     {
       "datasource": {
@@ -273,7 +283,14 @@
         }
       ],
       "title": "Command Queue Depth",
-      "type": "timeseries"
+      "type": "timeseries",
+      "transparent": true,
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
     },
     {
       "collapsed": false,
@@ -315,7 +332,14 @@
         }
       ],
       "title": "Token Throughput",
-      "type": "timeseries"
+      "type": "timeseries",
+      "transparent": true,
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
     },
     {
       "datasource": {
@@ -356,7 +380,8 @@
         }
       ],
       "title": "Estimated Cost (24h)",
-      "type": "stat"
+      "type": "stat",
+      "transparent": true
     },
     {
       "collapsed": false,
@@ -404,7 +429,14 @@
         }
       ],
       "title": "CPU Usage",
-      "type": "timeseries"
+      "type": "timeseries",
+      "transparent": true,
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
     },
     {
       "datasource": {
@@ -439,7 +471,14 @@
         }
       ],
       "title": "Memory Usage",
-      "type": "timeseries"
+      "type": "timeseries",
+      "transparent": true,
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
     },
     {
       "collapsed": false,
@@ -474,10 +513,11 @@
         }
       ],
       "title": "Recent Agent Traces",
-      "type": "traces"
+      "type": "traces",
+      "transparent": true
     }
   ],
-  "schemaVersion": 38,
+  "schemaVersion": 41,
   "style": "dark",
   "tags": [
     "openclaw",
@@ -492,5 +532,6 @@
   },
   "title": "OpenClaw Gateway",
   "uid": "openclaw-gateway",
-  "version": 2
+  "version": 2,
+  "timezone": "browser"
 }
