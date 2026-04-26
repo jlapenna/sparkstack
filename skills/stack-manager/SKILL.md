@@ -22,7 +22,7 @@ ______________________________________________________________________
 
 ## Purpose
 
-To manage, update, and rebalance LLM and STT models on **NVIDIA Spark (GB10 Blackwell)** workstations with zero tolerance for system hangs. This skill ensures atomic configuration across `sparkrun`, Docker, LiteLLM, and OpenClaw while enforcing the verified **108GB aggregate memory limit**.
+To define and enforce the operational **processes** required to manage, update, and rebalance LLM and STT models on **NVIDIA Spark (GB10 Blackwell)** workstations. This skill ensures atomic configuration across `sparkrun`, Docker, LiteLLM, and OpenClaw while providing the mandatory lifecycle workflow (Plan-Act-Verify-Finalize).
 
 ## Mandatory Workflow Protocol (Plan-Act-Verify-Finalize)
 
@@ -55,7 +55,7 @@ _(Refer to `skills/stack-manager/references/plan-template.md` for the exact requ
 
 - **Port Arbitration**: Start at **8001**.
 - **External Networks**: `vllm-network` MUST be `external: true` in `compose-litellm.yaml` to prevent Prometheus disconnection.
-- **Proxy-First Verification**: Verification tools (like `verify.py`) and benchmarks (like `sparkrun benchmark`) SHOULD be routed through the `vllm-gateway` (port 4000) rather than hitting internal container ports directly, to ensure proxy integrity.
+- **Proxy-First Verification**: Verification tools (like `pytest tests/e2e/`) and benchmarks (like `sparkrun benchmark`) SHOULD be routed through the `vllm-gateway` (port 4000) rather than hitting internal container ports directly, to ensure proxy integrity.
 
 ### 3. Tooling & Orchestration
 

@@ -8,7 +8,7 @@ ______________________________________________________________________
 
 ## 0. Quirk Invalidation (MANDATORY PRE-FLIGHT)
 
-*Before building a new stack, you MUST check the `skills/stack-manager/references/*.md` files for any quirks and gotchas associated with the target model or engine.*
+*Before building a new stack, you MUST check the `skills/stack-knowledge/references/*.md` files for any quirks and gotchas associated with the target model or engine.*
 *Additionally, you MUST perform a web search to check Nvidia forums, vLLM issues, and current literature for the latest engine parameter recommendations (e.g., block sizes, caching modes) to capture any newly discovered optimizations.*
 *Upon completion of the research, the plan MUST be re-presented to the user for approval before progressing to Phase 1.*
 
@@ -138,7 +138,7 @@ ______________________________________________________________________
 
 Once verified functional:
 
-1. **Document Learnings**: Ensure this executed plan is completely filled out and saved as `plan.md` in the stack's directory (and update the files in `skills/stack-manager/references/` if new technical constraints were discovered).
+1. **Document Learnings**: Ensure this executed plan is completely filled out and saved as `plan.md` in the stack's directory (and update the files in `skills/stack-knowledge/references/` if new technical constraints were discovered).
 1. **Cleanup**: Remove all failed iterative stack directories from the `spark-stack-registry/stacks/` folder.
 1. **Standardize Name**: Rename the working stack directory to remove the iterative suffix (e.g., `core-upgrade-20260329-01` -> `core-upgrade-20260329`).
 1. **Reset Current**: Finalize symlinks to ensure they point to the clean name.

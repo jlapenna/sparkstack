@@ -1,7 +1,7 @@
 ______________________________________________________________________
 
 name: stack-knowledge
-description: Self-learning Docker knowledge base. Documents the live topology, routing paths, and accumulated incident learnings.
+description: Centralized technical knowledge base for Spark Stack architectural facts, model-specific quirks, and historical system learnings.
 category: documentation
 risk: safe
 source: local
@@ -116,11 +116,12 @@ To serve as the single source of truth for Docker decisions in this repository. 
 | `/path/to/host/.openclaw` | `/home/node/.openclaw`     | `openclaw/docker-compose.yml` | Native config access for the `node` process    |
 | `/path/to/host/.openclaw` | `/path/to/host/.openclaw`  | `docker-compose.override.yml` | DooD identical volume map for sandbox creation |
 
-**Why two mappings?** OpenClaw uses Docker-out-of-Docker (DooD) to create sandbox containers. The gateway passes bind mount paths to the host Docker socket. `update_openclaw.py` rewrites all internal `/home/node/` paths in `openclaw.json` to the host's absolute path so Docker evaluates them correctly on the host. The identical volume map ensures these rewritten paths also resolve inside the gateway container itself.
+## Technical References
 
-**Secrets:** Injected via `env_file: ${OPENCLAW_CONFIG_DIR}/.env` in the override, keeping sensitive tokens (`TELEGRAM_BOT_TOKEN`, `VLLM_SPARK_API_KEY`, etc.) out of the repository `.env`.
+Model-specific quirks, engine optimizations, and hardware-specific configurations are documented in the `references/` directory:
 
-**Sandbox containers** only mount the workspace and code directories — they do NOT have access to `~/.openclaw/.env` or `openclaw.json`.
+- **Deployment Protocol**: [skills/stack-manager/references/plan-template.md](../stack-manager/references/plan-template.md)
+- **Model Quirks**: `skills/stack-knowledge/references/*.md` (e.g. `cascade-2-30b-nvfp4.md`, `nemotron-3-super.md`)
 
 ## Hard Rules
 
@@ -562,3 +563,21 @@ ______________________________________________________________________
 
 - **Validation:** Tool parser configurations in registry recipes must align with the target vLLM container's specific whitelist. *(Update: Implemented static whitelist validation feature directly in `build_stack.py` to prevent orchestrating containers with invalid parsers.)*
 - **Tooling:** Future iterations of `sparkrun` or the stack builder should statically validate the parser argument against the container's known whitelist before attempting deployment.
+
+### 2026-04-26T08:30 — OpenClaw "Incomplete Turn" vs Reasoning Parsers
+
+- **Scenario**: Agents consistently failed with "⚠️ Agent couldn't generate a response" and OpenClaw logs reported "incomplete turn detected: ... payloads=0".
+- **Hypothesis**: Reasoning-enabled models (like Cascade2/Nemotron) put 100% of their output into the `reasoning_content` field, leaving the OpenAI `content` field empty. OpenClaw's safety layer rejects zero-payload (empty content) turns as failures.
+- **Action**: 
+  1. Disabled reasoning in `openclaw.json` as a temporary stability fix.
+  2. Research revealed that vLLM's native `nemotron_v3` parser isolates thinking from the answer.
+  3. Switched the Cascade2 recipe to use the custom `super_v3_reasoning_parser.py` plugin which moves reasoning to content if the answer is empty.
+  4. Enabled `force_nonempty_content: true` in LiteLLM/vLLM overrides.
+- **Result**: **Successful**. The agent now provides a valid text payload (containing the thought process) that satisfies OpenClaw's validation, preventing the crash while preserving model intelligence.
+
+**Learnings:**
+
+- **OpenClaw Safety**: OpenClaw requires at least one payload (text/tool) in the `content` bucket. Pure reasoning responses are treated as "incomplete."
+- **Hybrid Parsers**: Use the `super_v3` parser for Nemotron/Cascade2 models to ensure the reasoning trace is duplicated or moved into the content field when the model hasn't produced a final answer yet.
+- **Configuration Precedence**: Model-specific `reasoning: true/false` in `openclaw.json` must match the backend's parser capabilities to avoid schema-driven recovery loops.
+id schema-driven recovery loops.

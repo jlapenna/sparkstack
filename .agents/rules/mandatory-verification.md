@@ -6,10 +6,10 @@ ______________________________________________________________________
 
 A task is NEVER considered complete unless you have successfully executed a full stack verification sweep.
 
-**Verification Command:**
+Verification Command:
 
 ```bash
-uv run scripts/verify.py
+uv run pytest tests/e2e/
 ```
 
 You MUST run this command after any infrastructure change, configuration update, or model rotation, and ensure it passes (Exit Code 0) before claiming success or ending a session.
