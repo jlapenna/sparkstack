@@ -35,7 +35,7 @@
       },
       "targets": [
         {
-          "expr": "min(vllm_model_load_progress) or max(vllm_vllm_sparkrun_deploy_step_progress)",
+          "expr": "min(vllm_model_load_progress) or max(vllm_sparkrun_deploy_step_progress)",
           "legendFormat": "Deploy Step",
           "refId": "A"
         }

@@ -21,7 +21,7 @@ OPENCLAW_REPO = os.getenv("OPENCLAW_REPO", "https://github.com/openclaw/openclaw
 
 _openclaw_config_dir = os.getenv("OPENCLAW_CONFIG_DIR")
 if not _openclaw_config_dir:
-    _openclaw_config_dir = str(Path.home() / ".openclaw")
+    raise ValueError("OPENCLAW_CONFIG_DIR environment variable is not set. Please set it in your environment or .env file.")
     
 OPENCLAW_CONFIG_DIR = Path(_openclaw_config_dir).absolute()
 OPENCLAW_CONFIG_PATH = OPENCLAW_CONFIG_DIR / "openclaw.json"

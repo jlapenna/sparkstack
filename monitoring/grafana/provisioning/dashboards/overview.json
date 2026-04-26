@@ -543,7 +543,7 @@
                 "uid": "prometheus"
               },
               "editorMode": "code",
-              "expr": "min(vllm_model_load_progress) or max(vllm_vllm_sparkrun_deploy_step_progress)",
+              "expr": "min(vllm_model_load_progress) or max(vllm_sparkrun_deploy_step_progress)",
               "legendFormat": "Update Services Provisioning",
               "range": true,
               "refId": "A"
@@ -1249,14 +1249,14 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "definition": "query_result(avg(vllm_model_load_progress) < 100 or max(vllm_vllm_sparkrun_deploy_step_progress) < 100)",
+        "definition": "query_result(avg(vllm_model_load_progress) < 100 or max(vllm_sparkrun_deploy_step_progress) < 100)",
         "hide": 2,
         "includeAll": false,
         "label": "",
         "multi": false,
         "name": "active_deployment",
         "options": [],
-        "query": "query_result(avg(vllm_model_load_progress) < 100 or max(vllm_vllm_sparkrun_deploy_step_progress) < 100)",
+        "query": "query_result(avg(vllm_model_load_progress) < 100 or max(vllm_sparkrun_deploy_step_progress) < 100)",
         "refresh": 2,
         "regex": "/.*/",
         "skipUrlSync": false,

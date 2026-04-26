@@ -155,7 +155,7 @@ class DockerHostMonitor:
                 info = self.container_info_cache.get(container_name, {})
                 model_id = info.get("model_id", container_name)
                 await push_to_statsd_tcp(
-                    "model_load_progress", pct, container_name, model_id, self.host_id
+                    "vllm_model_load_progress", pct, container_name, model_id, self.host_id
                 )
             await asyncio.sleep(10.0)
 

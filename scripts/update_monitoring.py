@@ -71,18 +71,8 @@ UPDATES = {
     "quay.io/prometheus/prometheus": lambda: (
         f"quay.io/prometheus/prometheus:{get_latest_github_release('prometheus/prometheus')}"
     ),
-    "quay.io/prometheus/node-exporter": lambda: (
-        f"quay.io/prometheus/node-exporter:{get_latest_github_release('prometheus/node_exporter')}"
-    ),
-    "gcr.io/cadvisor/cadvisor": lambda: (
-        f"gcr.io/cadvisor/cadvisor:{get_latest_gcr_tag('cadvisor/cadvisor')}"
-    ),
     "grafana/grafana": lambda: f"grafana/grafana:{get_latest_dockerhub_tag('grafana', 'grafana')}",
-    "timberio/vector": lambda: (
-        f"timberio/vector:{tag.lstrip('v')}-distroless-static"
-        if (tag := get_latest_github_release("vectordotdev/vector"))
-        else None
-    ),
+    "grafana/alloy": lambda: f"grafana/alloy:{get_latest_github_release('grafana/alloy')}",
 }
 
 COMPOSE_FILE = "monitoring/docker-compose.yml"
@@ -95,7 +85,6 @@ with open(COMPOSE_FILE) as f:
 
 # We need to swap out docker hub images for quay.io versions where applicable before processing
 content = content.replace("image: prom/prometheus", "image: quay.io/prometheus/prometheus")
-content = content.replace("image: prom/node-exporter", "image: quay.io/prometheus/node-exporter")
 
 changes = 0
 for image_base, fetcher in UPDATES.items():

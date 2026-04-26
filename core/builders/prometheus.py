@@ -30,7 +30,7 @@ class PrometheusBuilder:
                 static_configs=[
                     StaticConfig(
                         targets=[os.getenv("VLLM_GATEWAY_HOST", "vllm-gateway:4000")],
-                        labels={"instance": "spark.local"},
+                        labels={"instance": "spark"},
                     )
                 ],
             ),
@@ -39,12 +39,10 @@ class PrometheusBuilder:
                 static_configs=[
                     StaticConfig(
                         targets=[
-                            os.getenv("CADVISOR_HOST", "cadvisor:8080"),
-                            os.getenv("NODE_EXPORTER_HOST", "node-exporter:9100"),
+                            os.getenv("ALLOY_HOST", "alloy:12345"),
                             os.getenv("DCGM_EXPORTER_HOST", "dcgm-exporter:9400"),
-                            os.getenv("VECTOR_HOST", "vector:9102"),
                         ],
-                        labels={"instance": "spark.local"},
+                        labels={"instance": "spark"},
                     )
                 ],
                 metric_relabel_configs=[
