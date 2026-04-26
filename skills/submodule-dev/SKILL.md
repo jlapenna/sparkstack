@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-name: submodule-development
+name: submodule-dev
 description: A workflow skill governing how to interact with and develop inside submodules (like sparkrun and openclaw), including configuring defaults, opening PRs, and running local integration branches.
 category: development
 risk: safe
@@ -39,7 +39,7 @@ Upstream maintainers will not merge PRs that have failing checks or unaddressed 
 1. **Review Comments:** You MUST actively address feedback from human reviewers and automated bots (like Codex bots). Use the `address-github-comments` skill (located globally) to help evaluate and resolve these comments. When updating a PR to address feedback, you MUST reply to every human comment (such as via `gh pr comment`) to explicitly confirm that their concerns have been resolved and what actions were taken. Do not leave reviewers "awaiting replies."
 1. **Resolve Conversations:** Pushing code fixes and leaving a top-level `@comment` reply does **not** actually mark the review thread as resolved in GitHub! Once feedback is addressed, you MUST explicitly resolve the individual review conversations programmatically. Use the helper script:
    ```bash
-   uv run python skills/submodule-development/scripts/resolve_pr_threads.py
+   uv run python skills/submodule-dev/scripts/resolve_pr_threads.py
    ```
    Do not assume conversations will be resolved automatically.
 1. **OpenClaw Specific:** For `openclaw` PRs, if the GitHub Codex review bot does not trigger, you should run `codex review --base origin/main` locally and treat the findings as mandatory review items.
@@ -64,9 +64,9 @@ Because the submodules track the main upstream source repositories natively, we 
 ## Feature Integration Principles
 
 1. **Build on `local-dev`:** For active daily development, build new features directly on top of the `local-dev` branch in the primary submodule checkout. This allows you to accumulate multiple interdependent or independent features in your local testing environment without losing progress (e.g., you won't lose "change branch A" when starting "new feature C").
-1. **Publish via Feature Worktrees:** When a feature is ready to be published as a Pull Request, do NOT push `local-dev`. Instead, create a new feature worktree based on `origin/main`.
+1. **Publish via Feature Worktrees:** When a feature is ready to be published as a Pull Request, do NOT push `local-dev`. Instead, create a new feature worktree based on the appropriate upstream branch (`origin/develop` for sparkrun, `origin/main` for openclaw).
 1. **Migrate to Worktrees:** Port (e.g., via `git cherry-pick` or patch) only the specific changes for that feature from `local-dev` into the clean feature worktree.
-1. **Push from Worktree:** Push the isolated feature branch from the worktree to your fork and create the PR. This ensures PRs are cleanly mergeable on top of `main` without bringing along other unfinished features from `local-dev`.
+1. **Push from Worktree:** Push the isolated feature branch from the worktree to your fork and create the PR. This ensures PRs are cleanly mergeable on top of the target base branch without bringing along other unfinished features from `local-dev`.
 1. **Update Existing PRs in Worktrees:** All PR feedback patches and CI fixes MUST be applied strictly from within the isolated feature worktree directory. Once updated and pushed, you can merge those fixes back into `local-dev` to keep your local environment up to date.
 1. **Handle Closed PRs:** PRs that are closed are considered abandoned. You MUST NOT apply them to the `local-dev` integration branch. If they exist in your local `local-dev` branch, they MUST be reverted locally.
 1. **Commit isolated integrations to `services`:** The root `services` repo should track the commit of the `local-dev` branch (from the primary submodule) to ensure stability during system-wide testing. However, when committing this pointer update, you MUST NEVER sweep unrelated files from the `services` repository into the commit of the main repository.
@@ -96,7 +96,7 @@ When a specific feature or fix is ready for review, extract it into a clean PR b
    ROOT_DIR="$(cd .. && pwd)"
 
    # create a new branch and worktree safely within the ignored .worktrees space
-   git worktree add -b <feature-name> "$ROOT_DIR/.worktrees/<submodule-name>/<feature-name>" origin/main
+   git worktree add -b <feature-name> "$ROOT_DIR/.worktrees/<submodule-name>/<feature-name>" <upstream-base-branch> # e.g. origin/develop or origin/main
    ```
 1. Navigate to the newly created absolute worktree path.
 1. **Port Your Changes:** Use `git cherry-pick` (or manual patching) to bring over the specific commits for this feature from your `local-dev` branch into this feature branch.
@@ -121,17 +121,17 @@ To ensure your local environment doesn't drift too far from upstream, or if you 
 > [!IMPORTANT]
 > **Base Branch Differentiation**
 >
-> - **For `sparkrun`**: `local-dev` should track the tip of the development branch (`origin/main`).
+> - **For `sparkrun`**: `local-dev` should track the tip of the development branch (`origin/develop`).
 > - **For `openclaw`**: `local-dev` should track the latest stable production tag (bypassing betas).
 
 ```bash
 git fetch --tags origin
 
-# To update your existing local-dev onto upstream:
-git rebase origin/main
+# To update your existing local-dev onto upstream (e.g. for sparkrun):
+git rebase origin/develop
 ```
 
-*(For openclaw, rebase onto the newest stable tag instead of `origin/main`.)*
+*(For openclaw, rebase onto the newest stable tag instead.)*
 
 ### 4. Verify Clean Submodule State
 
@@ -163,7 +163,7 @@ The submodule process is only considered complete when:
 ## Prerequisites
 
 1. Ensure the GitHub CLI default repository is correctly targeting upstream (`gh repo set-default <upstream-org>/<repo-name>`).
-1. Verify all local feature worktrees are cleanly rebased onto `origin/main` prior to triggering large merges.
+1. Verify all local feature worktrees are cleanly rebased onto their upstream base branch (`origin/develop` or `origin/main`) prior to triggering large merges.
 
 ## When NOT to use this skill (Negative Triggers)
 
