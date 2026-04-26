@@ -22,7 +22,7 @@ const sdk = new NodeSDK({
       ? (process.env.OTEL_EXPORTER_OTLP_ENDPOINT.endsWith("/v1/traces") 
           ? process.env.OTEL_EXPORTER_OTLP_ENDPOINT 
           : `${process.env.OTEL_EXPORTER_OTLP_ENDPOINT}/v1/traces`)
-      : "http://otel-collector:4318/v1/traces",
+      : "http://alloy:4318/v1/traces",
   }),
 });
 

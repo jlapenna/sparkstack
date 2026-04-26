@@ -390,7 +390,7 @@ class StackBuilder:
                         backend["env"]["OTEL_SERVICE_NAME"] = f"vllm-{target_role}"
 
                     if "otlp_traces_endpoint" not in recipe_dict.get("defaults", {}):
-                        backend["overrides"]["otlp_traces_endpoint"] = "http://otel-collector:4317"
+                        backend["overrides"]["otlp_traces_endpoint"] = "http://alloy:4317"
 
                     if "tensor_parallel_size" not in vllm_cfg and "tensor_parallel" not in vllm_cfg:
                         backend["overrides"]["tensor_parallel"] = "1"
@@ -423,11 +423,13 @@ class StackBuilder:
                         recipe_dict.get("name", model_config.identity.replace(".yaml", "").title()),
                     )
                     context_window = int(vllm_cfg.get("max_model_len", DEFAULT_CONTEXT_WINDOW))
-                    model_info = {"input": ["text"], "reasoning": False}
+                    model_info = {"input": ["text"], "reasoning": False, "mode": "chat"}
                     if "reasoning_parser" in vllm_cfg or "--reasoning-parser" in recipe_dict.get(
                         "command", ""
                     ):
                         model_info["reasoning"] = True
+                    if "--tool-call-parser" in recipe_dict.get("command", ""):
+                        model_info["supports_function_calling"] = True
 
                     litellm_overrides = recipe_dict.get("litellm_overrides", {})
 

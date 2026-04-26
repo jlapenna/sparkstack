@@ -9,7 +9,7 @@
   "liveNow": true,
   "panels": [
     {
-      "id": 10,
+      "id": 1,
       "type": "row",
       "title": "High-Level Deployment Progress",
       "gridPos": {
@@ -20,7 +20,7 @@
       }
     },
     {
-      "id": 11,
+      "id": 2,
       "type": "stat",
       "title": "Deploy Step Progress",
       "datasource": {
@@ -30,12 +30,12 @@
       "gridPos": {
         "x": 0,
         "y": 1,
-        "w": 8,
+        "w": 6,
         "h": 6
       },
       "targets": [
         {
-          "expr": "min(vllm_model_load_progress) or max(vllm_sparkrun_deploy_step_progress)",
+          "expr": "max(vllm_sparkrun_deploy_step_progress)",
           "legendFormat": "Deploy Step",
           "refId": "A"
         }
@@ -68,7 +68,7 @@
       "transparent": true
     },
     {
-      "id": 12,
+      "id": 3,
       "type": "stat",
       "title": "SparkRun Provisioning",
       "datasource": {
@@ -76,14 +76,14 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 8,
+        "x": 6,
         "y": 1,
-        "w": 8,
+        "w": 6,
         "h": 6
       },
       "targets": [
         {
-          "expr": "avg(vllm_model_load_progress) or max(vllm_vllm_sparkrun_deploy_progress)",
+          "expr": "avg(max by (host, name, model_id) (vllm_model_load_progress) unless on(host, name, model_id) (max by (host, name, model_id) (vllm_model_load_progress{host=\"head-node\"}) and on(name) vllm_model_load_progress{host!=\"head-node\"})) or max(vllm_sparkrun_deploy_progress)",
           "legendFormat": "SparkRun",
           "refId": "A"
         }
@@ -116,7 +116,7 @@
       "transparent": true
     },
     {
-      "id": 13,
+      "id": 4,
       "type": "stat",
       "title": "Overall Model Load",
       "datasource": {
@@ -124,14 +124,14 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 16,
+        "x": 12,
         "y": 1,
-        "w": 8,
+        "w": 6,
         "h": 6
       },
       "targets": [
         {
-          "expr": "avg(vllm_model_load_progress)",
+          "expr": "avg(max by (host, name, model_id) (vllm_model_load_progress{host=~\"$host\", model_id=~\"$model_id\"}) unless on(host, name, model_id) (max by (host, name, model_id) (vllm_model_load_progress{host=\"head-node\"}) and on(name) vllm_model_load_progress{host!=\"head-node\"}))",
           "legendFormat": "Average Load",
           "refId": "A"
         }
@@ -164,7 +164,7 @@
       "transparent": true
     },
     {
-      "id": 20,
+      "id": 5,
       "type": "row",
       "title": "Deployment Telemetry Details",
       "gridPos": {
@@ -175,7 +175,18 @@
       }
     },
     {
-      "id": 21,
+      "id": 6,
+      "type": "row",
+      "title": "Fleet Inventory",
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 7,
       "type": "bargauge",
       "title": "Model VRAM Load Progress",
       "datasource": {
@@ -184,13 +195,13 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 8,
+        "y": 16,
         "w": 24,
         "h": 8
       },
       "targets": [
         {
-          "expr": "max by (host, name, model_id) (vllm_model_load_progress) unless on(host, name, model_id) (max by (host, name, model_id) (vllm_model_load_progress{host=\"head-node\"}) and on(name) vllm_model_load_progress{host!=\"head-node\"})",
+          "expr": "max by (host, name, model_id) (vllm_model_load_progress{host=~\"$host\", model_id=~\"$model_id\"}) unless on(host, name, model_id) (max by (host, name, model_id) (vllm_model_load_progress{host=\"head-node\"}) and on(name) vllm_model_load_progress{host!=\"head-node\"})",
           "legendFormat": "[{{host}}] {{name}} ({{model_id}})",
           "instant": true,
           "refId": "A"
@@ -221,7 +232,7 @@
       "transparent": true
     },
     {
-      "id": 22,
+      "id": 8,
       "type": "state-timeline",
       "title": "Deploy Status Timeline",
       "datasource": {
@@ -230,14 +241,14 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 16,
+        "y": 24,
         "w": 24,
         "h": 8
       },
       "targets": [
         {
-          "expr": "vllm_vllm_sparkrun_deploy_status",
-          "legendFormat": "{{service}}",
+          "expr": "vllm_sparkrun_deploy_status",
+          "legendFormat": "SparkRun Phase",
           "refId": "A",
           "range": true
         }
@@ -307,6 +318,179 @@
         }
       },
       "transparent": true
+    },
+    {
+      "id": 9,
+      "type": "stat",
+      "title": "Active Hosts",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 1,
+        "w": 6,
+        "h": 6
+      },
+      "targets": [
+        {
+          "expr": "count(count by (host) (max by (host, name, model_id) (vllm_model_load_progress{host=~\"$host\", model_id=~\"$model_id\"}) unless on(host, name, model_id) (max by (host, name, model_id) (vllm_model_load_progress{host=\"head-node\"}) and on(name) vllm_model_load_progress{host!=\"head-node\"})))",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "color": {
+            "mode": "continuous-RdYlGr"
+          },
+          "unit": "none"
+        }
+      },
+      "transparent": true
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "Active Models Inventory",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 16,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "max by (host, name, model_id) (vllm_model_load_progress{host=~\"$host\", model_id=~\"$model_id\"}) unless on(host, name, model_id) (max by (host, name, model_id) (vllm_model_load_progress{host=\"head-node\"}) and on(name) vllm_model_load_progress{host!=\"head-node\"})",
+          "instant": true,
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Value",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Load Progress"
+              },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "lcd"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-RdYlGr"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          }
+        ]
+      },
+      "transparent": true
+    },
+    {
+      "id": 11,
+      "type": "piechart",
+      "title": "Models Distribution by Host",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 8,
+        "w": 8,
+        "h": 8
+      },
+      "targets": [
+        {
+          "expr": "count by (host) (max by (host, name, model_id) (vllm_model_load_progress{host=~\"$host\", model_id=~\"$model_id\"}) unless on(host, name, model_id) (max by (host, name, model_id) (vllm_model_load_progress{host=\"head-node\"}) and on(name) vllm_model_load_progress{host!=\"head-node\"}))",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "pieType": "donut",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "displayLabels": [
+          "percent",
+          "name"
+        ],
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "transparent": true
     }
   ],
   "refresh": "5s",
@@ -316,7 +500,62 @@
     "deployment"
   ],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(vllm_model_load_progress, host)",
+        "hide": 0,
+        "includeAll": true,
+        "multi": true,
+        "name": "host",
+        "options": [],
+        "query": "label_values(vllm_model_load_progress, host)",
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(vllm_model_load_progress{host=~\"$host\"}, model_id)",
+        "hide": 0,
+        "includeAll": true,
+        "multi": true,
+        "name": "model_id",
+        "options": [],
+        "query": "label_values(vllm_model_load_progress{host=~\"$host\"}, model_id)",
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      }
+    ]
   },
   "time": {
     "from": "now-15m",

@@ -123,5 +123,5 @@ USER node
 # Setup OpenTelemetry preloading
 COPY --chown=node:node otel-preload.mjs /app/otel-preload.mjs
 ENV NODE_OPTIONS="--import /app/otel-preload.mjs"
-ENV OTEL_EXPORTER_OTLP_ENDPOINT="http://otel-collector:4318"
+ENV OTEL_EXPORTER_OTLP_ENDPOINT="http://alloy:4318"
 ENV OTEL_SERVICE_NAME="openclaw-gateway"
