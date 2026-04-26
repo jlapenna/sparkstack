@@ -54,7 +54,7 @@ _(Refer to `skills/stack-manager/references/plan-template.md` for the exact requ
 ### 2. Port & Network Integrity
 
 - **Port Arbitration**: Start at **8001**.
-- **External Networks**: `vllm-network` MUST be `external: true` in `compose-gateway.yaml` to prevent Prometheus disconnection.
+- **External Networks**: `vllm-network` MUST be `external: true` in `compose-litellm.yaml` to prevent Prometheus disconnection.
 - **Proxy-First Verification**: Verification tools (like `verify.py`) and benchmarks (like `sparkrun benchmark`) SHOULD be routed through the `vllm-gateway` (port 4000) rather than hitting internal container ports directly, to ensure proxy integrity.
 
 ### 3. Tooling & Orchestration

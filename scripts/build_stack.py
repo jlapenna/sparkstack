@@ -77,10 +77,10 @@ class ModelRegistry:
     def __init__(self, registry_path: Path):
         self.registry_path = registry_path
         self.models_path = registry_path / "sparkrun"
-        self.base_path = BASE_DIR / "gateway"
+        self.base_path = BASE_DIR / "litellm"
 
     def load_base_configs(self) -> tuple[dict[str, Any], dict[str, Any]]:
-        compose_base_file = self.base_path / "compose-gateway.yaml"
+        compose_base_file = self.base_path / "compose-litellm.yaml"
         litellm_settings_file = self.base_path / "litellm-settings.yaml"
 
         with compose_base_file.open("r") as f:

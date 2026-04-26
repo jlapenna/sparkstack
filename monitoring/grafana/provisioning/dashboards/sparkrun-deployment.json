@@ -494,7 +494,7 @@
     }
   ],
   "refresh": "5s",
-  "schemaVersion": 41,
+  "schemaVersion": 43,
   "style": "dark",
   "tags": [
     "deployment"

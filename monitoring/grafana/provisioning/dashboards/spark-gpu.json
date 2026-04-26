@@ -828,7 +828,7 @@
     }
   ],
   "refresh": false,
-  "schemaVersion": 41,
+  "schemaVersion": 43,
   "style": "dark",
   "tags": [],
   "templating": {

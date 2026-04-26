@@ -211,8 +211,7 @@
         }
       ],
       "title": "Pressure",
-      "type": "bargauge",
-      "transparent": true
+      "type": "bargauge"
     },
     {
       "datasource": {
@@ -295,8 +294,7 @@
         }
       ],
       "title": "CPU Busy",
-      "type": "gauge",
-      "transparent": true
+      "type": "gauge"
     },
     {
       "datasource": {
@@ -379,8 +377,7 @@
         }
       ],
       "title": "Sys Load",
-      "type": "gauge",
-      "transparent": true
+      "type": "gauge"
     },
     {
       "datasource": {
@@ -453,8 +450,7 @@
         }
       ],
       "title": "RAM Used",
-      "type": "gauge",
-      "transparent": true
+      "type": "gauge"
     },
     {
       "datasource": {
@@ -536,8 +532,7 @@
         }
       ],
       "title": "SWAP Used",
-      "type": "gauge",
-      "transparent": true
+      "type": "gauge"
     },
     {
       "datasource": {
@@ -620,8 +615,7 @@
         }
       ],
       "title": "Root FS Used",
-      "type": "gauge",
-      "transparent": true
+      "type": "gauge"
     },
     {
       "datasource": {
@@ -695,8 +689,7 @@
         }
       ],
       "title": "CPU Cores",
-      "type": "stat",
-      "transparent": true
+      "type": "stat"
     },
     {
       "datasource": {
@@ -775,8 +768,7 @@
         }
       ],
       "title": "RAM Total",
-      "type": "stat",
-      "transparent": true
+      "type": "stat"
     },
     {
       "datasource": {
@@ -855,8 +847,7 @@
         }
       ],
       "title": "SWAP Total",
-      "type": "stat",
-      "transparent": true
+      "type": "stat"
     },
     {
       "datasource": {
@@ -940,8 +931,7 @@
         }
       ],
       "title": "RootFS Total",
-      "type": "stat",
-      "transparent": true
+      "type": "stat"
     },
     {
       "datasource": {
@@ -1020,8 +1010,7 @@
         }
       ],
       "title": "Uptime",
-      "type": "stat",
-      "transparent": true
+      "type": "stat"
     },
     {
       "collapsed": false,
@@ -1252,8 +1241,7 @@
         }
       ],
       "title": "CPU Basic",
-      "type": "timeseries",
-      "transparent": true
+      "type": "timeseries"
     },
     {
       "datasource": {
@@ -1456,8 +1444,7 @@
         }
       ],
       "title": "Memory Basic",
-      "type": "timeseries",
-      "transparent": true
+      "type": "timeseries"
     },
     {
       "datasource": {
@@ -1572,8 +1559,7 @@
         }
       ],
       "title": "Network Traffic Basic",
-      "type": "timeseries",
-      "transparent": true
+      "type": "timeseries"
     },
     {
       "datasource": {
@@ -1668,8 +1654,7 @@
         }
       ],
       "title": "Disk Space Used Basic",
-      "type": "timeseries",
-      "transparent": true
+      "type": "timeseries"
     },
     {
       "collapsed": true,
@@ -2001,8 +1986,7 @@
             }
           ],
           "title": "CPU",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -2339,8 +2323,7 @@
             }
           ],
           "title": "Memory",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -2459,8 +2442,7 @@
             }
           ],
           "title": "Network Traffic",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -2579,8 +2561,7 @@
             }
           ],
           "title": "Network Saturation",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -2697,8 +2678,7 @@
             }
           ],
           "title": "Disk IOps",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -2817,8 +2797,7 @@
             }
           ],
           "title": "Disk Throughput",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -2937,8 +2916,7 @@
             }
           ],
           "title": "Filesystem Space Available",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -3036,8 +3014,7 @@
             }
           ],
           "title": "Filesystem Used",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -3136,8 +3113,7 @@
             }
           ],
           "title": "Disk I/O Utilization",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -3304,8 +3280,7 @@
             }
           ],
           "title": "Pressure Stall Information",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         }
       ],
       "title": "CPU / Memory / Net / Disk",
@@ -3431,7 +3406,7 @@
               "editorMode": "code",
               "expr": "node_memory_Committed_AS_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
-              "legendFormat": "Committed_AS \u2013 Memory promised to processes (not necessarily used)",
+              "legendFormat": "Committed_AS – Memory promised to processes (not necessarily used)",
               "range": true,
               "refId": "A",
               "step": 240
@@ -3447,8 +3422,7 @@
             }
           ],
           "title": "Memory Committed",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -3539,7 +3513,7 @@
               "editorMode": "code",
               "expr": "node_memory_Writeback_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
-              "legendFormat": "Writeback \u2013 Memory currently being flushed to disk",
+              "legendFormat": "Writeback – Memory currently being flushed to disk",
               "range": true,
               "refId": "A",
               "step": 240
@@ -3548,7 +3522,7 @@
               "editorMode": "code",
               "expr": "node_memory_WritebackTmp_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
-              "legendFormat": "WritebackTmp \u2013 FUSE temporary writeback buffers",
+              "legendFormat": "WritebackTmp – FUSE temporary writeback buffers",
               "range": true,
               "refId": "B",
               "step": 240
@@ -3557,7 +3531,7 @@
               "editorMode": "code",
               "expr": "node_memory_Dirty_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
-              "legendFormat": "Dirty \u2013 Memory marked dirty (pending write to disk)",
+              "legendFormat": "Dirty – Memory marked dirty (pending write to disk)",
               "range": true,
               "refId": "C",
               "step": 240
@@ -3566,15 +3540,14 @@
               "editorMode": "code",
               "expr": "node_memory_NFS_Unstable_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
-              "legendFormat": "NFS Unstable \u2013 Pages sent to NFS server, awaiting storage commit",
+              "legendFormat": "NFS Unstable – Pages sent to NFS server, awaiting storage commit",
               "range": true,
               "refId": "D",
               "step": 240
             }
           ],
           "title": "Memory Writeback and Dirty",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -3665,7 +3638,7 @@
               "editorMode": "code",
               "expr": "node_memory_SUnreclaim_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
-              "legendFormat": "SUnreclaim \u2013 Non-reclaimable slab memory (kernel objects)",
+              "legendFormat": "SUnreclaim – Non-reclaimable slab memory (kernel objects)",
               "range": true,
               "refId": "A",
               "step": 240
@@ -3674,15 +3647,14 @@
               "editorMode": "code",
               "expr": "node_memory_SReclaimable_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
-              "legendFormat": "SReclaimable \u2013 Potentially reclaimable slab memory (e.g., inode cache)",
+              "legendFormat": "SReclaimable – Potentially reclaimable slab memory (e.g., inode cache)",
               "range": true,
               "refId": "B",
               "step": 240
             }
           ],
           "title": "Memory Slab",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -3774,7 +3746,7 @@
               "editorMode": "code",
               "expr": "node_memory_Mapped_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
-              "legendFormat": "Mapped \u2013 Memory mapped from files (e.g., libraries, mmap)",
+              "legendFormat": "Mapped – Memory mapped from files (e.g., libraries, mmap)",
               "range": true,
               "refId": "A",
               "step": 240
@@ -3783,7 +3755,7 @@
               "editorMode": "code",
               "expr": "node_memory_Shmem_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
-              "legendFormat": "Shmem \u2013 Shared memory used by processes and tmpfs",
+              "legendFormat": "Shmem – Shared memory used by processes and tmpfs",
               "range": true,
               "refId": "B",
               "step": 240
@@ -3793,7 +3765,7 @@
               "expr": "node_memory_ShmemHugePages_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
               "interval": "",
-              "legendFormat": "ShmemHugePages \u2013 Shared memory (shmem/tmpfs) allocated with HugePages",
+              "legendFormat": "ShmemHugePages – Shared memory (shmem/tmpfs) allocated with HugePages",
               "range": true,
               "refId": "C",
               "step": 240
@@ -3803,15 +3775,14 @@
               "expr": "node_memory_ShmemPmdMapped_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
               "interval": "",
-              "legendFormat": "PMD Mapped \u2013 Shmem/tmpfs backed by Transparent HugePages (PMD)",
+              "legendFormat": "PMD Mapped – Shmem/tmpfs backed by Transparent HugePages (PMD)",
               "range": true,
               "refId": "D",
               "step": 240
             }
           ],
           "title": "Memory Shared and Mapped",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -3934,7 +3905,7 @@
               "editorMode": "code",
               "expr": "(node_memory_Inactive_bytes{instance=\"$node\",job=\"$job\"}) \n/ \n(node_memory_MemTotal_bytes{instance=\"$node\",job=\"$job\"})",
               "format": "time_series",
-              "legendFormat": "Inactive \u2013 Less recently used memory, more likely to be reclaimed",
+              "legendFormat": "Inactive – Less recently used memory, more likely to be reclaimed",
               "range": true,
               "refId": "A",
               "step": 240
@@ -3943,15 +3914,14 @@
               "editorMode": "code",
               "expr": "(node_memory_Active_bytes{instance=\"$node\",job=\"$job\"}) \n/ \n(node_memory_MemTotal_bytes{instance=\"$node\",job=\"$job\"})\n",
               "format": "time_series",
-              "legendFormat": "Active \u2013 Recently used memory, retained unless under pressure",
+              "legendFormat": "Active – Recently used memory, retained unless under pressure",
               "range": true,
               "refId": "B",
               "step": 240
             }
           ],
           "title": "Memory LRU Active / Inactive (%)",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -4052,7 +4022,7 @@
               "editorMode": "code",
               "expr": "node_memory_Inactive_anon_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
-              "legendFormat": "Inactive_anon \u2013 Anonymous memory on inactive LRU (incl. tmpfs & swap cache)",
+              "legendFormat": "Inactive_anon – Anonymous memory on inactive LRU (incl. tmpfs & swap cache)",
               "range": true,
               "refId": "B",
               "step": 240
@@ -4070,15 +4040,14 @@
               "editorMode": "code",
               "expr": "node_memory_Active_anon_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
-              "legendFormat": "Active_anon \u2013 Anonymous memory on active LRU (incl. tmpfs & swap cache)",
+              "legendFormat": "Active_anon – Anonymous memory on active LRU (incl. tmpfs & swap cache)",
               "range": true,
               "refId": "D",
               "step": 240
             }
           ],
           "title": "Memory LRU Active / Inactive Detail",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -4170,7 +4139,7 @@
               "editorMode": "code",
               "expr": "node_memory_KernelStack_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
-              "legendFormat": "KernelStack \u2013 Kernel stack memory (per-thread, non-reclaimable)",
+              "legendFormat": "KernelStack – Kernel stack memory (per-thread, non-reclaimable)",
               "range": true,
               "refId": "A",
               "step": 240
@@ -4180,7 +4149,7 @@
               "expr": "node_memory_Percpu_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
               "interval": "",
-              "legendFormat": "PerCPU \u2013 Dynamically allocated per-CPU memory (used by kernel modules)",
+              "legendFormat": "PerCPU – Dynamically allocated per-CPU memory (used by kernel modules)",
               "range": true,
               "refId": "B",
               "step": 240
@@ -4190,15 +4159,14 @@
               "expr": "node_memory_Bounce_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
               "interval": "",
-              "legendFormat": "Bounce Memory \u2013 I/O buffer for DMA-limited devices",
+              "legendFormat": "Bounce Memory – I/O buffer for DMA-limited devices",
               "range": true,
               "refId": "C",
               "step": 240
             }
           ],
           "title": "Memory Kernel / CPU / IO",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -4319,7 +4287,7 @@
               "editorMode": "code",
               "expr": "node_memory_VmallocChunk_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
-              "legendFormat": "Vmalloc Free Chunk \u2013 Largest available block in vmalloc area",
+              "legendFormat": "Vmalloc Free Chunk – Largest available block in vmalloc area",
               "range": true,
               "refId": "A",
               "step": 240
@@ -4328,7 +4296,7 @@
               "editorMode": "code",
               "expr": "node_memory_VmallocTotal_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
-              "legendFormat": "Vmalloc Total \u2013 Total size of the vmalloc memory area",
+              "legendFormat": "Vmalloc Total – Total size of the vmalloc memory area",
               "range": true,
               "refId": "B",
               "step": 240
@@ -4337,15 +4305,14 @@
               "editorMode": "code",
               "expr": "node_memory_VmallocUsed_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
-              "legendFormat": "Vmalloc Used \u2013 Portion of vmalloc area currently in use",
+              "legendFormat": "Vmalloc Used – Portion of vmalloc area currently in use",
               "range": true,
               "refId": "C",
               "step": 240
             }
           ],
           "title": "Memory Vmalloc",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -4436,7 +4403,7 @@
               "editorMode": "code",
               "expr": "node_memory_AnonHugePages_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
-              "legendFormat": "AnonHugePages \u2013 Anonymous memory using HugePages",
+              "legendFormat": "AnonHugePages – Anonymous memory using HugePages",
               "range": true,
               "refId": "A",
               "step": 240
@@ -4445,15 +4412,14 @@
               "editorMode": "code",
               "expr": "node_memory_AnonPages_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
-              "legendFormat": "AnonPages \u2013 Anonymous memory (non-file-backed)",
+              "legendFormat": "AnonPages – Anonymous memory (non-file-backed)",
               "range": true,
               "refId": "B",
               "step": 240
             }
           ],
           "title": "Memory Anonymous",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -4545,7 +4511,7 @@
               "editorMode": "code",
               "expr": "node_memory_Unevictable_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
-              "legendFormat": "Unevictable \u2013 Kernel-pinned memory (not swappable)",
+              "legendFormat": "Unevictable – Kernel-pinned memory (not swappable)",
               "range": true,
               "refId": "A",
               "step": 240
@@ -4554,15 +4520,14 @@
               "editorMode": "code",
               "expr": "node_memory_Mlocked_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
-              "legendFormat": "Mlocked \u2013 Application-locked memory via mlock()",
+              "legendFormat": "Mlocked – Application-locked memory via mlock()",
               "range": true,
               "refId": "B",
               "step": 240
             }
           ],
           "title": "Memory Unevictable and MLocked",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -4657,7 +4622,7 @@
               "editorMode": "code",
               "expr": "node_memory_DirectMap1G_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
-              "legendFormat": "DirectMap 1G \u2013 Memory mapped with 1GB pages",
+              "legendFormat": "DirectMap 1G – Memory mapped with 1GB pages",
               "range": true,
               "refId": "A",
               "step": 240
@@ -4667,7 +4632,7 @@
               "expr": "node_memory_DirectMap2M_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
               "interval": "",
-              "legendFormat": "DirectMap 2M \u2013 Memory mapped with 2MB pages",
+              "legendFormat": "DirectMap 2M – Memory mapped with 2MB pages",
               "range": true,
               "refId": "B",
               "step": 240
@@ -4677,15 +4642,14 @@
               "expr": "node_memory_DirectMap4k_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
               "interval": "",
-              "legendFormat": "DirectMap 4K \u2013 Memory mapped with 4KB pages",
+              "legendFormat": "DirectMap 4K – Memory mapped with 4KB pages",
               "range": true,
               "refId": "C",
               "step": 240
             }
           ],
           "title": "Memory DirectMap",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -4776,7 +4740,7 @@
               "editorMode": "code",
               "expr": "(node_memory_HugePages_Total{instance=\"$node\",job=\"$job\"} - node_memory_HugePages_Free{instance=\"$node\",job=\"$job\"}) * node_memory_Hugepagesize_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
-              "legendFormat": "HugePages Used \u2013 Currently allocated",
+              "legendFormat": "HugePages Used – Currently allocated",
               "range": true,
               "refId": "A",
               "step": 240
@@ -4785,7 +4749,7 @@
               "editorMode": "code",
               "expr": "node_memory_HugePages_Rsvd{instance=\"$node\",job=\"$job\"} * node_memory_Hugepagesize_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
-              "legendFormat": "HugePages Reserved \u2013 Promised but unused",
+              "legendFormat": "HugePages Reserved – Promised but unused",
               "range": true,
               "refId": "B",
               "step": 240
@@ -4794,7 +4758,7 @@
               "editorMode": "code",
               "expr": "node_memory_HugePages_Surp{instance=\"$node\",job=\"$job\"} * node_memory_Hugepagesize_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
-              "legendFormat": "HugePages Surplus \u2013 Dynamic pool extension",
+              "legendFormat": "HugePages Surplus – Dynamic pool extension",
               "range": true,
               "refId": "C",
               "step": 240
@@ -4803,15 +4767,14 @@
               "editorMode": "code",
               "expr": "node_memory_HugePages_Total{instance=\"$node\",job=\"$job\"} * node_memory_Hugepagesize_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
-              "legendFormat": "HugePages Total \u2013 Reserved memory",
+              "legendFormat": "HugePages Total – Reserved memory",
               "range": true,
               "refId": "D",
               "step": 240
             }
           ],
           "title": "Memory HugePages",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         }
       ],
       "title": "Memory Meminfo",
@@ -4944,8 +4907,7 @@
             }
           ],
           "title": "Memory Pages In / Out",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -5064,8 +5026,7 @@
             }
           ],
           "title": "Memory Pages Swap In / Out",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -5219,8 +5180,7 @@
             }
           ],
           "title": "Memory Page Faults",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -5335,8 +5295,7 @@
             }
           ],
           "title": "OOM Killer",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         }
       ],
       "title": "Memory Vmstat",
@@ -5468,8 +5427,7 @@
             }
           ],
           "title": "Time Synchronized Drift",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -5567,8 +5525,7 @@
             }
           ],
           "title": "Time PLL Adjust",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -5698,8 +5655,7 @@
             }
           ],
           "title": "Time Synchronized Status",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -5807,8 +5763,7 @@
             }
           ],
           "title": "PPS Frequency / Stability",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -5916,8 +5871,7 @@
             }
           ],
           "title": "PPS Time Accuracy",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -6049,8 +6003,7 @@
             }
           ],
           "title": "PPS Sync Events",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         }
       ],
       "title": "System Timesync",
@@ -6175,8 +6128,7 @@
             }
           ],
           "title": "Processes Status",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -6360,8 +6312,7 @@
             }
           ],
           "title": "Processes Detailed States",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -6459,8 +6410,7 @@
             }
           ],
           "title": "Processes Forks",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -6597,8 +6547,7 @@
             }
           ],
           "title": "CPU Saturation per Core",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -6737,8 +6686,7 @@
             }
           ],
           "title": "PIDs Number and Limit",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -6877,8 +6825,7 @@
             }
           ],
           "title": "Threads Number and Limit",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         }
       ],
       "title": "System Processes",
@@ -6999,8 +6946,7 @@
             }
           ],
           "title": "Context Switches / Interrupts",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -7155,8 +7101,7 @@
             }
           ],
           "title": "System Load",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -7341,8 +7286,7 @@
             }
           ],
           "title": "CPU Frequency Scaling",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -7440,8 +7384,7 @@
             }
           ],
           "title": "CPU Schedule Timeslices",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -7540,8 +7483,7 @@
             }
           ],
           "title": "IRQ Detail",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -7678,8 +7620,7 @@
             }
           ],
           "title": "Entropy",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         }
       ],
       "title": "System Misc",
@@ -7849,8 +7790,7 @@
             }
           ],
           "title": "Hardware Temperature Monitor",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -7968,8 +7908,7 @@
             }
           ],
           "title": "Cooling Device Utilization",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -8071,8 +8010,7 @@
             }
           ],
           "title": "Power Supply",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -8182,8 +8120,7 @@
             }
           ],
           "title": "Hardware Fan Speed",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         }
       ],
       "title": "Hardware Misc",
@@ -8411,8 +8348,7 @@
             }
           ],
           "title": "Systemd Units State",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -8511,8 +8447,7 @@
             }
           ],
           "title": "Systemd Sockets Current",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -8611,8 +8546,7 @@
             }
           ],
           "title": "Systemd Sockets Accepted",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -8711,8 +8645,7 @@
             }
           ],
           "title": "Systemd Sockets Refused",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         }
       ],
       "title": "Systemd",
@@ -8743,7 +8676,7 @@
                 "axisBorderShow": false,
                 "axisCenteredZero": false,
                 "axisColorMode": "text",
-                "axisLabel": "read (\u2013) / write (+)",
+                "axisLabel": "read (–) / write (+)",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
                 "barWidthFactor": 0.6,
@@ -8858,8 +8791,7 @@
             }
           ],
           "title": "Disk Read/Write IOps",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -8876,7 +8808,7 @@
                 "axisBorderShow": false,
                 "axisCenteredZero": false,
                 "axisColorMode": "text",
-                "axisLabel": "read (\u2013) / write (+)",
+                "axisLabel": "read (–) / write (+)",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
                 "barWidthFactor": 0.6,
@@ -8995,8 +8927,7 @@
             }
           ],
           "title": "Disk Read/Write Data",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -9013,7 +8944,7 @@
                 "axisBorderShow": false,
                 "axisCenteredZero": false,
                 "axisColorMode": "text",
-                "axisLabel": "read (\u2013) / write (+)",
+                "axisLabel": "read (–) / write (+)",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
                 "barWidthFactor": 0.6,
@@ -9130,8 +9061,7 @@
             }
           ],
           "title": "Disk Average Wait Time",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -9245,8 +9175,7 @@
             }
           ],
           "title": "Average Queue Size",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -9263,7 +9192,7 @@
                 "axisBorderShow": false,
                 "axisCenteredZero": false,
                 "axisColorMode": "text",
-                "axisLabel": "read (\u2013) / write (+)",
+                "axisLabel": "read (–) / write (+)",
                 "axisPlacement": "auto",
                 "barAlignment": 0,
                 "barWidthFactor": 0.6,
@@ -9378,8 +9307,7 @@
             }
           ],
           "title": "Disk R/W Merged",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -9511,8 +9439,7 @@
             }
           ],
           "title": "Time Spent Doing I/Os",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -9643,8 +9570,7 @@
             }
           ],
           "title": "Disk Ops Discards / Flush",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -9757,8 +9683,7 @@
             }
           ],
           "title": "Disk Sectors Discarded Successfully",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -9872,8 +9797,7 @@
             }
           ],
           "title": "Instantaneous Queue Size",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         }
       ],
       "title": "Storage Disk",
@@ -10024,8 +9948,7 @@
             }
           ],
           "title": "File Descriptor",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -10123,8 +10046,7 @@
             }
           ],
           "title": "File Nodes Free",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -10233,8 +10155,7 @@
             }
           ],
           "title": "Filesystem in ReadOnly / Error",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -10332,8 +10253,7 @@
             }
           ],
           "title": "File Nodes Size",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         }
       ],
       "title": "Storage Filesystem",
@@ -10469,8 +10389,7 @@
             }
           ],
           "title": "Network Traffic by Packets",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -10590,8 +10509,7 @@
             }
           ],
           "title": "Network Traffic Errors",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -10711,8 +10629,7 @@
             }
           ],
           "title": "Network Traffic Drop",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -10832,8 +10749,7 @@
             }
           ],
           "title": "Network Traffic Compressed",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -10931,8 +10847,7 @@
             }
           ],
           "title": "Network Traffic Multicast",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -11030,8 +10945,7 @@
             }
           ],
           "title": "Network Traffic NoHandler",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -11129,8 +11043,7 @@
             }
           ],
           "title": "Network Traffic Frame",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -11250,8 +11163,7 @@
             }
           ],
           "title": "Network Traffic Fifo",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -11362,8 +11274,7 @@
             }
           ],
           "title": "Network Traffic Collision",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -11461,8 +11372,7 @@
             }
           ],
           "title": "Network Traffic Carrier Errors",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -11560,8 +11470,7 @@
             }
           ],
           "title": "ARP Entries",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -11698,8 +11607,7 @@
             }
           ],
           "title": "NF Conntrack",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -11806,8 +11714,7 @@
             }
           ],
           "title": "Network Operational Status",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -11881,8 +11788,7 @@
             }
           ],
           "title": "Speed",
-          "type": "bargauge",
-          "transparent": true
+          "type": "bargauge"
         },
         {
           "datasource": {
@@ -11955,8 +11861,7 @@
             }
           ],
           "title": "MTU",
-          "type": "bargauge",
-          "transparent": true
+          "type": "bargauge"
         }
       ],
       "title": "Network Traffic",
@@ -12100,8 +12005,7 @@
             }
           ],
           "title": "Sockstat TCP",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -12211,8 +12115,7 @@
             }
           ],
           "title": "Sockstat UDP",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -12312,8 +12215,7 @@
             }
           ],
           "title": "Sockstat Used",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -12423,8 +12325,7 @@
             }
           ],
           "title": "Sockstat FRAG / RAW",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -12542,8 +12443,7 @@
             }
           ],
           "title": "Sockstat Memory Size",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -12653,8 +12553,7 @@
             }
           ],
           "title": "Sockstat Average Socket Memory",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -12764,8 +12663,7 @@
             }
           ],
           "title": "TCP/UDP Kernel Buffer Memory Pages",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -12887,8 +12785,7 @@
             }
           ],
           "title": "Softnet Packets",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -12991,8 +12888,7 @@
             }
           ],
           "title": "Softnet Out of Quota",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -13121,8 +13017,7 @@
             }
           ],
           "title": "Softnet RPS",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         }
       ],
       "title": "Network Sockstat",
@@ -13257,8 +13152,7 @@
             }
           ],
           "title": "Netstat IP In / Out Octets",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -13383,8 +13277,7 @@
             }
           ],
           "title": "TCP In / Out",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -13505,8 +13398,7 @@
             }
           ],
           "title": "UDP In / Out",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -13631,8 +13523,7 @@
             }
           ],
           "title": "ICMP In / Out",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -13799,8 +13690,7 @@
             }
           ],
           "title": "TCP Errors",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -13940,8 +13830,7 @@
             }
           ],
           "title": "UDP Errors",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -14039,8 +13928,7 @@
             }
           ],
           "title": "ICMP Errors",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -14174,8 +14062,7 @@
             }
           ],
           "title": "TCP SynCookie",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -14314,8 +14201,7 @@
             }
           ],
           "title": "TCP Connections",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -14423,8 +14309,7 @@
             }
           ],
           "title": "UDP Queue",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -14533,8 +14418,7 @@
             }
           ],
           "title": "TCP Direct Transition",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -14674,8 +14558,7 @@
             }
           ],
           "title": "TCP Stat Persistent",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -14819,8 +14702,7 @@
             }
           ],
           "title": "TCP Stat Transient",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -14927,8 +14809,7 @@
             }
           ],
           "title": "TCP Socket Queue",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         }
       ],
       "title": "Network Netstat",
@@ -15044,8 +14925,7 @@
             }
           ],
           "title": "Node Exporter Scrape Time",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -15143,8 +15023,7 @@
             }
           ],
           "title": "Exporter Process CPU Usage",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -15305,8 +15184,7 @@
             }
           ],
           "title": "Exporter Processes Memory",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -15467,8 +15345,7 @@
             }
           ],
           "title": "Exporter File Descriptor Usage",
-          "type": "timeseries",
-          "transparent": true
+          "type": "timeseries"
         },
         {
           "datasource": {
@@ -15558,8 +15435,7 @@
             }
           ],
           "title": "Node Exporter Scrape",
-          "type": "bargauge",
-          "transparent": true
+          "type": "bargauge"
         }
       ],
       "title": "Node Exporter",
@@ -15652,8 +15528,8 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Spark Host OS",
-  "uid": "spark-host-os",
+  "title": "Node Exporter Full",
+  "uid": "rYdddlPWk",
   "version": 101,
   "weekStart": "",
   "gnetId": 1860
