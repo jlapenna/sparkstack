@@ -20,6 +20,8 @@ class LiteLLMBuilder:
         self.stack_dir = stack_dir
         self.litellm_config = LiteLLMConfig()
         self.litellm_config.litellm_settings = litellm_base.get("litellm_settings", {})
+        if "model_alias_map" not in self.litellm_config.litellm_settings:
+            self.litellm_config.litellm_settings["model_alias_map"] = {}
         self.litellm_config.general_settings = litellm_base.get("general_settings", {})
         self.litellm_config.router_settings = litellm_base.get("router_settings", {})
 
@@ -75,6 +77,8 @@ class LiteLLMBuilder:
                 ),
             )
         )
+        
+        self.litellm_config.litellm_settings["model_alias_map"][f"spark/{role_id}"] = role_id
 
         display_name = (
             f"Spark Main ({human_name})"
