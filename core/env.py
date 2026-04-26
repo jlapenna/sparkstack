@@ -21,15 +21,15 @@ OPENCLAW_REPO = os.getenv("OPENCLAW_REPO", "https://github.com/openclaw/openclaw
 
 _openclaw_config_dir = os.getenv("OPENCLAW_CONFIG_DIR")
 if not _openclaw_config_dir:
-    raise ValueError("OPENCLAW_CONFIG_DIR environment variable is not set.")
+    _openclaw_config_dir = str(Path.home() / ".openclaw")
+    
 OPENCLAW_CONFIG_DIR = Path(_openclaw_config_dir).absolute()
 OPENCLAW_CONFIG_PATH = OPENCLAW_CONFIG_DIR / "openclaw.json"
 
 OPENCLAW_ENV = dotenv.dotenv_values(OPENCLAW_CONFIG_DIR / ".env")
-_openclaw_env_openclaw_config_dir = OPENCLAW_ENV["OPENCLAW_CONFIG_DIR"]
-if not _openclaw_env_openclaw_config_dir:
-    raise ValueError("OPENCLAW_CONFIG_DIR not found in .env file.")
-if Path(_openclaw_env_openclaw_config_dir).absolute() != OPENCLAW_CONFIG_DIR:
+_openclaw_env_openclaw_config_dir = OPENCLAW_ENV.get("OPENCLAW_CONFIG_DIR")
+
+if _openclaw_env_openclaw_config_dir and Path(_openclaw_env_openclaw_config_dir).absolute() != OPENCLAW_CONFIG_DIR:
     raise ValueError(
         "OPENCLAW_CONFIG_DIR environment variable does not match the one in the .env file."
     )
