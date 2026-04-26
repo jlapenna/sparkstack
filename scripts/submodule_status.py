@@ -82,7 +82,7 @@ def main():
                 print("- **Latest Comment:** None")
             print()
 
-    print("\n### 2. `local-dev` Branch Status\n")
+    print("\n### 2. Integration Branch Status\n")
     print("| Submodule | Integration Branch | Current Configured Tracking |")
     print("| :--- | :--- | :--- |")
 
@@ -90,18 +90,31 @@ def main():
         sub_dir = os.path.join(root_dir, sub)
         branch = run_cmd("git rev-parse --abbrev-ref HEAD", cwd=sub_dir)
 
-        # Determine if local-dev is ahead of main
-        commits_ahead = run_cmd(
-            "git rev-list --count main..local-dev 2>/dev/null || echo 0", cwd=sub_dir
+        integration_branch = "main" if sub == "spark-stack-registry" else "local-dev"
+        if sub == "sparkrun":
+            base_ref = "origin/develop"
+        elif sub == "spark-stack-registry":
+            base_ref = "origin/main"
+        else:
+            base_ref = "origin/main"
+
+        # Determine if current branch is ahead of base_ref
+        commits_ahead_output = run_cmd(
+            f"git rev-list --count {base_ref}..{branch} 2>/dev/null", cwd=sub_dir
         )
+        try:
+            commits_ahead = int(commits_ahead_output) if commits_ahead_output else 0
+        except ValueError:
+            commits_ahead = 0
+
         status = (
             f"Tracking {branch} ({commits_ahead} unmerged commits)"
-            if commits_ahead
+            if commits_ahead > 0
             else f"Tracking {branch}"
         )
 
         repo_name = f"**`{sub}`**"
-        print(f"| {repo_name} | `local-dev` | {status} |")
+        print(f"| {repo_name} | `{integration_branch}` | {status} |")
 
 
 if __name__ == "__main__":

@@ -57,14 +57,14 @@ class SparkrunUpdater:
 
             if current_branch == "local-dev" or current_branch.startswith("local/"):
                 logger.warning(
-                    f"Detected {current_branch} branch integration. Skipping checkout to main and hard reset to origin/main."
+                    f"Detected {current_branch} branch integration. Skipping checkout to develop and hard reset to origin/develop."
                 )
             else:
                 await async_run_command(
-                    ["git", "checkout", "-f", "main"], cwd=self.settings.sparkrun_dir
+                    ["git", "checkout", "-f", "develop"], cwd=self.settings.sparkrun_dir
                 )
                 await async_run_command(
-                    ["git", "reset", "--hard", "origin/main"], cwd=self.settings.sparkrun_dir
+                    ["git", "reset", "--hard", "origin/develop"], cwd=self.settings.sparkrun_dir
                 )
 
             await async_run_command(["git", "clean", "-fd"], cwd=self.settings.sparkrun_dir)
