@@ -445,7 +445,7 @@
           "gridPos": {
             "x": 0,
             "y": 21,
-            "w": 12,
+            "w": 6,
             "h": 6
           },
           "id": 1001,
@@ -475,68 +475,7 @@
               "legendFormat": "SparkRun Cluster Provisioning",
               "range": true,
               "refId": "A"
-            }
-          ],
-          "title": "SparkRun Cluster Provisioning",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "max": 100,
-              "min": 0,
-              "noValue": "No models loaded...",
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "red",
-                    "value": null
-                  },
-                  {
-                    "color": "yellow",
-                    "value": 20
-                  },
-                  {
-                    "color": "green",
-                    "value": 100
-                  }
-                ]
-              },
-              "unit": "percent"
             },
-            "overrides": []
-          },
-          "gridPos": {
-            "x": 12,
-            "y": 21,
-            "w": 12,
-            "h": 6
-          },
-          "id": 1002,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "textMode": "auto"
-          },
-          "pluginVersion": "10.4.1",
-          "targets": [
             {
               "datasource": {
                 "type": "prometheus",
@@ -546,10 +485,10 @@
               "expr": "min(vllm_model_load_progress) or max(vllm_sparkrun_deploy_step_progress)",
               "legendFormat": "Update Services Provisioning",
               "range": true,
-              "refId": "A"
+              "refId": "B"
             }
           ],
-          "title": "Update Services Provisioning",
+          "title": "Provisioning Status",
           "type": "stat"
         },
         {
@@ -594,7 +533,7 @@
           "gridPos": {
             "x": 0,
             "y": 36,
-            "w": 20,
+            "w": 24,
             "h": 6
           },
           "id": null,
@@ -613,8 +552,9 @@
           },
           "targets": [
             {
-              "expr": "max by (model_id) (vllm_model_load_progress)",
-              "legendFormat": "{{model_id}}",
+              "expr": "max by (host, name, model_id) (vllm_model_load_progress) unless on(host, name, model_id) (max by (host, name, model_id) (vllm_model_load_progress{host=\"head-node\"}) and on(name) vllm_model_load_progress{host!=\"head-node\"})",
+              "legendFormat": "[{{host}}] {{name}} ({{model_id}})",
+              "instant": true,
               "refId": "A"
             }
           ],

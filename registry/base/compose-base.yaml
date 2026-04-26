@@ -14,7 +14,7 @@ services:
     environment:
     - PROMETHEUS_MONITORING=True
     - OTEL_EXPORTER=otlp
-    - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+    - OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4318
     - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
     - OTEL_SERVICE_NAME=litellm
     command:

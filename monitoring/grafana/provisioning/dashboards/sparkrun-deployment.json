@@ -61,7 +61,7 @@
           "min": 0,
           "unit": "percent",
           "color": {
-            "mode": "continuous-GrYlRd"
+            "mode": "continuous-RdYlGr"
           }
         }
       },
@@ -109,7 +109,7 @@
           "min": 0,
           "unit": "percent",
           "color": {
-            "mode": "continuous-GrYlRd"
+            "mode": "continuous-RdYlGr"
           }
         }
       },
@@ -157,7 +157,7 @@
           "min": 0,
           "unit": "percent",
           "color": {
-            "mode": "continuous-GrYlRd"
+            "mode": "continuous-RdYlGr"
           }
         }
       },
@@ -190,8 +190,9 @@
       },
       "targets": [
         {
-          "expr": "vllm_model_load_progress",
-          "legendFormat": "{{name}} ({{model_id}})",
+          "expr": "max by (host, name, model_id) (vllm_model_load_progress) unless on(host, name, model_id) (max by (host, name, model_id) (vllm_model_load_progress{host=\"head-node\"}) and on(name) vllm_model_load_progress{host!=\"head-node\"})",
+          "legendFormat": "[{{host}}] {{name}} ({{model_id}})",
+          "instant": true,
           "refId": "A"
         }
       ],
@@ -213,7 +214,7 @@
           "min": 0,
           "unit": "percent",
           "color": {
-            "mode": "continuous-GrYlRd"
+            "mode": "continuous-RdYlGr"
           }
         }
       },
