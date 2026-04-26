@@ -530,7 +530,7 @@
     "from": "now-1h",
     "to": "now"
   },
-  "title": "OpenClaw Gateway",
+  "title": "Gateway",
   "uid": "openclaw-gateway",
   "version": 2,
   "timezone": "browser"

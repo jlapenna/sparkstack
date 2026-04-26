@@ -92,7 +92,8 @@ services:
     - GF_USERS_ALLOW_SIGN_UP=false
     - GF_SERVER_ENABLE_GZIP=true
     - GF_LOG_LEVEL=warn
-    - GF_FEATURE_TOGGLES_ENABLE=provisioning,grafanaAssistant
+    - GF_FEATURE_TOGGLES_PROVISIONING=true
+    - GF_FEATURE_TOGGLES_GRAFANAASSISTANT=true
     - GF_ASSISTANT_ENABLED=true
     # renovate: datasource=github-releases depName=grafana/grafana-polystat-panel
     - GF_POLYSTAT_VERSION=2.1.16

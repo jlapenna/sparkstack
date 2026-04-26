@@ -1216,7 +1216,7 @@
     "from": "now-15m",
     "to": "now"
   },
-  "title": "System Overview",
+  "title": "Overview",
   "uid": "vllm-system-overview",
   "version": 101,
   "templating": {

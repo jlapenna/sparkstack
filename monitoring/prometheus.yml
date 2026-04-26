@@ -20,4 +20,3 @@ scrape_configs:
     - dcgm-exporter:9400
     - tempo:3200
     - vector:9102
-
