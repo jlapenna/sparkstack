@@ -4,7 +4,7 @@ For every new session, you **MUST** do the following:
 
 1. Before making a plan or writing code, ALWAYS use the `grep_search` tool on the `skills/` and `sparkrun/sparkrun-cc-plugin/skills/` directories for keywords related to the user's prompt to identify the correct protocol to follow. (Do NOT try to read all skills at once).
 1. Read and strictly follow all rules defined in `.agents/rules/`.
-1. Activate local (this repo only) skills: `stack-manager`, `submodule-dev`, `monitoring-services`, `stack-upkeep`
+1. Activate local (this repo only) skills: `stack-manager`, `submodule-dev`, `monitoring`, `stack-upkeep`
 1. When working with Python, Docker, or architecture, explicitly search for and load relevant skills like `python-pro`, `async-python-patterns`, `docker-expert`, and `senior-architect` to apply modern best practices.
 
 ## Knowledge and memory.

@@ -1,6 +1,6 @@
 ______________________________________________________________________
 
-name: monitoring-services
+name: monitoring
 description: Manages the Grafana/Prometheus monitoring stack, container updates, telemetry pipelines, and safe dashboard integration.
 category: observability
 risk: medium
