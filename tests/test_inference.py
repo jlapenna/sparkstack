@@ -3,14 +3,16 @@ import json
 import os
 
 url = "http://localhost:4000/v1/chat/completions"
-# The gateway token in OpenClaw .env is needed, let me extract it from OpenClaw's .env!
+# Use LITELLM_MASTER_KEY for direct gateway access
 env_path = "/home/jlapenna/.openclaw/.env"
 gateway_token = None
 if os.path.exists(env_path):
     with open(env_path, "r") as f:
         for line in f:
-            if line.startswith("OPENCLAW_GATEWAY_AUTH_TOKEN="):
-                gateway_token = line.split("=")[1].strip()
+            if line.startswith("LITELLM_MASTER_KEY="):
+                gateway_token = line.split("=")[1].strip().strip('"').strip("'")
+
+print(f"Using token: {gateway_token}")
 
 headers = {
     "Content-Type": "application/json",

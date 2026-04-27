@@ -8,7 +8,7 @@ import pkgOTLP from "@opentelemetry/exporter-trace-otlp-proto";
 const { OTLPTraceExporter } = pkgOTLP;
 
 import pkgResources from "@opentelemetry/resources";
-const { Resource } = pkgResources;
+const { resourceFromAttributes } = pkgResources;
 
 import pkgSemantic from "@opentelemetry/semantic-conventions";
 const { ATTR_SERVICE_NAME } = pkgSemantic;
@@ -21,7 +21,7 @@ const {
 } = pkgCore;
 
 const sdk = new NodeSDK({
-  resource: new Resource({
+  resource: resourceFromAttributes({
     [ATTR_SERVICE_NAME]: process.env.OTEL_SERVICE_NAME || "openclaw-gateway",
   }),
   textMapPropagator: new CompositePropagator({
