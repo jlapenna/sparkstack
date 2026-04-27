@@ -43,6 +43,7 @@ VLLM_ENV: dict[str, str] = {
     "VLLM_OTEL_TRACING_ENABLED": "1",
     "OTEL_EXPORTER_OTLP_ENDPOINT": "http://alloy:4318/v1/traces",
     "OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf",
+    "OTEL_ATTRIBUTE_VALUE_LENGTH_LIMIT": "131072",
 }
 
 # NVIDIA Blackwell mandatory environment variables for vLLM

@@ -4,23 +4,35 @@ import subprocess
 import time
 import sys
 
+
 def verify_tracing():
     print("Triggering an agent inference to generate a trace...")
     try:
         # We run the command inside the gateway container to guarantee it works without needing local openclaw config
         subprocess.run(
-            ["docker", "exec", "openclaw-openclaw-gateway-1", "node", "dist/index.js", "agent", "--agent", "jclaw", "--message", "Tracing verification test. Please reply with OK."],
+            [
+                "docker",
+                "exec",
+                "openclaw-openclaw-gateway-1",
+                "node",
+                "dist/index.js",
+                "agent",
+                "--agent",
+                "jclaw",
+                "--message",
+                "Tracing verification test. Please reply with OK.",
+            ],
             check=True,
-            capture_output=True
+            capture_output=True,
         )
     except subprocess.CalledProcessError as e:
-        print("Failed to trigger inference:", e.stderr.decode('utf-8'))
+        print("Failed to trigger inference:", e.stderr.decode("utf-8"))
         sys.exit(1)
 
     print("Inference completed. Waiting for traces to propagate to Tempo...")
-    time.sleep(5)
+    time.sleep(15)
 
-    tempo_search_url = "http://localhost:3200/api/search?limit=15"
+    tempo_search_url = "http://localhost:3200/api/search?limit=100"
     try:
         response = requests.get(tempo_search_url, timeout=10)
         response.raise_for_status()
@@ -55,13 +67,34 @@ def verify_tracing():
 
         # We don't want to spam the output, so just debug prints if we hit required
         if required_services.issubset(services_in_trace):
-            print(f"\n✅ SUCCESS: E2E Trace {trace_id} successfully linked across {required_services}!")
-            found_e2e_trace = True
-            break
+            # Check payload length
+            max_len = 0
+            for batch in trace_data.get("batches", []):
+                for scope in batch.get("scopeSpans", []):
+                    for span in scope.get("spans", []):
+                        for attr in span.get("attributes", []):
+                            if attr.get("key") == "gen_ai.input.messages":
+                                length = len(attr.get("value", {}).get("stringValue", ""))
+                                max_len = max(max_len, length)
+
+            if max_len > 2048:
+                print(
+                    f"\n✅ SUCCESS: E2E Trace {trace_id} successfully linked across {required_services}!"
+                )
+                print(f"✅ SUCCESS: Found gen_ai.input.messages with length {max_len} (> 2048)!")
+                found_e2e_trace = True
+                break
+            else:
+                print(
+                    f"⚠️ WARNING: Found trace {trace_id} with required services, but max gen_ai.input.messages length was only {max_len}. Expected > 2048. Skipping."
+                )
 
     if not found_e2e_trace:
-        print(f"\n❌ FAILED: Could not find a single trace containing all required services: {required_services}")
+        print(
+            f"\n❌ FAILED: Could not find a single trace containing all required services: {required_services} with correct payload size."
+        )
         sys.exit(1)
+
 
 if __name__ == "__main__":
     verify_tracing()
