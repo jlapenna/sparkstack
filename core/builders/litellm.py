@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 import yaml
@@ -26,7 +25,7 @@ class LiteLLMBuilder:
         self.litellm_config.router_settings = litellm_base.get("router_settings", {})
 
         self.models_json = ModelsConfig(
-            spark=SparkProvider(api_key=os.environ.get("VLLM_SPARK_API_KEY", ""))
+            spark=SparkProvider(api_key="${LITELLM_MASTER_KEY}")
         )
         self.added_roles = set()
 
@@ -48,7 +47,7 @@ class LiteLLMBuilder:
         if role_id in self.added_roles:
             return
 
-        cwin = context_window
+        cwin = model_info.get("context_window", context_window)
         params = {
             "model": f"openai/{backend_model}",
             "api_base": backend_url,
@@ -73,11 +72,16 @@ class LiteLLMBuilder:
                 model_name=role_id,
                 litellm_params=LiteLLMParams(**params),
                 model_info=LiteLLMModelInfo(
-                    context_window=cwin, max_tokens=cwin, base_model=recipe_name or backend_model
+                    context_window=cwin,
+                    max_tokens=model_info.get("max_tokens", 16384),
+                    base_model=recipe_name or backend_model,
+                    mode=model_info.get("mode"),
+                    supports_function_calling=model_info.get("supports_function_calling"),
+                    supports_reasoning=model_info.get("supports_reasoning") or (thinking_format is not None),
                 ),
             )
         )
-        
+
         self.litellm_config.litellm_settings["model_alias_map"][f"spark/{role_id}"] = role_id
 
         display_name = (
@@ -89,9 +93,10 @@ class LiteLLMBuilder:
             id=role_id,
             name=display_name,
             context_window=cwin,
-            max_tokens=cwin,
+            max_tokens=model_info.get("max_tokens", 16384),
             input=model_info.get("input", ["text"]),
             reasoning=model_info.get("reasoning"),
+            api="openai-completions",
         )
         if model_info.get("reasoning"):
             # Explicit thinking_format from recipe wins, otherwise default to openai
