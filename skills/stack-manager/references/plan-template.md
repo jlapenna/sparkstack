@@ -25,7 +25,7 @@ ______________________________________________________________________
 *If the new deployment causes a catastrophic failure, you MUST have the exact rollback commands pre-defined here so the system can be restored instantly without further research.*
 
 - **Previous Stable Stack Name**: \[e.g., `core-upgrade-20260320`\]
-- **Rollback Command**: `uv run python -m scripts.set_current spark-stack-registry/spark-stack-registry/stacks/[PREVIOUS_STABLE] && cd current && docker compose up -d --force-recreate`
+- **Rollback Command**: `uv run python scripts/set_current.py spark-stack-registry/stacks/[PREVIOUS_STABLE] && cd current && docker compose up -d --force-recreate`
 
 ______________________________________________________________________
 
@@ -69,7 +69,7 @@ Identify if existing scripts require patching to support the new model role.
 
 Generate the multi-container configuration using the iterative naming convention.
 
-- **Action**: Use `uv run python -m scripts.build_stack` to generate the new stack configuration.
+- **Action**: Use `uv run python scripts/build_stack.py` to generate the new stack configuration.
 
 ### Phase 4: Activation & Synchronization (Deployment Layer)
 
@@ -91,7 +91,7 @@ ______________________________________________________________________
 
 *Consult the **stack-verifier** skill for the full E2E baseline protocol. The following integration suite MUST be executed to verify the new stack.*
 
-- **Action**: `uv run python -m scripts.verify --stack [TARGET_STACK_NAME]`
+- **Action**: `uv run pytest tests/e2e/`
 - **Expect**: ✅ ALL verification stages pass.
 - **Verification Coverage**:
   - Layer 0: Pre-flight Memory Law Compliance (`check_memory_law.py`)
@@ -121,7 +121,7 @@ ______________________________________________________________________
 
 ## 5. Failure Recovery Protocol
 
-If `uv run python -m scripts.verify` or `sparkrun benchmark` reports any failures:
+If `uv run pytest tests/e2e/` or `sparkrun benchmark` reports any failures:
 
 1. **Halt execution immediately.**
 1. **Inform the user** with the exact `stdout`/`stderr` of the failing layer. Do not attempt any automatic rollback or live-patching without explicit user permission.

@@ -17,7 +17,7 @@ async def main():
     parser = argparse.ArgumentParser(description="Switch active stack and restart services")
     parser.add_argument(
         "target",
-        help="Directory name of the target stack (e.g., spark-stack-registry/spark-stack-registry/stacks/powerhouse-maximize-20260330)",
+        help="Directory name of the target stack (e.g., spark-stack-registry/stacks/powerhouse-maximize-20260330)",
     )
     args = parser.parse_args()
 

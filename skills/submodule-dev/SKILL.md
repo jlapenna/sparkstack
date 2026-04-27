@@ -69,7 +69,7 @@ Because the submodules track the main upstream source repositories natively, we 
 1. **Push from Worktree:** Push the isolated feature branch from the worktree to your fork and create the PR. This ensures PRs are cleanly mergeable on top of the target base branch without bringing along other unfinished features from `local-dev`.
 1. **Update Existing PRs in Worktrees:** All PR feedback patches and CI fixes MUST be applied strictly from within the isolated feature worktree directory. Once updated and pushed, you can merge those fixes back into `local-dev` to keep your local environment up to date.
 1. **Handle Closed PRs:** PRs that are closed are considered abandoned. You MUST NOT apply them to the `local-dev` integration branch. If they exist in your local `local-dev` branch, they MUST be reverted locally.
-1. **Commit isolated integrations to `services`:** The root `services` repo should track the commit of the `local-dev` branch (from the primary submodule) to ensure stability during system-wide testing. However, when committing this pointer update, you MUST NEVER sweep unrelated files from the `services` repository into the commit of the main repository.
+1. **Commit isolated integrations to `spark-stack`:** The root `spark-stack` repo should track the commit of the `local-dev` branch (from the primary submodule) to ensure stability during system-wide testing. However, when committing this pointer update, you MUST NEVER sweep unrelated files from the `spark-stack` repository into the commit of the main repository.
 
 ## Step-by-Step Workflow
 
@@ -123,6 +123,7 @@ To ensure your local environment doesn't drift too far from upstream, or if you 
 >
 > - **For `sparkrun`**: `local-dev` should track the tip of the development branch (`origin/develop`).
 > - **For `openclaw`**: `local-dev` should track the latest stable production tag (bypassing betas).
+> - **For `spark-stack-registry`**: Tracks the canonical `origin/main` branch (does not use `local-dev` integrations).
 
 ```bash
 git fetch --tags origin
@@ -139,7 +140,7 @@ Before closing the process, you MUST verify that the git tree for the primary su
 
 ### 5. Update the Root Repo Pointer
 
-Navigate back to the root (`services`) directory. Since the submodule's pointer has moved, the root repo will show unstaged changes.
+Navigate back to the root (`spark-stack`) directory. Since the submodule's pointer has moved, the root repo will show unstaged changes.
 Commit this updated pointer to ensure system stability, but you MUST isolate the commit to ONLY the submodule path.
 
 ```bash
@@ -198,5 +199,5 @@ You MUST conclude your integration actions with this exact structure:
 *(Directly output the results from running `python3 scripts/submodule_status.py` here)*
 
 ### 3. Repo Health
-*(Confirm that the primary submodule and the root `services` repo show zero dangling/untracked files)*
+*(Confirm that the primary submodule and the root `spark-stack` repo show zero dangling/untracked files)*
 ```

@@ -6,7 +6,7 @@ This directory manages the **Cloudflare Tunnel** (`cloudflared`) used to securel
 
 ### Tunnel Helper
 
-Use the `./tunnel.sh` script to manage the tunnel. It automatically loads secrets from the parent `services/.env` file:
+Use the `./tunnel.sh` script to manage the tunnel. It automatically loads secrets from the parent `.env` file:
 
 ```bash
 ./tunnel.sh up -d    # Start the tunnel

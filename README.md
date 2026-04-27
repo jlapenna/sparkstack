@@ -26,8 +26,8 @@ The ecosystem relies on Docker and Docker Compose to network different services 
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/jlapenna/spark-services.git
-   cd spark-services
+   git clone https://github.com/jlapenna/spark-stack.git
+   cd spark-stack
    ```
 
 1. **Initialize submodules (if you have access):**

@@ -38,7 +38,7 @@ For **ANY** model addition, upgrade, or stack modification, you MUST defer to th
 1. **Execution & Verification**: Once approved, execute the plan strictly as written, progressing through all infrastructure, stack orchestration, E2E Verification, and **Formal Benchmarking (Phase 4)** phases detailed in the template.
 1. **ZERO HOT-PATCHING**: If a step fails, **HALT** and inform the user. Do not attempt quiet fixes or ad-hoc hacks.
 1. **No Log Summarization**: You are strictly banned from summarizing verification logs in Phase 6. You must dump the literal unedited `stdout` blocks into the `plan.md` to prevent hallucinated success records.
-1. **Cheat-Sheet Finalization**: For Phase 7 cleanup, the mandatory final rotation command is exactly `uv run python scripts/set_current.py spark-stack-registry/spark-stack-registry/stacks/<clean_stack_name>`. Execute this after stripping the iterative suffix and deleting failed iterations.
+1. **Cheat-Sheet Finalization**: For Phase 7 cleanup, the mandatory final rotation command is exactly `uv run python scripts/set_current.py spark-stack-registry/stacks/<clean_stack_name>`. Execute this after stripping the iterative suffix and deleting failed iterations.
 
 _(Refer to `skills/stack-manager/references/plan-template.md` for the exact requirements of Phase 1 through Phase 7)._
 

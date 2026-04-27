@@ -1,14 +1,14 @@
 # Model Registry
 
-This directory contains the modular definitions for the AI service stack on the **NVIDIA Spark (GB10 Blackwell)** workstation.
+This structure contains the modular definitions for the AI service stack on the **NVIDIA Spark (GB10 Blackwell)** workstation.
 
 ## Architecture
 
 The stack is composed using a "Model Registry" pattern:
 
-- **`base/`**: Global settings for LiteLLM and base Docker Compose network/volumes.
-- **`models/`**: Individual YAML files for each model (LLM or STT).
-- **`build_stack.py`**: Composes these modules into a functional stack under `spark-stack-registry/stacks/`.
+- **`registry/litellm/`**: Global settings for LiteLLM and base Docker Compose network/volumes.
+- **`spark-stack-registry/sparkrun/`**: Individual YAML files for each model recipe (LLM or STT).
+- **`scripts/build_stack.py`**: Composes these modules into a functional stack under `spark-stack-registry/stacks/`.
 
 ## Modern Blackwell Standards (March 2026)
 
@@ -52,7 +52,7 @@ As of April 2026, several Qwen models (3.5 and 3.6 variants) have been observed 
 ## Memory Law
 
 Aggregate Docker memory limits across all services MUST NOT exceed **108GB**.
-Aggregate `gpu-memory-utilization` MUST NOT exceed **0.80**.
+Aggregate `gpu-memory-utilization` MUST NOT exceed **0.90** (Hard limit 0.95).
 
 ### 5. The "Zombie Process" Protocol (NEW)
 
@@ -66,7 +66,7 @@ Aggregate `gpu-memory-utilization` MUST NOT exceed **0.80**.
 
 ### `500 litellm.InternalServerError: Cannot connect to host`
 
-If you receive this error when querying the LiteLLM gateway, it indicates that the backend vLLM container (e.g., `nemotron`) has not yet finished loading its model weights into VRAM and has not bound to its port (e.g., `8000`).
+If you receive this error when querying the LiteLLM gateway, it indicates that the backend vLLM container (e.g., `nemotron`) has not yet finished loading its model weights into VRAM and has not bound to its port (e.g., `8001+`).
 
 - **Massive Models (120B+):** Models like `NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4` can take **7+ minutes** to compile kernels and load weights on a GB10 GPU.
 - **Resolution:** Run `docker logs <container_name> -f` and wait for the `Application startup complete` message before interacting with the gateway.
