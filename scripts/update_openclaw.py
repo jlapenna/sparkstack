@@ -232,7 +232,7 @@ class OpenClawUpdater:
         if (self.settings.project_root / "docker-compose.sandbox.yml").exists():
             cmd.extend(["-f", str(self.settings.project_root / "docker-compose.sandbox.yml")])
 
-        cmd.extend(["up", "-d", "--build", "openclaw-gateway"])
+        cmd.extend(["up", "-d", "--build", "--force-recreate", "openclaw-gateway"])
 
         await async_run_command(
             cmd, cwd=self.settings.openclaw_dir, env=env, stream_output=self.verbose
