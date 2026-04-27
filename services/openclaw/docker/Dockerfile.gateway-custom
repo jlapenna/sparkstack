@@ -123,7 +123,7 @@ USER node
 
 # Setup OpenTelemetry preloading
 RUN npm install @opentelemetry/auto-instrumentations-node @opentelemetry/core @opentelemetry/exporter-trace-otlp-proto @opentelemetry/sdk-node @opentelemetry/semantic-conventions @opentelemetry/resources
-COPY --chown=node:node otel-preload.mjs /app/otel-preload.mjs
-ENV NODE_OPTIONS="--import /app/otel-preload.mjs"
+COPY --chown=node:node otel-preload.cjs /app/otel-preload.cjs
+ENV NODE_OPTIONS="--require /app/otel-preload.cjs"
 ENV OTEL_EXPORTER_OTLP_ENDPOINT="http://alloy:4318"
 ENV OTEL_SERVICE_NAME="openclaw-gateway"

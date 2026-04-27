@@ -75,7 +75,7 @@ UPDATES = {
     "grafana/alloy": lambda: f"grafana/alloy:{get_latest_github_release('grafana/alloy')}",
 }
 
-COMPOSE_FILE = "monitoring/docker-compose.yml"
+COMPOSE_FILE = "services/monitoring/docker-compose.yml"
 if not os.path.exists(COMPOSE_FILE):
     print(f"❌ Error: {COMPOSE_FILE} not found.")
     exit(1)
@@ -113,6 +113,6 @@ if changes > 0 or "quay.io" in content:
     with open(COMPOSE_FILE, "w") as f:
         f.write(content)
     print(f"\n🎉 Updated dependencies and registries in {COMPOSE_FILE}.")
-    print("👉 Run 'cd monitoring && docker compose up -d' to apply the updates.")
+    print("👉 Run 'cd services/monitoring && docker compose up -d' to apply the updates.")
 else:
     print("\n✨ Everything is up to date! No updates needed.")
