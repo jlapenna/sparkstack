@@ -12,8 +12,8 @@ services:
     extra_hosts:
     - host.docker.internal:host-gateway
     volumes:
-    - ../current/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    - ../current/targets.json:/etc/prometheus/targets.json:ro
+    - ../../current/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    - ../../current/targets.json:/etc/prometheus/targets.json:ro
     - prometheus_data:/prometheus
     - /var/run/docker.sock:/var/run/docker.sock:ro
     command:
@@ -24,7 +24,7 @@ services:
     - --web.enable-otlp-receiver
     restart: unless-stopped
     env_file:
-    - ../.env
+    - ../../.env
     deploy:
       resources:
         limits:
@@ -110,7 +110,7 @@ services:
     - proxy-tier
     restart: unless-stopped
     env_file:
-    - ../.env
+    - ../../.env
     depends_on:
     - prometheus
     deploy:
@@ -120,7 +120,7 @@ services:
 
   vllm-progress-manager:
     build:
-      context: ..
+      context: ../..
       dockerfile: services/monitoring/vllm-progress/docker/Dockerfile.vllm-progress
     container_name: vllm-progress-manager
     extra_hosts:

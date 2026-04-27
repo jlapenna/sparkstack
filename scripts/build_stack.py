@@ -328,6 +328,7 @@ class StackBuilder:
                         "llama3_json",
                         "pythonic",
                         "internlm2",
+                        "gemma4",
                     ]
                     parser_match = re.search(r"--tool-call-parser\s+(\w+)", command_str)
                     if parser_match:

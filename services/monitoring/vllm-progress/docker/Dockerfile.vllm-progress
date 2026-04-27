@@ -25,6 +25,6 @@ ENV UV_COMPILE_BYTECODE=1
 RUN uv pip install --system loguru aiohttp
 
 # Copy source
-COPY model_progress_manager.py .
+COPY services/monitoring/model_progress_manager.py .
 
 CMD ["python3", "model_progress_manager.py"]

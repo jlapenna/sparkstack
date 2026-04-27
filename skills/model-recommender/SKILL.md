@@ -36,7 +36,7 @@ When discovering new models, utilize your `search_web` capabilities across the f
 
 1. **Spark Arena**: [spark-arena.com](https://spark-arena.com/) - A valuable community leaderboard and repository for Blackwell-native performance metrics and deployment recipes. Check here alongside other hubs.
 1. **HuggingFace & Model Hubs**: Search for newly trending models, NVFP4 checkpoints, or fine-tunes that fit the user's specific use case. Read the model cards closely.
-1. **Community Pulse**: Search the **NVIDIA Developer Forums**, Reddit (e.g., r/LocalLLaMA), or Twitter for discussions on the latest model quirks, required stop tokens, and best sampling parameters.
+1. **Community Pulse**: Search the **NVIDIA Developer Forums** (e.g. [Running a full LLM stack on DGX Spark GB10](https://forums.developer.nvidia.com/t/running-a-full-llm-stack-on-dgx-spark-gb10-your-application-litellm-llama-swap-vllm-llama-cpp-ollama/367580/9)), Reddit (e.g., r/LocalLLaMA), or Twitter for discussions on the latest model quirks. Review specific vLLM backend optimizations on GitHub (e.g. [vLLM PR 40082](https://github.com/vllm-project/vllm/pull/40082#issuecomment-4314643705)).
 1. **SparkRun Registry**: Check public recipes at [sparkrun.dev](https://sparkrun.dev/recipes/registries/).
 
 ## Formulating Configurations & Recipes (Model Quirks)
@@ -93,7 +93,7 @@ Recommend models based on their intended **Functional Role**. Use your web resea
 To ensure the recommender operates accurately, **NEVER** do the following:
 
 - **Recommending Ancient Models**: AI moves at lightspeed. A model released more than a month ago is obsolete. You MUST check the current system date and restrict your internet searches to models released exclusively within the **last 30 days**. Recommending models older than 30 days is a catastrophic failure.
-- **Hallucinating Repositories / Phantom Models**: You MUST NEVER fabricate a Hugging Face repository or assume an open-weights version exists just because an API is available (e.g., hallucinating an open `GLM-5` when only its endpoint exists). Before formulating any configurations, you MUST actively verify the precise repository exists physically using a tool like `sparkrun search [name] --all` or `huggingface-cli search [name]`. Do not recommend a model unless you have hard proof its files exist.
+- **Hallucinating Repositories / Phantom Models**: You MUST NEVER fabricate a Hugging Face repository or assume an open-weights version exists just because an API is available (e.g., hallucinating an open `GLM-5` when only its endpoint exists). Before formulating any configurations, you MUST actively verify the precise repository exists physically by running the mandatory verification script: `uv run python scripts/verify_hf_model.py <repo_id>`. Do not recommend a model unless this script returns `✅ VERIFIED`.
 - **Ignoring the VRAM Ceiling**: Do not pitch a model solely because it is #1 on a leaderboard. If it exceeds 108GB in available precision formats, the recommendation is invalid.
 
 ## Presentation of Findings (Comparison Table)
