@@ -27,7 +27,7 @@ async def test_tool_calling_verification(ctx: E2EContext):
         "agent",
         "--agent",
         "jclaw",
-        "--session-id",
+        "--to",
         session_id,
         "--message",
         prompt,

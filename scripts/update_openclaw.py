@@ -189,7 +189,7 @@ class OpenClawUpdater:
                 "Dockerfile.sandbox-custom",
                 ".",
             ],
-            cwd=self.settings.project_root,
+            cwd=self.settings.project_root / "services/openclaw/docker",
             stream_output=self.verbose,
         )
 
@@ -206,7 +206,7 @@ class OpenClawUpdater:
                 "Dockerfile.gateway-custom",
                 ".",
             ],
-            cwd=self.settings.project_root,
+            cwd=self.settings.project_root / "services/openclaw/docker",
             stream_output=self.verbose,
         )
 

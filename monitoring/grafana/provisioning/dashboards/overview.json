@@ -102,11 +102,7 @@
             "lastNotNull"
           ]
         },
-        "textMode": "value_and_name",
-        "text": {
-          "titleSize": 14,
-          "valueSize": 36
-        }
+        "textMode": "auto"
       },
       "targets": [
         {
@@ -173,11 +169,7 @@
             "lastNotNull"
           ]
         },
-        "textMode": "value_and_name",
-        "text": {
-          "titleSize": 14,
-          "valueSize": 36
-        }
+        "textMode": "auto"
       },
       "targets": [
         {
@@ -244,11 +236,7 @@
             "lastNotNull"
           ]
         },
-        "textMode": "value_and_name",
-        "text": {
-          "titleSize": 14,
-          "valueSize": 36
-        }
+        "textMode": "auto"
       },
       "targets": [
         {
@@ -312,7 +300,8 @@
           "placement": "right",
           "calcs": [
             "lastNotNull"
-          ]
+          ],
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -386,11 +375,7 @@
             "lastNotNull"
           ]
         },
-        "textMode": "value_and_name",
-        "text": {
-          "titleSize": 14,
-          "valueSize": 36
-        }
+        "textMode": "auto"
       },
       "targets": [
         {
@@ -456,8 +441,8 @@
           "id": 1001,
           "options": {
             "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto",
+            "graphMode": "area",
+            "justifyMode": "center",
             "orientation": "auto",
             "reduceOptions": {
               "calcs": [
@@ -549,7 +534,8 @@
               "placement": "right",
               "calcs": [
                 "lastNotNull"
-              ]
+              ],
+              "showLegend": true
             },
             "tooltip": {
               "mode": "multi",
@@ -1154,19 +1140,16 @@
         }
       ],
       "options": {
-        "textMode": "value_and_name",
-        "text": {
-          "titleSize": 14,
-          "valueSize": 36
-        },
-        "justifyMode": "auto",
+        "textMode": "auto",
+        "justifyMode": "center",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
           "values": false
-        }
+        },
+        "graphMode": "area"
       },
       "fieldConfig": {
         "defaults": {

@@ -2,11 +2,11 @@ litellm_settings:
   drop_params: True
   pass_through_stream_options: True
   pass_through_headers: ["traceparent", "tracestate"]
-  set_verbose: False
-  telemetry: False
+  forward_traceparent_to_llm_provider: True
+  telemetry: True
   callbacks: ["prometheus", "otel"]
   guardrails: []
-  master_key: "${VLLM_SPARK_API_KEY:-}"
+  master_key: "${LITELLM_MASTER_KEY:-}"
   request_timeout: 1200
   num_retries: 3
   retry_policy:
@@ -23,3 +23,9 @@ general_settings:
 router_settings:
   routing_strategy: simple-shuffle
   enable_pre_call_checks: True
+
+model_list:
+  - model_name: main
+    litellm_params:
+      model: openai/main
+      api_base: http://host.docker.internal:8001/v1

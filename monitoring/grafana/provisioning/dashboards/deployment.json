@@ -17,6 +17,13 @@
         "y": 0,
         "w": 24,
         "h": 1
+      },
+      "options": {
+        "legend": {
+          "placement": "right",
+          "displayMode": "list",
+          "showLegend": true
+        }
       }
     },
     {
@@ -43,7 +50,7 @@
       "options": {
         "colorMode": "value",
         "graphMode": "area",
-        "justifyMode": "auto",
+        "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
@@ -52,7 +59,12 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "textMode": "auto",
+        "legend": {
+          "placement": "right",
+          "displayMode": "list",
+          "showLegend": true
+        }
       },
       "fieldConfig": {
         "defaults": {
@@ -91,7 +103,7 @@
       "options": {
         "colorMode": "value",
         "graphMode": "area",
-        "justifyMode": "auto",
+        "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
@@ -139,7 +151,7 @@
       "options": {
         "colorMode": "value",
         "graphMode": "area",
-        "justifyMode": "auto",
+        "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
@@ -217,6 +229,11 @@
           ],
           "fields": "",
           "values": false
+        },
+        "legend": {
+          "placement": "right",
+          "displayMode": "list",
+          "showLegend": true
         }
       },
       "fieldConfig": {
@@ -341,8 +358,8 @@
       ],
       "options": {
         "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
+        "graphMode": "area",
+        "justifyMode": "center",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"

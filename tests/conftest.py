@@ -2,8 +2,12 @@ import shutil
 from pathlib import Path
 
 import pytest
+from dotenv import load_dotenv
 
 from tests.e2e.context import E2EContext
+
+# Automatically load environment variables from the project root .env file
+load_dotenv(Path(__file__).parent.parent / ".env")
 
 
 def pytest_addoption(parser):

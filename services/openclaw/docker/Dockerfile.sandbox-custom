@@ -6,15 +6,6 @@ FROM openclaw-sandbox:bookworm-slim
 
 # Tool & Package Versions
 ENV NVM_VERSION=v0.40.1
-ENV GOGCLI_VERSION=0.12.0
-ENV GOPLACES_VERSION=0.3.0
-ENV CAMSNAP_VERSION=0.2.0
-ENV BLOGWATCHER_VERSION=v0.0.2
-ENV MCPORTER_VERSION=0.8.1
-ENV SUMMARIZE_VERSION=0.13.0
-ENV WACLI_VERSION=latest
-ENV OPENAI_WHISPER_VERSION=20250625
-ENV NANO_PDF_VERSION=0.2.1
 
 # Switch to root to install system-wide dependencies
 USER root
@@ -93,13 +84,21 @@ RUN mkdir -p /home/sandbox/.config \
 # Install bun via multi-stage copy
 COPY --from=oven/bun:1 /usr/local/bin/bun /usr/local/bin/bun
 
+# Copy manifest files for tools
+COPY package.json build-versions.json /tmp/
+
 # Install mcporter and summarize globally via npm
-RUN npm install -g mcporter@${MCPORTER_VERSION} @steipete/summarize@${SUMMARIZE_VERSION} && \
+RUN MCPORTER_VERSION=$(jq -r '.dependencies["mcporter"]' /tmp/package.json) && \
+    SUMMARIZE_VERSION=$(jq -r '.dependencies["@steipete/summarize"]' /tmp/package.json) && \
+    npm install -g mcporter@${MCPORTER_VERSION} @steipete/summarize@${SUMMARIZE_VERSION} && \
     npm cache clean --force
 
 # Install explicit versions of external go-based utilities
 
 RUN set -ex; \
+    GOGCLI_VERSION=$(jq -r '.gogcli' /tmp/build-versions.json); \
+    GOPLACES_VERSION=$(jq -r '.goplaces' /tmp/build-versions.json); \
+    CAMSNAP_VERSION=$(jq -r '.camsnap' /tmp/build-versions.json); \
     ARCH=$(uname -m); \
     if [ "$ARCH" = "x86_64" ]; then ASSET_ARCH="amd64"; \
     elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then ASSET_ARCH="arm64"; \
@@ -110,13 +109,19 @@ RUN set -ex; \
     chmod +x /usr/local/bin/gog /usr/local/bin/goplaces /usr/local/bin/camsnap
 
 # Install Go tools (blogwatcher, wacli)
-RUN GOBIN=/usr/local/bin /usr/local/go/bin/go install github.com/Hyaxia/blogwatcher/cmd/blogwatcher@${BLOGWATCHER_VERSION} && \
+RUN set -ex; \
+    BLOGWATCHER_VERSION=$(jq -r '.blogwatcher' /tmp/build-versions.json); \
+    WACLI_VERSION=$(jq -r '.wacli' /tmp/build-versions.json); \
+    GOBIN=/usr/local/bin /usr/local/go/bin/go install github.com/Hyaxia/blogwatcher/cmd/blogwatcher@${BLOGWATCHER_VERSION} && \
     GOBIN=/usr/local/bin /usr/local/go/bin/go install github.com/steipete/wacli/cmd/wacli@${WACLI_VERSION} && \
     rm -rf /root/.cache/go-build /root/go
 
 
 # Install Python CLI tools globally using uv tool without permanently polluting sandbox env
-RUN UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin uv tool install openai-whisper==${OPENAI_WHISPER_VERSION} --with torch && \
+RUN set -ex; \
+    OPENAI_WHISPER_VERSION=$(jq -r '."openai-whisper"' /tmp/build-versions.json); \
+    NANO_PDF_VERSION=$(jq -r '."nano-pdf"' /tmp/build-versions.json); \
+    UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin uv tool install openai-whisper==${OPENAI_WHISPER_VERSION} --with torch && \
     UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin uv tool install nano-pdf==${NANO_PDF_VERSION} && \
     uv cache clean && \
     chown -R sandbox:sandbox /opt/uv-tools

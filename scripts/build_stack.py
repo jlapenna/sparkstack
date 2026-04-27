@@ -41,6 +41,8 @@ BACKEND_START_PORT = int(os.getenv("BACKEND_START_PORT", 8001))
 VLLM_ENV: dict[str, str] = {
     # Tracing
     "VLLM_OTEL_TRACING_ENABLED": "1",
+    "OTEL_EXPORTER_OTLP_ENDPOINT": "http://alloy:4318/v1/traces",
+    "OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf",
 }
 
 # NVIDIA Blackwell mandatory environment variables for vLLM
@@ -322,6 +324,7 @@ class StackBuilder:
                         "mistral",
                         "qwen",
                         "qwen3_coder",
+                        "qwen3_xml",
                         "llama3_json",
                         "pythonic",
                         "internlm2",
@@ -358,7 +361,8 @@ class StackBuilder:
                         "gpu_memory_utilization" not in vllm_cfg
                         and "gpu_memory_utilization" not in overrides
                     ):
-                        util = min(0.95, model_config.vram_usage)
+                        # Ensure a floor of 0.8 for Blackwell efficiency
+                        util = max(0.8, min(0.95, model_config.vram_usage))
                         vllm_cfg["gpu_memory_utilization"] = str(util)
                         logger.info(
                             f"Dynamically scaled gpu_memory_utilization to {util} for {recipe_name}"
@@ -389,8 +393,13 @@ class StackBuilder:
                     if "OTEL_SERVICE_NAME" not in recipe_dict.get("env", {}):
                         backend["env"]["OTEL_SERVICE_NAME"] = f"vllm-{target_role}"
 
+                    # Standardize on OTLP/HTTP for reliability
+                    backend["env"]["OTEL_TRACES_EXPORTER"] = "otlp"
+                    backend["env"]["OTEL_EXPORTER_OTLP_PROTOCOL"] = "http/protobuf"
+                    backend["env"]["OTEL_EXPORTER_OTLP_TRACES_PROTOCOL"] = "http/protobuf"
+
                     if "otlp_traces_endpoint" not in recipe_dict.get("defaults", {}):
-                        backend["overrides"]["otlp_traces_endpoint"] = "http://alloy:4317"
+                        backend["overrides"]["otlp_traces_endpoint"] = "http://alloy:4318/v1/traces"
 
                     if "tensor_parallel_size" not in vllm_cfg and "tensor_parallel" not in vllm_cfg:
                         backend["overrides"]["tensor_parallel"] = "1"
@@ -427,7 +436,12 @@ class StackBuilder:
                     if "reasoning_parser" in vllm_cfg or "--reasoning-parser" in recipe_dict.get(
                         "command", ""
                     ):
-                        model_info["reasoning"] = True
+                        # NOTE: reasoning stays False for OpenClaw model config because
+                        # OpenClaw rejects responses where content is empty (payloads=0).
+                        # Reasoning models put output in reasoning_content, leaving content null.
+                        # The LiteLLM merge_reasoning_content_in_choices setting handles this
+                        # transparently. supports_reasoning is set for LiteLLM model_info only.
+                        model_info["supports_reasoning"] = True
                     if "--tool-call-parser" in recipe_dict.get("command", ""):
                         model_info["supports_function_calling"] = True
 

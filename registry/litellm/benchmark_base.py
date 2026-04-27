@@ -92,7 +92,7 @@ async def run_latency_benchmark(
         return
 
     loop = asyncio.get_running_loop()
-    api_key = os.environ.get("VLLM_SPARK_API_KEY", "")
+    api_key = os.environ.get("LITELLM_MASTER_KEY", "")
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
     data = json.dumps(payload).encode("utf-8")
     url = f"http://localhost:4000{endpoint}"

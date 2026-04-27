@@ -11,6 +11,11 @@
       "automergeType": "branch"
     }
   ],
+  "ignorePaths": [
+    "openclaw/**",
+    "sparkrun/**",
+    "spark-stack-registry/**"
+  ],
   "customManagers": [
     {
       "customType": "regex",
@@ -19,6 +24,62 @@
         "# renovate: datasource=(?<datasource>[^\\s]+) depName=(?<depName>[^\\s]+)\\n\\s*- [A-Z_]+_VERSION=(?<currentValue>.*?)\\n"
       ],
       "extractVersionTemplate": "^v?(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["^services/openclaw/docker/build-versions\\.json$"],
+      "matchStrings": ["\"gogcli\":\\s*\"v?(?<currentValue>[^\"]+)\""],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "steipete/gogcli"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["^services/openclaw/docker/build-versions\\.json$"],
+      "matchStrings": ["\"goplaces\":\\s*\"v?(?<currentValue>[^\"]+)\""],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "steipete/goplaces"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["^services/openclaw/docker/build-versions\\.json$"],
+      "matchStrings": ["\"camsnap\":\\s*\"v?(?<currentValue>[^\"]+)\""],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "steipete/camsnap"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["^services/openclaw/docker/build-versions\\.json$"],
+      "matchStrings": ["\"opencode\":\\s*\"v?(?<currentValue>[^\"]+)\""],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "anomalyco/opencode"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["^services/openclaw/docker/build-versions\\.json$"],
+      "matchStrings": ["\"blogwatcher\":\\s*\"v?(?<currentValue>[^\"]+)\""],
+      "datasourceTemplate": "go",
+      "depNameTemplate": "github.com/Hyaxia/blogwatcher"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["^services/openclaw/docker/build-versions\\.json$"],
+      "matchStrings": ["\"wacli\":\\s*\"v?(?<currentValue>[^\"]+)\""],
+      "datasourceTemplate": "go",
+      "depNameTemplate": "github.com/steipete/wacli"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["^services/openclaw/docker/build-versions\\.json$"],
+      "matchStrings": ["\"openai-whisper\":\\s*\"v?(?<currentValue>[^\"]+)\""],
+      "datasourceTemplate": "pypi",
+      "depNameTemplate": "openai-whisper"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": ["^services/openclaw/docker/build-versions\\.json$"],
+      "matchStrings": ["\"nano-pdf\":\\s*\"v?(?<currentValue>[^\"]+)\""],
+      "datasourceTemplate": "pypi",
+      "depNameTemplate": "nano-pdf"
     }
   ]
 }

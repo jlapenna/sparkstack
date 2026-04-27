@@ -18,6 +18,7 @@ __pycache__/
 .idea/
 *.swp
 *.swo
+.worktrees/
 
 # Node
 node_modules/
@@ -54,10 +55,11 @@ build/
 ehthumbs.db
 Thumbs.db
 
-# Project Specific (from original)
-blobs/
-**/hub/.locks/
-/.worktrees/
-
 # Logs
 *.log
+
+scratch/
+tmp/
+
+.gemini/
+gha-creds-*.json

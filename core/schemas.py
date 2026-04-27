@@ -38,6 +38,7 @@ class OpenClawModel(BaseSchema):
     max_tokens: int = 32768
     input: list[Literal["text", "image"]] = Field(default_factory=lambda: ["text"])
     reasoning: bool | None = None
+    api: str = "openai-completions"
     compat: OpenClawModelCompat | None = None
 
 
@@ -91,13 +92,16 @@ class LiteLLMModelInfo(BaseModel):
     base_model: str | None = None
     context_window: int = 32768
     max_tokens: int = 32768
+    mode: str | None = None
+    supports_function_calling: bool | None = None
+    supports_reasoning: bool | None = None
     input: list[str] = Field(default_factory=lambda: ["text"])
 
 
 class LiteLLMParams(BaseModel):
     model: str
     api_base: str
-    api_key: str = "${VLLM_SPARK_API_KEY:-}"
+    api_key: str = "${LITELLM_MASTER_KEY:-}"
     role_map: dict[str, str] | None = None
     encoding_format: str | None = None
     temperature: float | None = None

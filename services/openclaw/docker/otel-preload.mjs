@@ -1,13 +1,24 @@
-import { NodeSDK } from "@opentelemetry/sdk-node";
-import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
-import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
-import { Resource } from "@opentelemetry/resources";
-import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
-import {
+import pkgNodeSDK from "@opentelemetry/sdk-node";
+const { NodeSDK } = pkgNodeSDK;
+
+import pkgAutoInst from "@opentelemetry/auto-instrumentations-node";
+const { getNodeAutoInstrumentations } = pkgAutoInst;
+
+import pkgOTLP from "@opentelemetry/exporter-trace-otlp-proto";
+const { OTLPTraceExporter } = pkgOTLP;
+
+import pkgResources from "@opentelemetry/resources";
+const { Resource } = pkgResources;
+
+import pkgSemantic from "@opentelemetry/semantic-conventions";
+const { ATTR_SERVICE_NAME } = pkgSemantic;
+
+import pkgCore from "@opentelemetry/core";
+const {
   CompositePropagator,
   W3CBaggagePropagator,
   W3CTraceContextPropagator,
-} from "@opentelemetry/core";
+} = pkgCore;
 
 const sdk = new NodeSDK({
   resource: new Resource({
@@ -22,7 +33,7 @@ const sdk = new NodeSDK({
       ? (process.env.OTEL_EXPORTER_OTLP_ENDPOINT.endsWith("/v1/traces") 
           ? process.env.OTEL_EXPORTER_OTLP_ENDPOINT 
           : `${process.env.OTEL_EXPORTER_OTLP_ENDPOINT}/v1/traces`)
-      : "http://alloy:4318/v1/traces",
+      : "http://otel-collector:4318/v1/traces",
   }),
 });
 

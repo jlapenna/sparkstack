@@ -1,0 +1,10 @@
+{
+  "gogcli": "0.13.0",
+  "goplaces": "0.3.0",
+  "camsnap": "0.2.0",
+  "blogwatcher": "v0.0.2",
+  "wacli": "v0.6.0",
+  "openai-whisper": "20250625",
+  "nano-pdf": "0.2.1",
+  "opencode": "v1.14.26"
+}

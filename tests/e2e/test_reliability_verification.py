@@ -16,9 +16,9 @@ async def test_reliability_verification(ctx: E2EContext):
     minutes = ctx.soak_minutes
     print(f"Beginning {minutes}-minute soak. Polling every 15s...")
     load_dotenv(ctx.root_dir / ".env")
-    api_key = os.getenv("VLLM_SPARK_API_KEY", "")
+    api_key = os.getenv("LITELLM_MASTER_KEY", "")
     if not api_key:
-        print("❌ VLLM_SPARK_API_KEY not found in .env")
+        print("❌ LITELLM_MASTER_KEY not found in .env")
         raise AssertionError()
 
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}

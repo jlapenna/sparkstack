@@ -229,7 +229,12 @@
         },
         "showThresholdLabels": false,
         "showThresholdMarkers": true,
-        "sizing": "auto"
+        "sizing": "auto",
+        "legend": {
+          "placement": "right",
+          "displayMode": "list",
+          "showLegend": true
+        }
       },
       "pluginVersion": "12.3.0",
       "targets": [
@@ -545,8 +550,8 @@
             "mean",
             "max"
           ],
-          "displayMode": "table",
-          "placement": "bottom",
+          "displayMode": "list",
+          "placement": "right",
           "showLegend": true
         },
         "tooltip": {
@@ -1140,7 +1145,10 @@
           "le": 1e-09
         },
         "legend": {
-          "show": true
+          "show": true,
+          "placement": "right",
+          "displayMode": "list",
+          "showLegend": true
         },
         "rowsFrame": {
           "layout": "auto",
@@ -1243,7 +1251,7 @@
         "legend": {
           "calcs": [],
           "displayMode": "list",
-          "placement": "bottom",
+          "placement": "right",
           "showLegend": true
         },
         "tooltip": {
@@ -2052,7 +2060,7 @@
   "timepicker": {},
   "timezone": "",
   "title": "vLLM",
-  "uid": "vllm-master-v2",
+  "uid": "vllm",
   "version": 1,
   "gnetId": 24756
 }

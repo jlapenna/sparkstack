@@ -12,7 +12,11 @@ services:
   openclaw-gateway:
     image: openclaw-gateway-custom:latest
 
-    # Inject secrets (TELEGRAM_BOT_TOKEN, VLLM_SPARK_API_KEY, etc.)
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4318
+      - OTEL_SERVICE_NAME=openclaw-gateway
+
+    # Inject secrets (TELEGRAM_BOT_TOKEN, LITELLM_MASTER_KEY, etc.)
     # from the user's state directory, not the repo .env.
     env_file:
       - ${OPENCLAW_CONFIG_DIR}/.env

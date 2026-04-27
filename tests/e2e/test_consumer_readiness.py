@@ -20,7 +20,7 @@ async def test_consumer_readiness(ctx: E2EContext):
         "agent",
         "--agent",
         "jclaw",
-        "--session-id",
+        "--to",
         session_id,
         "--message",
         f"Please repeat exactly this unique string back to me: {unique_token}",

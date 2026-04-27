@@ -40,14 +40,19 @@ async def sync_registry(
     provider_dict["apiKey"] = {
         "source": "env",
         "provider": "default",
-        "id": "VLLM_SPARK_API_KEY",
+        "id": "LITELLM_MASTER_KEY",
     }
     global_max_reserve = 8192
     # Calculate output buffer sizes (maxTokens) based on the model's actual capacity
     for model in provider_dict.get("models", []):
-        ctx_window = model.get("contextWindow", 8192)
-        # Allocate 25% of context window for generation, bounded between 2k and 8k tokens
-        calc_max = min(8192, max(2048, ctx_window // 4))
+        # Prefer the value from models.json if it's already a sensible override
+        if model.get("maxTokens") and model["maxTokens"] > 8192:
+            calc_max = model["maxTokens"]
+        else:
+            ctx_window = model.get("contextWindow", 32768)
+            # Allocate 25% of context window for generation, bounded between 2k and 16k tokens
+            calc_max = min(16384, max(2048, ctx_window // 4))
+        
         model["maxTokens"] = calc_max
         global_max_reserve = max(global_max_reserve, calc_max)
 
@@ -57,17 +62,13 @@ async def sync_registry(
     agents = config.setdefault("agents", {})
     defaults = agents.setdefault("defaults", {})
 
-    # Sync compaction reserve limit across all of OpenClaw so prompts are always truncated
-    # enough to not overlap with the largest model's max generation limit (preventing vLLM errors)
-    # Plus, add a safety buffer of 8192 tokens to account for tokenizer divergence
-    # between OpenClaw's token counting and Gemma-4's actual tokenizer lengths.
+    # Sync compaction reserve limit
     compaction = defaults.setdefault("compaction", {})
     compaction["reserveTokens"] = global_max_reserve + 8192
 
     agent_models = defaults.setdefault("models", {})
     for m in provider_model.models:
         m_id = f"spark/{m.id}"
-
         if m_id not in agent_models:
             agent_models[m_id] = {}
 
