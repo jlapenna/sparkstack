@@ -224,13 +224,13 @@ class OpenClawUpdater:
         env = self._get_compose_env()
 
         cmd = ["docker", "compose", "-f", "docker-compose.yml"]
-        override_yml = self.settings.project_root / "docker-compose.override.yml"
+        override_yml = self.settings.project_root / "services" / "openclaw" / "docker" / "docker-compose.override.yml"
         if override_yml.exists():
             cmd.extend(["-f", str(override_yml)])
-        if (self.settings.project_root / "docker-compose.extra.yml").exists():
-            cmd.extend(["-f", str(self.settings.project_root / "docker-compose.extra.yml")])
-        if (self.settings.project_root / "docker-compose.sandbox.yml").exists():
-            cmd.extend(["-f", str(self.settings.project_root / "docker-compose.sandbox.yml")])
+        if (self.settings.project_root / "services" / "openclaw" / "docker" / "docker-compose.extra.yml").exists():
+            cmd.extend(["-f", str(self.settings.project_root / "services" / "openclaw" / "docker" / "docker-compose.extra.yml")])
+        if (self.settings.project_root / "services" / "openclaw" / "docker" / "docker-compose.sandbox.yml").exists():
+            cmd.extend(["-f", str(self.settings.project_root / "services" / "openclaw" / "docker" / "docker-compose.sandbox.yml")])
 
         cmd.extend(["up", "-d", "--build", "--force-recreate", "openclaw-gateway"])
 

@@ -121,7 +121,7 @@ services:
   vllm-progress-manager:
     build:
       context: ..
-      dockerfile: Dockerfile.vllm-progress
+      dockerfile: services/monitoring/vllm-progress/docker/Dockerfile.vllm-progress
     container_name: vllm-progress-manager
     extra_hosts:
     - host.docker.internal:host-gateway
