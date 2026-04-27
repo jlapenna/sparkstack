@@ -478,8 +478,8 @@ This eliminates the Docker hairpin NAT issue entirely. Both containers are on pr
 ### 2026-04-19T19:55 — Cloudflare Tunnel Crash vs Missing Environment
 
 - **Scenario**: The `cloudflared` container was stuck in a `Restarting (255)` loop. Logs reported: `"cloudflared tunnel run" requires the ID or name of the tunnel to run as the last command line argument or in the configuration file.`
-- **Hypothesis**: The container was started without the `CLOUDFLARE_TUNNEL_TOKEN` environment variable, likely due to running `docker compose` in the `cloudflare/` directory without specifying the root `.env` file where the token is defined.
-- **Action**: Restarted the container using the helper script `cloudflare/tunnel.sh up -d --force-recreate`, which explicitly passes the parent `.env` file to the docker compose command.
+- **Hypothesis**: The container was started without the `CLOUDFLARE_TUNNEL_TOKEN` environment variable, likely due to running `docker compose` in the `services/cloudflare/` directory without specifying the root `.env` file where the token is defined.
+- **Action**: Restarted the container using the helper script `services/cloudflare/tunnel.sh up -d --force-recreate`, which explicitly passes the parent `.env` file to the docker compose command.
 - **Result**: **Successful.** The container successfully received the token, authenticated with Cloudflare, and established the tunnel connections.
 
 **Learnings:**
@@ -492,7 +492,7 @@ This eliminates the Docker hairpin NAT issue entirely. Both containers are on pr
 
 - **Scenario**: Traces were not appearing in Grafana. OpenClaw logs showed OTel was enabled, but Tempo reported 0 spans received.
 - **Hypothesis**: Tempo's OTLP receivers were binding to `localhost` inside the container, making them unreachable from the `openclaw-gateway` container even though they shared the `proxy-tier` network.
-- **Action**: Modified `monitoring/tempo.yaml` to explicitly bind OTLP HTTP and gRPC receivers to `0.0.0.0`.
+- **Action**: Modified `services/monitoring/tempo.yaml` to explicitly bind OTLP HTTP and gRPC receivers to `0.0.0.0`.
 - **Result**: **Successful**. Connectivity verified via `curl` from the gateway, and `spans_received_total` metrics began incrementing. Traces are now visible in Grafana.
 
 **Learnings:**
@@ -504,8 +504,8 @@ This eliminates the Docker hairpin NAT issue entirely. Both containers are on pr
 ### 2026-04-20T04:15 — Tempo Trace Disappearance via 1h Retention
 
 - **Scenario**: Traces were visible in Tempo initially but disappeared within an hour, making it difficult to debug intermittent agent failures.
-- **Hypothesis**: The default `block_retention` in `monitoring/tempo.yaml` was set to `1h`, which is too aggressive for human debugging workflows.
-- **Action**: Increased `block_retention` to `24h` in `monitoring/tempo.yaml`.
+- **Hypothesis**: The default `block_retention` in `services/monitoring/tempo.yaml` was set to `1h`, which is too aggressive for human debugging workflows.
+- **Action**: Increased `block_retention` to `24h` in `services/monitoring/tempo.yaml`.
 - **Result**: **Successful**. Traces now persist for a full day, allowing for retrospective analysis of agent behavior.
 
 **Learnings:**
@@ -601,7 +601,7 @@ ______________________________________________________________________
 - **Scenario**: OpenClaw agents consistently failed with "⚠️ Agent couldn't generate a response" and logs showed `incomplete turn detected... stopReason=stop payloads=0`. Direct LiteLLM API calls returned `content: null` with all output in `reasoning_content`.
 - **Hypothesis**: When `reasoning: true` is set in `openclaw.json`, OpenClaw sends requests in reasoning mode. The vLLM backend (Cascade-2 with `nemotron_v3` reasoning parser) separates thinking from the answer into `reasoning_content` and `content` fields. When the model's internal reasoning consumes all tokens or the model finishes reasoning without producing a final answer, `content` remains `null`. OpenClaw's payload validator requires at least one non-empty text payload and rejects the response.
 - **Action**:
-  1. Added `merge_reasoning_content_in_choices: true` to `registry/litellm/litellm-settings.yaml` so LiteLLM merges reasoning into content as a fallback.
+  1. Added `merge_reasoning_content_in_choices: true` to `services/litellm/litellm-settings.yaml` so LiteLLM merges reasoning into content as a fallback.
   2. Patched `~/.openclaw/openclaw.json` to set `reasoning: false` and remove `thinkingFormat` for the main model.
   3. Updated `scripts/build_stack.py` to **never** set `model_info["reasoning"] = True` for the OpenClaw model config, even when a reasoning parser is detected. `supports_reasoning` is still set in the LiteLLM model_info.
 - **Result**: **Successful**. The model now returns non-empty `content` in all responses. Tool calling test passes. Consumer readiness test returns content (no more payloads=0).

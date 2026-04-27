@@ -310,7 +310,7 @@ class VllmService(Service):
 
 class MonitoringService(Service):
     async def update(self) -> None:
-        mon_dir = self.settings.project_root / "monitoring"
+        mon_dir = self.settings.project_root / "services" / "monitoring"
 
         if self.settings.pull_latest:
             self.state.set_task("Pulling images", 20)

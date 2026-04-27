@@ -6,7 +6,7 @@ This structure contains the modular definitions for the AI service stack on the 
 
 The stack is composed using a "Model Registry" pattern:
 
-- **`registry/litellm/`**: Global settings for LiteLLM and base Docker Compose network/volumes.
+- **`services/litellm/`**: Global settings for LiteLLM and base Docker Compose network/volumes.
 - **`spark-stack-registry/sparkrun/`**: Individual YAML files for each model recipe (LLM or STT).
 - **`scripts/build_stack.py`**: Composes these modules into a functional stack under `spark-stack-registry/stacks/`.
 

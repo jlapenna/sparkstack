@@ -109,7 +109,7 @@ async def main():
 
     # Recreate Prometheus
     logger.info("🔄 Refreshing monitoring stack...")
-    monitor_compose = ROOT_DIR / "monitoring" / "docker-compose.yml"
+    monitor_compose = ROOT_DIR / "services" / "monitoring" / "docker-compose.yml"
     await async_run_command(
         ["docker", "compose", "-f", str(monitor_compose), "rm", "-fsv", "prometheus"], check=False
     )

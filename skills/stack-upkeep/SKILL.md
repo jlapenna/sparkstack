@@ -77,7 +77,7 @@ While Renovate handles automated PRs for dependencies, you will sometimes need t
   - The vLLM and SGLang ecosystems update their Grafana dashboards frequently (e.g., migrating from `vllm_` prefixes to `vllm:` OpenMetrics standard).
   - To update **vLLM**, fetch `performance_statistics.json` and `query_statistics.json` from `https://raw.githubusercontent.com/vllm-project/vllm/main/examples/observability/dashboards/grafana/`.
   - To update **SGLang**, fetch `sglang-dashboard.json` from `https://raw.githubusercontent.com/sgl-project/sglang/main/examples/monitoring/grafana/dashboards/json/sglang-dashboard.json`.
-  - ALWAYS validate the downloaded files are valid JSON (`python3 -c "import json; json.load(open('file.json'))"`) before overwriting `monitoring/grafana/provisioning/dashboards/`.
+  - ALWAYS validate the downloaded files are valid JSON (`python3 -c "import json; json.load(open('file.json'))"`) before overwriting `services/monitoring/grafana/provisioning/dashboards/`.
   - Restart the Grafana container (`docker restart grafana`) to force the provisioning engine to reload the templates, and monitor `docker logs grafana` for `provisioning.dashboard` errors to verify success.
 
 ### 4. Automatic Maintenance (Zombie Protocol)
