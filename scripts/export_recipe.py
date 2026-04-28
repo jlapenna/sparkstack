@@ -20,7 +20,7 @@ async def main():
     base_name = recipe.split("/")[-1]
 
     try:
-        result = await async_run_command(["uv", "run", "sparkrun", "export", "recipe", recipe])
+        result = await async_run_command([*SPARKRUN_CMD, "export", "recipe", recipe])
         content = result.stdout
     except CommandError as e:
         print(f"❌ Failed to export recipe {recipe}:\n{e.stderr}", file=sys.stderr)
@@ -43,4 +43,5 @@ async def main():
 
 
 if __name__ == "__main__":
+    asyncio.run(main())
     asyncio.run(main())

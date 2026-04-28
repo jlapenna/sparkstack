@@ -49,17 +49,14 @@ def parse_mem_usage(mem_str: str) -> float:
 async def get_vram_estimate(recipe: str) -> float:
     """Returns the estimated VRAM footprint in GB using sparkrun vram estimation."""
     try:
-        sparkrun_bin = ROOT_DIR / ".venv" / "bin" / "sparkrun"
-        if not sparkrun_bin.exists():
-            # If standard setup is bypassed, fallback to regular sparkrun
-            sparkrun_bin = "sparkrun"
+        sparkrun_cmd = SPARKRUN_CMD
 
         cmd_recipe = recipe
         local_recipe = ROOT_DIR / "spark-stack-registry" / "sparkrun" / f"{recipe}.yaml"
         if local_recipe.exists():
             cmd_recipe = str(local_recipe)
 
-        cmd = [str(sparkrun_bin), "recipe", "vram", cmd_recipe, "--json", "--tp", "1"]
+        cmd = [*sparkrun_cmd, "recipe", "vram", cmd_recipe, "--json", "--tp", "1"]
         result = await async_run_command(cmd, check=False)
         if result.returncode == 0 and result.stdout.strip():
             vram_data = json.loads(result.stdout)
@@ -168,6 +165,15 @@ async def check_compliance(log_output: bool = True) -> bool:
 
 async def main():
     if not await check_compliance(log_output=True):
+        sys.exit(1)
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    logger.remove()
+    logger.add(sys.stderr, format="<level>{message}</level>")
+    asyncio.run(main())
+iance(log_output=True):
         sys.exit(1)
     sys.exit(0)
 

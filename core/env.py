@@ -47,3 +47,19 @@ MAX_DOCKER_MEMORY_GB = float(os.getenv("MAX_DOCKER_MEMORY_GB", 120.0))
 
 # NVIDIA Blackwell Resource Constraints (Memory Law)
 MAX_VRAM_UTILIZATION = float(os.getenv("MAX_VRAM_UTILIZATION", 0.95))
+
+# --- Detached Service Locations ---
+
+# The 'sparkrun' command to execute. Defaults to searching in PATH.
+_sparkrun_bin = os.getenv("SPARKRUN_BIN", "uv run sparkrun")
+SPARKRUN_CMD = _sparkrun_bin.split()
+
+# The directory containing the sparkrun source (for updates).
+SPARKRUN_DIR = Path(
+    os.getenv("SPARKRUN_DIR") or str(PROJECT_ROOT.parent / "sparkrun")
+).absolute()
+
+# The directory containing the openclaw source (for updates).
+OPENCLAW_DIR = Path(
+    os.getenv("OPENCLAW_DIR") or str(PROJECT_ROOT.parent / "openclaw")
+).absolute()

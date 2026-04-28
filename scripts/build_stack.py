@@ -99,12 +99,12 @@ class ModelRegistry:
         target = str(recipe_path) if recipe_path else model_name
         try:
             result = await async_run_command(
-                ["uv", "run", "sparkrun", "recipe", "show", target, "--json"], check=True
+                [*SPARKRUN_CMD, "recipe", "show", target, "--json"], check=True
             )
             recipe_data = json.loads(result.stdout)
 
             vram_result = await async_run_command(
-                ["uv", "run", "sparkrun", "recipe", "vram", target, "--tp", "1", "--json"],
+                [*SPARKRUN_CMD, "recipe", "vram", target, "--tp", "1", "--json"],
                 check=False,
             )
             if vram_result.returncode == 0:
@@ -626,3 +626,4 @@ if __name__ == "__main__":
     parser.add_argument("--allow-no-embedding", action="store_true", help="Allow building a stack without an embedding model")
     args = parser.parse_args()
     asyncio.run(StackBuilder(args.stack_name, args.models, allow_no_embedding=args.allow_no_embedding).build())
+ing=args.allow_no_embedding).build())
