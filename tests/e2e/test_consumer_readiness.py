@@ -19,7 +19,7 @@ async def test_consumer_readiness(ctx: E2EContext):
         str(ctx.oc_bin),
         "agent",
         "--agent",
-        "jclaw",
+        "verifier",
         "--to",
         session_id,
         "--message",

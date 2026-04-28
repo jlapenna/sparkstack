@@ -25,7 +25,7 @@ async def test_outbound_network(ctx: E2EContext):
         str(ctx.oc_bin),
         "agent",
         "--agent",
-        "jclaw",
+        "verifier",
         "--session-id",
         session_id,
         "--message",

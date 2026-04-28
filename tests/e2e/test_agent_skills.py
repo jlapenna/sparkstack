@@ -43,7 +43,7 @@ async def test_agent_skills(ctx: E2EContext):
 
     # 2. Check Sandbox access directly
     # We attempt to run a command in the default sandbox that requires skill file access.
-    # Note: This assumes 'jclaw' or 'default' agent exists and is configured for sandboxing.
+    # Note: This assumes 'verifier' or 'default' agent exists and is configured for sandboxing.
     # Check if personal skills are mounted (requires DooD paradox fix verification)
     # We check the gateway container's mount to verify the path rewriting worked
     inspect_result = await async_run_command(

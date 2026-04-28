@@ -21,7 +21,7 @@ async def test_tracing(ctx: E2EContext):
             str(ctx.oc_bin) if ctx.oc_bin else "openclaw",
             "agent",
             "--agent",
-            "jclaw",
+            "verifier",
             "--message",
             "Tracing verification test. Please reply with OK.",
             stdout=asyncio.subprocess.PIPE,

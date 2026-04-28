@@ -26,7 +26,7 @@ async def test_tool_calling(ctx: E2EContext):
         str(ctx.oc_bin),
         "agent",
         "--agent",
-        "jclaw",
+        "verifier",
         "--to",
         session_id,
         "--message",
