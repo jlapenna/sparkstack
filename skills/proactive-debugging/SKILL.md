@@ -5,40 +5,51 @@ description: "Proactively hunt for systemic anomalies, hidden latency regression
 
 # Proactive Debugging
 
-Unlike reactive debugging (where you respond to an active incident or broken test), **Proactive Debugging** involves hunting for anomalies, unhandled edge cases, and performance regressions *before* they surface to the user. 
+Unlike reactive debugging (where you respond to an active incident or broken test), **Proactive Debugging** involves open-ended hunting for anomalies, unhandled edge cases, and regressions *before* they surface to the user.
 
-In the `spark-stack` environment, OpenTelemetry traces sent to Grafana Tempo are the primary vehicle for proactive discovery.
+In the `spark-stack` environment, OpenTelemetry traces sent to Grafana Tempo are a great vehicle for discovery. However, **do not limit yourself to only the patterns below.** Trust your intuition, craft your own queries, and investigate any suspicious metrics, logs, or traces you uncover.
 
 ## 1. When to Use This Skill
+
 - After a major infrastructure, model, or configuration upgrade.
 - When performing a system health audit.
-- During idle time to discover hidden inefficiencies in the LLM or Gateway routing paths.
+- During idle time to discover hidden inefficiencies or strange behaviors in the stack.
 - To validate that recently applied fixes haven't introduced silent downstream errors.
 
-## 2. Proactive Hunt Patterns
+## 2. Example Proactive Hunt Patterns
+
+These are *starting points* for your investigation. Feel free to write custom `jq` filters, check Docker logs, inspect SQLite files, or query other endpoints if you suspect other classes of anomalies.
 
 ### A. Hunting for Silent Errors
-Some services (like `litellm` or `vllm`) might experience localized errors (e.g., retries, malformed inputs) that are handled gracefully and don't crash the stack, but indicate a latent issue.
 
-**Query Tempo for any trace containing an error tag:**
+Some services might experience localized errors that are handled gracefully and don't crash the stack, but indicate a latent issue.
+
+**Query Tempo for traces containing an error tag:**
+
 ```bash
 curl -s "http://localhost:3200/api/search?limit=50&tags=error=true" | jq '.traces[] | {id: .traceID, start: .startTimeUnixNano, name: .rootTraceName}'
 ```
-*If you find traces here, use the `stack-debugging` skill to pull the full trace and identify the exact span and service throwing the error.*
+
+*If you find traces here, pull the full trace and identify the exact span and service throwing the error.*
 
 ### B. Hunting for Latency Regressions
-Identify requests taking unusually long, which may indicate SQLite locking, model loading thrashing, or network timeouts.
 
-**Query Tempo for traces taking longer than 15 seconds (15000ms):**
+Identify requests taking unusually long, which may indicate locking issues, thrashing, or network timeouts.
+
+**Query Tempo for traces taking longer than 15 seconds:**
+
 ```bash
 curl -s "http://localhost:3200/api/search?limit=50&minDuration=15000ms" | jq '.traces[] | {id: .traceID, duration: .durationMs, name: .rootTraceName}'
 ```
-*Look for outlier durations. If `vllm-main` takes 14s but the `openclaw-gateway` takes 30s, the delay is in the gateway's context building or session locking.*
+
+*Look for outlier durations and compare where the time is spent.*
 
 ### C. Hunting for Truncated Context
-Find traces where the LLM input messages are dangerously close to the OTel attribute limit, suggesting the context window is near maximum or OTel truncation is actively occurring.
 
-**Check the length of `gen_ai.input.messages` for recent traces:**
+Find traces where the LLM input messages are dangerously close to the OTel attribute limit.
+
+**Check the length of `gen_ai.input.messages`:**
+
 ```bash
 for TRACE in $(curl -s "http://localhost:3200/api/search?limit=5" | jq -r '.traces[].traceID'); do
   echo -n "Trace $TRACE length: "
@@ -46,25 +57,26 @@ for TRACE in $(curl -s "http://localhost:3200/api/search?limit=5" | jq -r '.trac
 done
 ```
 
-## 3. Automated Proactive Analysis Script
+### D. Open-Ended Exploration
 
-To automate the proactive hunting process, use the `analyze_traces.py` script.
+Don't hesitate to inspect system resource usage (CPU/RAM/GPU), database sizes, Docker container network stats, or other telemetry signals. Real anomalies often hide outside of structured trace data.
+
+## 3. Automated Analysis Scripts
+
+To assist your hunt, you can use the `analyze_traces.py` script as a baseline check.
 
 **Usage:**
+
 ```bash
 uv run scripts/analyze_traces.py
 ```
 
-This script will:
-1. Connect to Tempo.
-2. Fetch the last 50 traces.
-3. Automatically flag traces that contain `error=true`.
-4. Flag traces with a duration > 10,000ms.
-5. Flag traces where components of the stack (like `openclaw-gateway` or `vllm-main`) are suspiciously missing from the span attributes.
+This script will flag obvious issues (errors, slow traces, missing spans). **Use its output as a jumping-off point for deeper, manual investigation.**
 
-## 4. Remediation Workflow
-When a proactive anomaly is found:
-1. **Isolate**: Determine if the issue is deterministic (happens on specific prompts) or systemic (happens randomly due to load).
-2. **Contextualize**: Check the `openclaw-gateway` session state (using `scripts/clear_stuck_sessions.py` if state locks are suspected).
-3. **Report**: Create an issue detailing the Trace ID, the missing/erroring span, and the latency breakdown.
-4. **Fix**: Use the `stack-debugging` skill patterns to patch the underlying issue.
+## 4. Remediation Guidelines
+
+When you discover an anomaly:
+
+1. **Investigate Deeply**: Use all available tools to determine the root cause. Is it a race condition? A resource leak? A subtle configuration error?
+2. **Contextualize**: Look at the broader system state (databases, container health, concurrent processes).
+3. **Formulate a Fix**: Depending on the severity, either apply a patch directly using standard `stack-debugging` patterns, or document your findings clearly for later review.
