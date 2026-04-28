@@ -10,6 +10,8 @@ import aiohttp
 from aiohttp import web
 from loguru import logger
 
+from core.statsd import StatsdClient
+
 # Configuration
 STATSD_HOST = os.environ.get("SPARKRUN_STATSD_HOST", "vector")
 STATSD_PORT = int(os.environ.get("SPARKRUN_STATSD_PORT", "8125"))
@@ -31,37 +33,10 @@ COMPILE_REGEX = re.compile(r"(?i)torch\.compile took")
 PROFILING_REGEX = re.compile(r"(?i)Initial profiling/warmup")
 
 
-class StatsdClient:
-    def __init__(self) -> None:
-        self.writer: asyncio.StreamWriter | None = None
-        self.lock = asyncio.Lock()
-
-    async def send(self, msg: str) -> None:
-        async with self.lock:
-            if self.writer is None or self.writer.is_closing():
-                try:
-                    _, self.writer = await asyncio.wait_for(
-                        asyncio.open_connection(*STATSD_ADDR), timeout=2.0
-                    )
-                except Exception as e:
-                    logger.debug(f"Failed to connect to StatsD: {e}")
-                    self.writer = None
-                    return
-            try:
-                self.writer.write(msg.encode("utf-8"))
-                await self.writer.drain()
-            except Exception as e:
-                logger.debug(f"StatsD write exception: {e}")
-                if self.writer:
-                    with contextlib.suppress(Exception):
-                        self.writer.close()
-                    self.writer = None
+statsd = StatsdClient(host=STATSD_HOST, port=STATSD_PORT, protocol="udp")
 
 
-statsd = StatsdClient()
-
-
-async def push_to_statsd_tcp(
+async def push_to_statsd(
     metric: str, value: int, container_name: str, model_id: str, host_id: str
 ) -> None:
     msg = f"{metric}:{value}|g|#name:{container_name},model_id:{model_id},host:{host_id}\n"
@@ -154,7 +129,7 @@ class DockerHostMonitor:
             for container_name, pct in list(self.last_known_pct.items()):
                 info = self.container_info_cache.get(container_name, {})
                 model_id = info.get("model_id", container_name)
-                await push_to_statsd_tcp(
+                await push_to_statsd(
                     "vllm_model_load_progress", pct, container_name, model_id, self.host_id
                 )
             await asyncio.sleep(10.0)

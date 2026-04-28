@@ -339,6 +339,32 @@ class StackBuilder:
                                 f"Invalid tool-call-parser '{parser_name}' in {recipe_name}. Must be one of: {', '.join(VALID_PARSERS)}"
                             )
 
+                    # Pre-Flight Flag Validation
+                    INCOMPATIBLE_FLAGS = [
+                        (
+                            {"--disable-log-stats"},
+                            {"VLLM_OTEL_TRACING_ENABLED", "--otlp-traces-endpoint"},
+                            "Cannot use --disable-log-stats with OTel tracing (req_state.stats will be None)",
+                        )
+                    ]
+                    for group1, group2, msg in INCOMPATIBLE_FLAGS:
+                        # Also check the injected VLLM_ENV which contains VLLM_OTEL_TRACING_ENABLED
+                        env_str = str(VLLM_ENV) + str(BLACKWELL_MANDATORY_ENV)
+                        has_group1 = any(flag in command_str for flag in group1)
+                        has_group2 = any(flag in command_str or flag in env_str for flag in group2)
+                        if has_group1 and has_group2:
+                            raise ValueError(f"Flag incompatibility in {recipe_name}: {msg}")
+
+                    # Hybrid Architecture checks
+                    model_name = vllm_cfg.get("model", "")
+                    if ("nemotron" in model_name.lower() or "jamba" in model_name.lower()) and (
+                        "--enforce-eager" not in command_str and not vllm_cfg.get("enforce_eager")
+                    ):
+                        logger.warning(
+                            f"[{recipe_name}] Model {model_name} appears to be a hybrid architecture "
+                            f"but '--enforce-eager' is not set. This may cause Triton JIT compilation crashes on Blackwell."
+                        )
+
                     overrides = req.get("overrides", {})
                     if "memory_limit" in overrides:
                         mem_limit = overrides.get("memory_limit")

@@ -26,6 +26,7 @@ from rich.table import Table
 
 from core.env import OPENCLAW_CONFIG_DIR, PROJECT_ROOT
 from core.schemas import ServiceStatus
+from core.statsd import StatsdClient
 from core.utils import (
     CommandError,
     DockerProbe,
@@ -47,35 +48,7 @@ STATSD_HOST = os.environ.get("SPARKRUN_STATSD_HOST", "127.0.0.1")
 STATSD_PORT = int(os.environ.get("SPARKRUN_STATSD_PORT", "8125"))
 STATSD_ADDR = (STATSD_HOST, STATSD_PORT)
 
-
-class StatsdClient:
-    def __init__(self) -> None:
-        self.writer: asyncio.StreamWriter | None = None
-        self.lock = asyncio.Lock()
-
-    async def send(self, msg: str) -> None:
-        async with self.lock:
-            if self.writer is None or self.writer.is_closing():
-                try:
-                    _, self.writer = await asyncio.wait_for(
-                        asyncio.open_connection(*STATSD_ADDR), timeout=1.0
-                    )
-                except Exception as e:
-                    logger.debug(f"Failed to connect to StatsD: {e}")
-                    self.writer = None
-                    return
-            try:
-                self.writer.write(msg.encode("utf-8"))
-                await self.writer.drain()
-            except Exception as e:
-                logger.debug(f"StatsD write exception: {e}")
-                if self.writer:
-                    with contextlib.suppress(Exception):
-                        self.writer.close()
-                    self.writer = None
-
-
-statsd = StatsdClient()
+statsd = StatsdClient(host=STATSD_HOST, port=STATSD_PORT, protocol="udp")
 
 
 class Settings(BaseSettings):
@@ -285,6 +258,8 @@ class VllmService(Service):
         # Force kill orphaned vLLM/EngineCore processes (The "Zombie Protocol")
         logger.info("Purging orphaned VLLM/EngineCore processes...")
         await async_run_command(["pkill", "-9", "-f", "VLLM|sparkrun|vllm"], check=False)
+        logger.info("Removing stale vLLM containers...")
+        await async_run_command(["docker", "rm", "-f", "vllm-gateway", "main_solo"], check=False)
 
         launch_script = vllm_current / "launch.sh"
         if launch_script.exists():

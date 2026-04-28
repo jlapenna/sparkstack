@@ -49,6 +49,32 @@ When you find a new model on the internet, your primary job is to figure out **h
 1. **Context Length**: Determine the maximum safe RoPE scaled context length. Formulate the exact `max_model_len` limit dynamically based on the leftover VRAM budget after weights are loaded.
 1. **Draft Models**: If the user wants speculative decoding, research which smaller parameter model pairs best with the target architecture (e.g., Llama-3.2-1B for Llama-3.3-70B).
 
+### Speculative Decoding Compatibility (MANDATORY PRE-DEPLOYMENT GATE)
+
+> [!CAUTION]
+> Before recommending ANY speculative decoding configuration, you MUST complete ALL of the following verification steps. Skipping this gate leads to multi-hour debugging cycles with cryptic weight-loading assertion errors.
+
+When a model advertises speculative decoding support (EAGLE, MTP, draft-model, etc.), you MUST verify:
+
+1. **Draft Model Architecture Match**: Confirm the draft model uses the **exact same architecture class** as the target model. A `NemotronHForCausalLM` base model requires a draft model that is also `NemotronHForCausalLM` — not just "similar". Check `config.json` → `architectures` for both models.
+2. **Weight Tensor Shape Compatibility**: The draft model's QKV projection, embedding, and LM head dimensions must be compatible with the base model's weight-loading code path. If the base model uses a hybrid Mamba/Transformer architecture, the draft model must share that hybrid structure.
+3. **Parallel Drafting Token Requirements**: If `parallel_drafting: true` is set, the draft model's `config.json` MUST contain either `pard_token` or `ptd_token_id`. If these fields are absent, parallel drafting will crash at init. Default to `parallel_drafting: false` unless explicitly verified.
+4. **Integrated vs. External Drafting**: Some models (e.g., those with built-in MTP heads) support *integrated* speculation where no separate draft model is needed. Others require a dedicated external draft checkpoint. Do NOT assume one implies the other.
+5. **Fallback Strategy**: If no verified-compatible draft model exists, recommend `ngram` speculative decoding as a safe zero-dependency alternative. `ngram` works with ANY model architecture and provides modest speedup (~1.2-1.5x) without risking initialization failures.
+
+**Verification Command** (run inside the vLLM container or locally):
+```bash
+# Check draft model config for required fields
+python3 -c "
+import json, pathlib, sys
+cfg = json.loads(pathlib.Path(sys.argv[1]).read_text())
+arch = cfg.get('architectures', ['UNKNOWN'])[0]
+has_pard = 'pard_token' in cfg or 'ptd_token_id' in cfg
+print(f'Architecture: {arch}')
+print(f'Parallel drafting tokens: {\"YES\" if has_pard else \"NO - parallel_drafting must be false\"}')
+" /path/to/draft/model/config.json
+```
+
 ## Selection Logic (The "Spark Fit" Test)
 
 Even if a model is amazing on the internet, it still needs to run on the workstation.

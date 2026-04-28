@@ -1,6 +1,7 @@
 #!/usr/bin/env -S uv run --env-file .env --frozen --offline python3
 import argparse
 import asyncio
+import subprocess
 import sys
 from pathlib import Path
 
@@ -91,6 +92,17 @@ async def wait_for_backends_to_load(stack_dir: Path, timeout: int = 1800) -> boo
                                         description=f"Loading [red]{c}[/] [FAILED]",
                                         phase="[red]Crash[/red]",
                                     )
+                                    try:
+                                        logs = subprocess.check_output(
+                                            ["docker", "logs", "--tail", "20", c],
+                                            stderr=subprocess.STDOUT,
+                                            text=True
+                                        )
+                                        print(f"\n--- Last 20 lines of {c} logs ---")
+                                        print(logs)
+                                        print("----------------------------------\n")
+                                    except Exception as e:
+                                        print(f"Failed to fetch logs for {c}: {e}")
                                     return False
 
                                 # Handle normal progress
@@ -126,6 +138,43 @@ async def wait_for_backends_to_load(stack_dir: Path, timeout: int = 1800) -> boo
 
     if all_ready:
         logger.info("✅ Pass: Backend Readiness (All models loaded)")
+        logger.info("Running post-load smoke tests...")
+
+        # Post-Load Smoke Test
+        for svc in services:
+            if svc.get("type") == "sparkrun" and svc.get("port"):
+                port = svc["port"]
+                container = svc.get("container", f"port-{port}")
+                logger.info(f"Smoke testing backend {container} on port {port}...")
+                try:
+                    async with httpx.AsyncClient() as client:
+                        res = await client.get(f"http://localhost:{port}/v1/models", timeout=10.0)
+                        if res.status_code != 200:
+                            logger.error(f"❌ Smoke test failed to fetch models for {container}")
+                            return False
+                        models = res.json().get("data", [])
+                        if not models:
+                            logger.error(f"❌ Smoke test found no models for {container}")
+                            return False
+                        model_id = models[0]["id"]
+
+                        res = await client.post(
+                            f"http://localhost:{port}/v1/chat/completions",
+                            json={
+                                "model": model_id,
+                                "messages": [{"role": "user", "content": "Say hi"}],
+                                "max_tokens": 5
+                            },
+                            timeout=60.0
+                        )
+                        if res.status_code == 200:
+                            logger.info(f"✅ Smoke test passed for {container}")
+                        else:
+                            logger.error(f"❌ Smoke test inference failed for {container}: {res.text}")
+                            return False
+                except Exception as e:
+                    logger.error(f"❌ Smoke test request failed for {container}: {e}")
+                    return False
         return True
     else:
         logger.error("❌ Failure: Backend Readiness timed out")
