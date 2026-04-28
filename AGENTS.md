@@ -4,7 +4,7 @@ For every new session, you **MUST** do the following:
 
 1. Before making a plan or writing code, ALWAYS use the `grep_search` tool on the `skills/` and `sparkrun/sparkrun-cc-plugin/skills/` directories for keywords related to the user's prompt to identify the correct protocol to follow. (Do NOT try to read all skills at once).
 1. Read and strictly follow all rules defined in `.agents/rules/`.
-1. Activate local (this repo only) skills: `stack-manager`, `submodule-dev`, `monitoring`, `stack-upkeep`
+1. Activate local (this repo only) skills: `stack-manager`, `submodule-dev`, `monitoring`, `stack-upkeep`, `stack-debugging`
 1. When working with Python, Docker, or architecture, explicitly search for and load relevant skills like `python-pro`, `async-python-patterns`, `docker-expert`, and `senior-architect` to apply modern best practices.
 
 ## Knowledge and memory.
@@ -28,6 +28,7 @@ When interacting with OpenClaw, it is critical to distinguish between its immuta
 
 1. **`openclaw/` (Source Code)**: This is the upstream, read-only dependency. NEVER modify files here. This includes source files, base documentation, and master templates. Changes here violate the OpenClaw Modification Ban unless explicitly authorized.
 2. **`~/.openclaw/` (Runtime/State)**: This is the active runtime directory. It contains instantiated workspaces, sandboxes, active configuration (`.env`, `openclaw.json`), memory files, and active `BOOTSTRAP.md` copies. All state changes, runtime configurations, and template cleanups must happen here.
+3. **OpenClaw CLI**: The primary CLI executable is named `openclaw` and is located at `~/bin/openclaw`. Use this for all host-level configuration and gateway management.
 
 ## OpenClaw Agent Sandbox Security
 
