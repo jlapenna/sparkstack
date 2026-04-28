@@ -135,8 +135,6 @@ async def async_run_command(
 class DockerClient:
     """Generic wrapper for Docker CLI operations."""
 
-
-
     @staticmethod
     async def get_status(container: str) -> tuple[str, str]:
         """Returns (state, health) for a container."""
@@ -157,8 +155,6 @@ class DockerClient:
             return (parts[0], parts[1]) if len(parts) >= 2 else (parts[0], "none")
         except Exception:
             return "unknown", "none"
-
-
 
 
 class HealthProbe:
@@ -214,6 +210,8 @@ class HttpProbe(HealthProbe):
                 return HealthStatus.STARTING
             except (OSError, httpx.HTTPError):
                 return HealthStatus.STARTING
+
+
 # Crash detection patterns shared by LogProbe and ServiceHealthManager
 CRASH_PATTERNS: list[str] = [
     r"Traceback \(most recent call last\):",

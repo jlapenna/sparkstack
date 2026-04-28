@@ -10,6 +10,7 @@
 - **Context Window**: Default configuration is `262,144` with prefix caching enabled.
 
 ### Performance Observations (April 2026)
+
 - **VRAM Footprint**: ~24.51 GB total for model + KV cache. Fits easily on a single DGX node.
 - **Throughput**: ~58-60 Tokens/sec under single concurrency.
 - **TTFT**: ~640ms.

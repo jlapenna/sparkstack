@@ -41,7 +41,7 @@ def main():
     repo_map = {
         "openclaw": "openclaw/openclaw",
         "sparkrun": "spark-arena/sparkrun",
-        "spark-stack-registry": "jlapenna/spark-stack-registry"
+        "spark-stack-registry": "jlapenna/spark-stack-registry",
     }
 
     print("### 1. Pending Pull Requests\n")

@@ -52,7 +52,7 @@ async def sync_registry(
             ctx_window = model.get("contextWindow", 32768)
             # Allocate 25% of context window for generation, bounded between 2k and 16k tokens
             calc_max = min(16384, max(2048, ctx_window // 4))
-        
+
         model["maxTokens"] = calc_max
         global_max_reserve = max(global_max_reserve, calc_max)
 

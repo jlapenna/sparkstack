@@ -7,14 +7,16 @@ import urllib.request
 TEMPO_SEARCH_URL = "http://localhost:3200/api/search"
 TEMPO_TRACE_URL = "http://localhost:3200/api/traces/"
 
+
 def fetch_json(url):
     try:
         req = urllib.request.Request(url)
         with urllib.request.urlopen(req) as response:
-            return json.loads(response.read().decode('utf-8'))
+            return json.loads(response.read().decode("utf-8"))
     except urllib.error.URLError as e:
         print(f"Error connecting to Tempo: {e}")
         return None
+
 
 def analyze_traces():
     print("Starting Proactive Trace Analysis...")
@@ -22,11 +24,11 @@ def analyze_traces():
     # 1. Fetch recent traces
     search_url = f"{TEMPO_SEARCH_URL}?limit=50"
     data = fetch_json(search_url)
-    if not data or 'traces' not in data:
+    if not data or "traces" not in data:
         print("Could not retrieve traces from Tempo.")
         sys.exit(1)
 
-    traces = data['traces']
+    traces = data["traces"]
     print(f"Found {len(traces)} recent traces. Analyzing...")
 
     flagged = 0
@@ -51,7 +53,7 @@ def analyze_traces():
                 # Check for errors in spans
                 for scope in batch.get("scopeSpans", []):
                     for span in scope.get("spans", []):
-                        if span.get("status", {}).get("code") == 2: # STATUS_CODE_ERROR
+                        if span.get("status", {}).get("code") == 2:  # STATUS_CODE_ERROR
                             has_error = True
 
                 # Extract service names
@@ -68,7 +70,9 @@ def analyze_traces():
             if not expected_services.issubset(services_found):
                 missing = expected_services - services_found
                 # We only flag if it's supposed to be an E2E trace but is missing components.
-                if len(services_found) > 1: # Basic heuristic to avoid flagging single-service debug traces
+                if (
+                    len(services_found) > 1
+                ):  # Basic heuristic to avoid flagging single-service debug traces
                     flags.append(f"Missing Services: {missing}")
 
         if flags:
@@ -78,6 +82,7 @@ def analyze_traces():
             flagged += 1
 
     print(f"\nAnalysis complete. Flagged {flagged} traces.")
+
 
 if __name__ == "__main__":
     analyze_traces()

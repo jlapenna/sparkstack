@@ -24,9 +24,7 @@ class LiteLLMBuilder:
         self.litellm_config.general_settings = litellm_base.get("general_settings", {})
         self.litellm_config.router_settings = litellm_base.get("router_settings", {})
 
-        self.models_json = ModelsConfig(
-            spark=SparkProvider(api_key="${LITELLM_MASTER_KEY}")
-        )
+        self.models_json = ModelsConfig(spark=SparkProvider(api_key="${LITELLM_MASTER_KEY}"))
         self.added_roles = set()
 
     def add_model(
@@ -77,7 +75,8 @@ class LiteLLMBuilder:
                     base_model=recipe_name or backend_model,
                     mode=model_info.get("mode"),
                     supports_function_calling=model_info.get("supports_function_calling"),
-                    supports_reasoning=model_info.get("supports_reasoning") or (thinking_format is not None),
+                    supports_reasoning=model_info.get("supports_reasoning")
+                    or (thinking_format is not None),
                 ),
             )
         )

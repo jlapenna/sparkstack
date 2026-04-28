@@ -51,7 +51,9 @@ def clear_stuck_sessions():
 
     if fixed_count > 0:
         print(f"Successfully cleared stuck sessions in {fixed_count} file(s).")
-        print("Important: Restart the OpenClaw Gateway (e.g., `docker restart openclaw-openclaw-gateway-1`) for the changes to take effect.")
+        print(
+            "Important: Restart the OpenClaw Gateway (e.g., `docker restart openclaw-openclaw-gateway-1`) for the changes to take effect."
+        )
     else:
         print("No stuck sessions found.")
 

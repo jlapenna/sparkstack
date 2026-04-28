@@ -65,7 +65,9 @@ async def test_tracing(ctx: E2EContext):
             for trace in traces:
                 trace_id = trace["traceID"]
                 try:
-                    trace_resp = await client.get(f"http://127.0.0.1:3200/api/traces/{trace_id}", timeout=10)
+                    trace_resp = await client.get(
+                        f"http://127.0.0.1:3200/api/traces/{trace_id}", timeout=10
+                    )
                     trace_resp.raise_for_status()
                     trace_data = trace_resp.json()
                 except Exception as e:
@@ -91,8 +93,12 @@ async def test_tracing(ctx: E2EContext):
                                         max_len = max(max_len, length)
 
                     if max_len > 2048:
-                        logger.info(f"✅ Pass: E2E Trace {trace_id} successfully linked across {required_services}!")
-                        logger.info(f"✅ Pass: Found gen_ai.input.messages with length {max_len} (> 2048)!")
+                        logger.info(
+                            f"✅ Pass: E2E Trace {trace_id} successfully linked across {required_services}!"
+                        )
+                        logger.info(
+                            f"✅ Pass: Found gen_ai.input.messages with length {max_len} (> 2048)!"
+                        )
                         found_e2e_trace = True
                         break
                     else:
@@ -104,5 +110,7 @@ async def test_tracing(ctx: E2EContext):
                 break
 
         if not found_e2e_trace:
-            logger.error(f"❌ Failure: Could not find a single trace containing all required services: {required_services} with correct payload size.")
+            logger.error(
+                f"❌ Failure: Could not find a single trace containing all required services: {required_services} with correct payload size."
+            )
             raise AssertionError("E2E Trace verification failed.")

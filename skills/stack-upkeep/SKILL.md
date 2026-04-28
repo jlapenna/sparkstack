@@ -65,7 +65,7 @@ While Renovate handles automated PRs for dependencies, you will sometimes need t
   - Find the latest stable semantic tag (e.g., `v1.2.3`) using Skopeo: `skopeo list-tags docker://<registry>/<image>` or query the registry API (GitHub Container Registry, Quay.io, Docker Hub).
   - Explicitly edit `docker-compose.yml`, `.env`, or the stack recipe files to replace the old tag with the newly discovered stable tag.
 - **Centralized Version Manifests**:
-  - Update `package.json` for NPM tool dependencies. 
+  - Update `package.json` for NPM tool dependencies.
   - Update `build-versions.json` for Go/Python binary tools.
   - The `update_openclaw.py` workflow will automatically parse these manifests during Docker builds to construct `Dockerfile.gateway-custom` and `Dockerfile.sandbox-custom`.
 - **Python/uv Dependencies**:
