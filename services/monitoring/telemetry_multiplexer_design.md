@@ -1,4 +1,4 @@
-## title: Design Proposal: Multi-Node Telemetry Architecture for SparkRun state: OPEN author: jlapenna (Joe LaPenna) labels: enhancement comments: 0 assignees:  projects:  milestone:  number: 2
+## title: Design Proposal: Multi-Node Telemetry Architecture for SparkRun state: OPEN author: jlapenna (Joe LaPenna) labels: enhancement comments: 0 assignees: projects: milestone: number: 2
 
 # Design Document: Multi-Node Telemetry Architecture for SparkRun
 

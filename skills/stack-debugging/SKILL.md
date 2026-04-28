@@ -118,6 +118,7 @@ Unlike reactive debugging (where you respond to an active incident or broken tes
 In the `spark-stack` environment, OpenTelemetry traces sent to Grafana Tempo are a great vehicle for discovery. However, **do not limit yourself to only the patterns below.** Trust your intuition, craft your own queries, and investigate any suspicious metrics, logs, or traces you uncover.
 
 ### When to Use Proactive Debugging
+
 - After a major infrastructure, model, or configuration upgrade.
 - When performing a system health audit.
 - During idle time to discover hidden inefficiencies or strange behaviors in the stack.
@@ -181,5 +182,5 @@ This script will flag obvious issues (errors, slow traces, missing spans). **Use
 When you discover an anomaly:
 
 1. **Investigate Deeply**: Use all available tools to determine the root cause. Is it a race condition? A resource leak? A subtle configuration error?
-2. **Contextualize**: Look at the broader system state (databases, container health, concurrent processes).
-3. **Formulate a Fix**: Depending on the severity, either apply a patch directly using standard `stack-debugging` patterns, or document your findings clearly for later review.
+1. **Contextualize**: Look at the broader system state (databases, container health, concurrent processes).
+1. **Formulate a Fix**: Depending on the severity, either apply a patch directly using standard `stack-debugging` patterns, or document your findings clearly for later review.
