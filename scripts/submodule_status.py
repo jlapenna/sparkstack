@@ -17,11 +17,11 @@ def run_cmd(cmd, cwd=None):
         return None
 
 
-def get_pr_status(submodule_dir):
+def get_pr_status(submodule_dir, repo_name):
     if not os.path.isdir(submodule_dir):
         return []
 
-    cmd = "gh pr list --author '@me' --state open --json number,title,url,headRefName,reviews,commits,latestReviews,comments,updatedAt"
+    cmd = f"gh pr list --repo {repo_name} --author '@me' --state open --json number,title,url,headRefName,reviews,commits,latestReviews,comments,updatedAt"
     output = run_cmd(cmd, cwd=submodule_dir)
     if not output:
         return []
@@ -38,6 +38,12 @@ def main():
     root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     submodules = ["openclaw", "sparkrun", "spark-stack-registry"]
 
+    repo_map = {
+        "openclaw": "openclaw/openclaw",
+        "sparkrun": "spark-arena/sparkrun",
+        "spark-stack-registry": "jlapenna/spark-stack-registry"
+    }
+
     print("### 1. Pending Pull Requests\n")
     print("| Repository | PR ID / Link | Branch | Title | Updated At |")
     print("| :--- | :--- | :--- | :--- | :--- |")
@@ -46,15 +52,16 @@ def main():
 
     for sub in submodules:
         sub_dir = os.path.join(root_dir, sub)
-        prs = get_pr_status(sub_dir)
+        repo_name = repo_map.get(sub, "")
+        prs = get_pr_status(sub_dir, repo_name)
         for pr in prs:
-            repo_name = f"**`{sub}`**"
+            pr_repo = f"**`{sub}`**"
             pr_link = f"[#{pr['number']}]({pr['url']})"
             branch = f"`{pr['headRefName']}`"
             title = f" `{pr['title']}`"
             updated = pr["updatedAt"][:10]
 
-            print(f"| {repo_name} | {pr_link} | {branch} | {title} | {updated} |")
+            print(f"| {pr_repo} | {pr_link} | {branch} | {title} | {updated} |")
             pr_details.append((sub, pr))
 
     if pr_details:
@@ -92,11 +99,15 @@ def main():
 
         integration_branch = "main" if sub == "spark-stack-registry" else "local-dev"
         if sub == "sparkrun":
-            base_ref = "origin/develop"
+            base_ref = "upstream/develop"
         elif sub == "spark-stack-registry":
             base_ref = "origin/main"
         else:
-            base_ref = "origin/main"
+            # For openclaw, local-dev tracks the newest stable tag
+            tag_cmd = "git describe --tags --abbrev=0 --exclude '*-beta*' --match 'v*'"
+            base_ref = run_cmd(tag_cmd, cwd=sub_dir)
+            if not base_ref:
+                base_ref = "upstream/main"
 
         # Determine if current branch is ahead of base_ref
         commits_ahead_output = run_cmd(
@@ -113,8 +124,8 @@ def main():
             else f"Tracking {branch}"
         )
 
-        repo_name = f"**`{sub}`**"
-        print(f"| {repo_name} | `{integration_branch}` | {status} |")
+        repo_col = f"**`{sub}`**"
+        print(f"| {repo_col} | `{integration_branch}` | {status} |")
 
 
 if __name__ == "__main__":
