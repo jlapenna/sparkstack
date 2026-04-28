@@ -36,11 +36,8 @@ class LiteLLMBuilder:
         human_name: str,
         model_info: dict,
         recipe_name: str = "",
-        temperature: float | None = None,
-        frequency_penalty: float | None = None,
-        presence_penalty: float | None = None,
-        repetition_penalty: float | None = None,
         thinking_format: str | None = None,
+        **litellm_kwargs,
     ):
         if role_id in self.added_roles:
             return
@@ -53,17 +50,10 @@ class LiteLLMBuilder:
         }
         if "embedding" in role_id.lower():
             params["encoding_format"] = "float"
-        else:
-            pass
 
-        if temperature is not None:
-            params["temperature"] = temperature
-        if frequency_penalty is not None:
-            params["frequency_penalty"] = frequency_penalty
-        if presence_penalty is not None:
-            params["presence_penalty"] = presence_penalty
-        if repetition_penalty is not None:
-            params["extra_body"] = {"repetition_penalty": repetition_penalty}
+        # Apply any litellm_kwargs directly to params
+        for k, v in litellm_kwargs.items():
+            params[k] = v
 
         self.litellm_config.model_list.append(
             LiteLLMModelEntry(
@@ -97,10 +87,14 @@ class LiteLLMBuilder:
             reasoning=model_info.get("reasoning"),
             api="openai-completions",
         )
+        compat_kwargs = {}
         if model_info.get("reasoning"):
-            # Explicit thinking_format from recipe wins, otherwise default to openai
-            resolved_format = thinking_format or "openai"
-            model_entry.compat = OpenClawModelCompat(thinking_format=resolved_format)
+            compat_kwargs["thinking_format"] = thinking_format or "openai"
+        if "supports_function_calling" in model_info:
+            compat_kwargs["supports_tools"] = model_info["supports_function_calling"]
+            
+        if compat_kwargs:
+            model_entry.compat = OpenClawModelCompat(**compat_kwargs)
 
         self.models_json.spark.models.append(model_entry)
         self.added_roles.add(role_id)

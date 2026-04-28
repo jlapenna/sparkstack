@@ -26,12 +26,93 @@ For every new session, you **MUST** do the following:
 
 When interacting with OpenClaw, it is critical to distinguish between its immutable source code and its runtime environment:
 
-1. **`openclaw/` (Source Code)**: This is the upstream, read-only dependency. NEVER modify files here. This includes source files, base documentation, and master templates. Changes here violate the OpenClaw Modification Ban unless explicitly authorized.
+1. **`../openclaw/` (Source Code)**: This is the upstream, read-only dependency located in the parent directory. NEVER modify files here. This includes source files, base documentation, and master templates. Changes here violate the OpenClaw Modification Ban unless explicitly authorized.
 1. **`~/.openclaw/` (Runtime/State)**: This is the active runtime directory. It contains instantiated workspaces, sandboxes, active configuration (`.env`, `openclaw.json`), memory files, and active `BOOTSTRAP.md` copies. All state changes, runtime configurations, and template cleanups must happen here.
 1. **OpenClaw CLI**: The primary CLI executable is named `openclaw` and is located at `~/bin/openclaw`. Use this for all host-level configuration and gateway management.
 
 ## OpenClaw Agent Sandbox Security
 
-1. **Skill Injection Boundary:** Agents must access bundled skills (`wacli`, `mcporter`, `summarize`) through a strict read-only bind mount directly from the `openclaw/skills` source directory into the sandbox (`/app/skills:ro`).
+1. **Skill Injection Boundary:** Agents must access bundled skills (`wacli`, `mcporter`, `summarize`) through a strict read-only bind mount directly from the `../openclaw/skills` source directory into the sandbox (`/app/skills:ro`).
 1. **State Directory Isolation:** NEVER bind the `~/.openclaw/sandboxes` directory into an agent sandbox. Doing so destroys agent isolation, allowing an agent to traverse the lateral state, sessions, and memory of all other agents in the environment.
 1. **Configuration Updates:** Always use the `openclaw config set` CLI (available via `docker exec openclaw-openclaw-gateway-1 openclaw config ...`) to update `openclaw.json` (e.g. adding binds). The JSON must be rigorously validated to avoid dropping critical default behaviors or introducing parsing errors.
+
+---
+
+# Project Overview: Spark Services Orchestrator
+
+Spark Services Orchestrator (`spark-stack`) is a high-performance deployment orchestrator for the Spark ecosystem. It manages a suite of AI services, including the **OpenClaw** backend gateway, the **SparkRun** orchestrator, and various local LLM inference stacks (powered by **vLLM**).
+
+The project is designed for Linux hosts, utilizing Docker and Docker Compose for secure service isolation and networking. It focuses on robust, async-first orchestration scripts to manage the full lifecycle of the AI stack.
+
+## Core Technologies
+
+- **Language:** Python 3.13+ (Async-first)
+- **Package Manager:** [uv](https://github.com/astral-sh/uv)
+- **Containerization:** Docker & Docker Compose V2
+- **Key Services:**
+    - **OpenClaw:** Backend gateway and API router (Managed as a read-only Git submodule).
+    - **SparkRun:** Automated orchestration and evaluation (Managed as an editable path dependency).
+    - **vLLM:** High-throughput LLM inference backend.
+- **Monitoring:** Prometheus, Grafana, and Tempo (Managed via Grafana Alloy).
+- **Registry:** `spark-stack-registry` for deployment recipes and model configurations.
+
+## Building and Running
+
+The project relies on `uv` for dependency management and script execution.
+
+- **Initialization:**
+  ```bash
+  make setup  # Synchronizes dependencies and installs pre-commit hooks
+  git submodule update --init --recursive  # Initializes spark-stack-registry
+  ```
+- **Deploying/Updating the Stack:**
+  ```bash
+  uv run scripts/update_services.py  # Main orchestration entry point
+  ```
+- **Updating Specific Components:**
+  ```bash
+  uv run scripts/update_openclaw.py  # Updates OpenClaw source and service
+  uv run scripts/update_sparkrun.py  # Updates SparkRun source
+  ```
+- **Stack Verification:**
+  ```bash
+  uv run pytest tests/e2e/  # Mandatory verification after any changes
+  ```
+- **Manual Launch:**
+  ```bash
+  uv run scripts/launch.py
+  ```
+
+## Development Conventions
+
+### Submodule Policy
+- **OpenClaw (`openclaw/`)**: Treated as an **immutable upstream dependency**. NEVER modify source files here. Solve configuration issues by modifying inputs (like `jq` filtering) or host-level settings.
+- **SparkRun (`sparkrun/`)**: Treated as an editable dependency.
+
+### Runtime vs. Source (OpenClaw)
+- **Source Code**: Located in `openclaw/`.
+- **Runtime Environment**: Located in `~/.openclaw/`. This directory contains active configurations (`openclaw.json`), logs, and database files. All state changes must occur here.
+- **CLI**: Use `~/bin/openclaw` for host-level gateway management.
+
+### Scripting Standards
+- **Idiomatic Execution**: Use `uv run` for all scripts. Avoid `sys.path.insert()` hacks.
+- **Context Awareness**: Scripts should be domain-agnostic and use Pydantic schemas from `core/schemas.py`.
+- **Zombie Protocol**: The orchestration scripts include a cleanup phase to purge stuck tasks and stale containers, ensuring a clean state for the stack.
+
+### Planning and Verification
+- **Planning**: For tasks related to `stack-manager`, use the templates in `skills/stack-manager/references/plan-template.md`.
+- **Verification**: No infrastructure change is complete without a passing run of `uv run pytest tests/e2e/`.
+
+## Directory Structure
+
+- `core/`: Shared async utilities, health probes, and Pydantic configuration schemas.
+- `scripts/`: High-level orchestration scripts for building, updating, and syncing the stack.
+- `services/`: Configuration fragments, `docker-compose.yml` files, and service-specific managers.
+- `skills/`: Local AI agent skills (e.g., `stack-manager`, `submodule-dev`).
+- `spark-stack-registry/`: Submodule containing model and stack deployment recipes.
+- `tests/`: End-to-end and unit tests (Requires `pytest`).
+- `benchmarks/`: Performance testing and evaluation suites.
+
+## Host Configuration
+This project requires specific host-level tuning (SSH protection, increased `inotify` limits) to prevent networking conflicts during Docker teardowns. See `DEVELOPMENT.md` for the full setup guide.
+ing Docker teardowns. See `DEVELOPMENT.md` for the full setup guide.

@@ -22,7 +22,7 @@ class UpdaterSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     project_root: Path = Field(default_factory=lambda: Path(__file__).parent.parent.absolute())
     openclaw_dir: Path = Field(
-        default_factory=lambda: Path(__file__).parent.parent.absolute() / "openclaw"
+        default_factory=lambda: Path(__file__).parent.parent.absolute().parent / "openclaw"
     )
     config_path: Path = Field(default=OPENCLAW_CONFIG_PATH)
     pull_latest: bool = False

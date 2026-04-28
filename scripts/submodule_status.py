@@ -94,7 +94,11 @@ def main():
     print("| :--- | :--- | :--- |")
 
     for sub in submodules:
-        sub_dir = os.path.join(root_dir, sub)
+        if sub == "spark-stack-registry":
+            sub_dir = os.path.join(root_dir, sub)
+        else:
+            sub_dir = os.path.join(parent_dir, sub)
+
         branch = run_cmd("git rev-parse --abbrev-ref HEAD", cwd=sub_dir)
 
         integration_branch = "main" if sub == "spark-stack-registry" else "local-dev"
@@ -126,6 +130,11 @@ def main():
 
         repo_col = f"**`{sub}`**"
         print(f"| {repo_col} | `{integration_branch}` | {status} |")
+
+
+if __name__ == "__main__":
+    main()
+")
 
 
 if __name__ == "__main__":

@@ -22,7 +22,7 @@ class SparkrunSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     project_root: Path = Field(default=PROJECT_ROOT)
-    sparkrun_dir: Path = Field(default=PROJECT_ROOT / "sparkrun")
+    sparkrun_dir: Path = Field(default=PROJECT_ROOT.parent / "sparkrun")
     pull_latest: bool = False
 
 

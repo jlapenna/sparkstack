@@ -173,12 +173,12 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(rate(litellm_request_total_latency_metric_bucket[$__rate_interval])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(litellm_request_total_latency_metric_bucket[1m])) by (le))",
           "legendFormat": "p95",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.50, sum(rate(litellm_request_total_latency_metric_bucket[$__rate_interval])) by (le))",
+          "expr": "histogram_quantile(0.50, sum(rate(litellm_request_total_latency_metric_bucket[1m])) by (le))",
           "legendFormat": "p50",
           "refId": "B"
         }
@@ -240,12 +240,12 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by(le) (rate(vllm:time_to_first_token_seconds_bucket[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le) (rate(vllm:time_to_first_token_seconds_bucket[1m])))",
           "legendFormat": "p95",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.50, sum by(le) (rate(vllm:time_to_first_token_seconds_bucket[$__rate_interval])))",
+          "expr": "histogram_quantile(0.50, sum by(le) (rate(vllm:time_to_first_token_seconds_bucket[1m])))",
           "legendFormat": "p50",
           "refId": "B"
         }

@@ -57,7 +57,11 @@ def main():
     global_network = stack.get("globals", {}).get("network", "proxy-tier")
 
     for backend in stack.get("backends", []):
-        recipe_path = repo_root / "spark-stack-registry" / backend["recipe"]
+        recipe = backend["recipe"]
+        if recipe.startswith("@"):
+            recipe_path = recipe
+        else:
+            recipe_path = repo_root / "spark-stack-registry" / recipe
         cmd = [
             "uv",
             "run",

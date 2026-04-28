@@ -1,9 +1,3 @@
-[submodule "sparkrun"]
-	path = sparkrun
-	url = https://github.com/jlapenna/sparkrun.git
-[submodule "openclaw"]
-	path = openclaw
-	url = https://github.com/jlapenna/openclaw.git
 [submodule "spark-stack-registry"]
 	path = spark-stack-registry
 	url = https://github.com/jlapenna/spark-stack-registry.git

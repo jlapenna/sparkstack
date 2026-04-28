@@ -20,6 +20,7 @@ from core.env import (
     BASE_DIR,
     MAX_DOCKER_MEMORY_GB,
     MAX_VRAM_UTILIZATION,
+    OPENCLAW_CONFIG_PATH,
     REGISTRY_DIR,
     STACKS_DIR,
     USABLE_SPARK_MEMORY_GB,
@@ -171,8 +172,9 @@ class ModelIDExtractor:
 
 
 class StackBuilder:
-    def __init__(self, stack_name: str, model_args: list[str]):
+    def __init__(self, stack_name: str, model_args: list[str], allow_no_embedding: bool = False):
         self.stack_name = stack_name
+        self.allow_no_embedding = allow_no_embedding
         self.requested_models = []
         for arg in model_args:
             overrides = {}
@@ -232,8 +234,23 @@ class StackBuilder:
         logger.info("✅ Memory Law constraints verified.")
 
     async def build(self):
+        # Check for embedding model unless overridden
+        if not self.allow_no_embedding:
+            has_embedding = any(
+                req["role"] == "embedding" or "embedding" in req["recipe"].lower() or "bge" in req["recipe"].lower()
+                for req in self.requested_models
+            )
+            if not has_embedding:
+                raise ValueError("No embedding model found in requested models. "
+                                 "Use --allow-no-embedding if you intentionally want to turn up a stack without one.")
+
         logger.info(f"🏗️  Building stack '{self.stack_name}'...")
         self.stack_dir.mkdir(parents=True, exist_ok=True)
+
+        if OPENCLAW_CONFIG_PATH.exists():
+            shutil.copy2(OPENCLAW_CONFIG_PATH, self.stack_dir / "openclaw.json")
+            logger.info(f"📄 Copied openclaw.json to {self.stack_dir}")
+
         bench_dir = self.stack_dir / "benchmarks"
         if bench_dir.exists():
             shutil.rmtree(bench_dir)
@@ -396,9 +413,13 @@ class StackBuilder:
                             f"Dynamically scaled gpu_memory_utilization to {util} for {recipe_name}"
                         )
 
+                    recipe_out = model_config.recipe_path
+                    if not recipe_out.startswith("@"):
+                        recipe_out = f"sparkrun/{Path(recipe_out).name}"
+                        
                     backend = {
                         "name": target_role,
-                        "recipe": f"sparkrun/{Path(model_config.recipe_path).name}",
+                        "recipe": recipe_out,
                         "target": "localhost",
                         "port": port,
                         "env": {},
@@ -470,6 +491,7 @@ class StackBuilder:
                         # The LiteLLM merge_reasoning_content_in_choices setting handles this
                         # transparently. supports_reasoning is set for LiteLLM model_info only.
                         model_info["supports_reasoning"] = True
+                        model_info["reasoning"] = True
                     if "--tool-call-parser" in recipe_dict.get("command", ""):
                         model_info["supports_function_calling"] = True
 
@@ -536,14 +558,8 @@ class StackBuilder:
                         f"📦 Orchestrating {recipe_name} via compose (Container: {container_name}, Mem: {mem_limit})"
                     )
 
-            allowed_overrides = {
-                "temperature",
-                "frequency_penalty",
-                "presence_penalty",
-                "repetition_penalty",
-                "thinking_format",
-            }
-            safe_overrides = {k: v for k, v in litellm_overrides.items() if k in allowed_overrides}
+            if "supports_function_calling" in litellm_overrides:
+                model_info["supports_function_calling"] = litellm_overrides.pop("supports_function_calling")
 
             for rid in routing_ids:
                 self.litellm_builder.add_model(
@@ -554,7 +570,7 @@ class StackBuilder:
                     human_name=human_name,
                     model_info=model_info,
                     recipe_name=recipe_name,
-                    **safe_overrides,
+                    **litellm_overrides,
                 )
 
         self._check_constraints()
@@ -607,5 +623,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Build an AI service stack for NVIDIA Blackwell.")
     parser.add_argument("stack_name", help="Unique name for the stack")
     parser.add_argument("models", nargs="+", help="List of models/aliases")
+    parser.add_argument("--allow-no-embedding", action="store_true", help="Allow building a stack without an embedding model")
     args = parser.parse_args()
-    asyncio.run(StackBuilder(args.stack_name, args.models).build())
+    asyncio.run(StackBuilder(args.stack_name, args.models, allow_no_embedding=args.allow_no_embedding).build())
