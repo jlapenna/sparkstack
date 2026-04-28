@@ -18,7 +18,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 26,
+  "id": null,
   "links": [],
   "panels": [
     {
@@ -29,7 +29,7 @@
         "x": 0,
         "y": 0
       },
-      "id": 9,
+      "id": null,
       "panels": [],
       "title": "Graph: E2E latency over time ",
       "type": "row"
@@ -37,7 +37,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "prometheus"
       },
       "description": "End-to-End latency of requests, showing average and key percentiles over time.",
       "fieldConfig": {
@@ -103,7 +103,7 @@
         "x": 0,
         "y": 1
       },
-      "id": 1,
+      "id": null,
       "options": {
         "legend": {
           "calcs": [],
@@ -121,10 +121,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(vllm:e2e_request_latency_seconds_sum[$__interval]) / rate(vllm:e2e_request_latency_seconds_count[$__interval])",
+          "expr": "rate(vllm:e2e_request_latency_seconds_sum[$__rate_interval]) / rate(vllm:e2e_request_latency_seconds_count[$__rate_interval])",
           "format": "table",
           "legendFormat": "E2E Latency",
           "range": true,
@@ -137,7 +137,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "prometheus"
       },
       "description": "99th percentile of End-to-End request latency over the selected time range.",
       "fieldConfig": {
@@ -171,7 +171,7 @@
         "x": 12,
         "y": 1
       },
-      "id": 5,
+      "id": null,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -205,7 +205,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "prometheus"
       },
       "description": "90th percentile of End-to-End request latency over the selected time range.",
       "fieldConfig": {
@@ -239,7 +239,7 @@
         "x": 18,
         "y": 1
       },
-      "id": 4,
+      "id": null,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -273,7 +273,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "prometheus"
       },
       "description": "Average End-to-End request latency over the selected time range.",
       "fieldConfig": {
@@ -307,7 +307,7 @@
         "x": 12,
         "y": 5
       },
-      "id": 2,
+      "id": null,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -341,7 +341,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "prometheus"
       },
       "description": "50th percentile (median) of End-to-End request latency over the selected time range.",
       "fieldConfig": {
@@ -375,7 +375,7 @@
         "x": 18,
         "y": 5
       },
-      "id": 3,
+      "id": null,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -414,7 +414,7 @@
         "x": 0,
         "y": 9
       },
-      "id": 8,
+      "id": null,
       "panels": [],
       "title": "Graph: TTFT(Time To First Token) over time ",
       "type": "row"
@@ -422,7 +422,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "prometheus"
       },
       "description": "Time to first token (TTFT) latency, showing average and key percentiles over time.",
       "fieldConfig": {
@@ -454,7 +454,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": {
               "group": "A",
               "mode": "none"
@@ -488,7 +488,7 @@
         "x": 0,
         "y": 10
       },
-      "id": 10,
+      "id": null,
       "options": {
         "legend": {
           "calcs": [],
@@ -505,7 +505,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "rate(vllm:time_to_first_token_seconds_sum[$__interval]) / rate(vllm:time_to_first_token_seconds_count[$__interval])",
+          "expr": "rate(vllm:time_to_first_token_seconds_sum[$__rate_interval]) / rate(vllm:time_to_first_token_seconds_count[$__rate_interval])",
           "format": "table",
           "legendFormat": "TTFT (Avg)",
           "range": true,
@@ -518,7 +518,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "prometheus"
       },
       "description": "99th percentile of Time To First Token latency over the selected time range.",
       "fieldConfig": {
@@ -552,7 +552,7 @@
         "x": 12,
         "y": 10
       },
-      "id": 14,
+      "id": null,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -586,7 +586,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "prometheus"
       },
       "description": "90th percentile of Time To First Token latency over the selected time range.",
       "fieldConfig": {
@@ -620,7 +620,7 @@
         "x": 18,
         "y": 10
       },
-      "id": 13,
+      "id": null,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -654,7 +654,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "prometheus"
       },
       "description": "Average Time To First Token latency over the selected time range.",
       "fieldConfig": {
@@ -688,7 +688,7 @@
         "x": 12,
         "y": 14
       },
-      "id": 11,
+      "id": null,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -722,7 +722,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "prometheus"
       },
       "description": "50th percentile (median) of Time To First Token latency over the selected time range.",
       "fieldConfig": {
@@ -755,7 +755,7 @@
         "x": 18,
         "y": 14
       },
-      "id": 12,
+      "id": null,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -793,7 +793,7 @@
         "x": 0,
         "y": 18
       },
-      "id": 7,
+      "id": null,
       "panels": [],
       "title": "ITL (Iteration Latency / Time Per Output Token) over time.",
       "type": "row"
@@ -801,7 +801,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "prometheus"
       },
       "description": "Iteration latency, or average time taken to generate a single output token, with percentiles.",
       "fieldConfig": {
@@ -833,7 +833,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": {
               "group": "A",
               "mode": "none"
@@ -867,7 +867,7 @@
         "x": 0,
         "y": 19
       },
-      "id": 15,
+      "id": null,
       "options": {
         "legend": {
           "calcs": [],
@@ -884,7 +884,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "rate(vllm:inter_token_latency_seconds_sum[$__interval]) / rate(vllm:inter_token_latency_seconds_count[$__interval])",
+          "expr": "rate(vllm:inter_token_latency_seconds_sum[$__rate_interval]) / rate(vllm:inter_token_latency_seconds_count[$__rate_interval])",
           "legendFormat": "ITL (Avg)",
           "range": true,
           "refId": "A"
@@ -892,10 +892,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.50, sum by(le) (rate(vllm:inter_token_latency_seconds_bucket[$__interval])))",
+          "expr": "histogram_quantile(0.50, sum by(le) (rate(vllm:inter_token_latency_seconds_bucket[$__rate_interval])))",
           "hide": false,
           "instant": false,
           "legendFormat": "ITL (p50)",
@@ -905,10 +905,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.90, sum by(le) (rate(vllm:inter_token_latency_seconds_bucket[$__interval])))",
+          "expr": "histogram_quantile(0.90, sum by(le) (rate(vllm:inter_token_latency_seconds_bucket[$__rate_interval])))",
           "hide": false,
           "instant": false,
           "legendFormat": "ITL (p90)",
@@ -918,10 +918,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum by(le) (rate(vllm:inter_token_latency_seconds_bucket[$__interval])))",
+          "expr": "histogram_quantile(0.99, sum by(le) (rate(vllm:inter_token_latency_seconds_bucket[$__rate_interval])))",
           "hide": false,
           "instant": false,
           "legendFormat": "ITL (p99)",
@@ -935,7 +935,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "prometheus"
       },
       "description": "90th percentile of Iteration Latency over the selected time range.",
       "fieldConfig": {
@@ -968,7 +968,7 @@
         "x": 12,
         "y": 19
       },
-      "id": 18,
+      "id": null,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -1002,7 +1002,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "prometheus"
       },
       "description": "99th percentile of Iteration Latency over the selected time range.\n\n",
       "fieldConfig": {
@@ -1035,7 +1035,7 @@
         "x": 18,
         "y": 19
       },
-      "id": 19,
+      "id": null,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -1069,7 +1069,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "prometheus"
       },
       "description": "Average Iteration Latency (time per output token) over the selected time range.",
       "fieldConfig": {
@@ -1102,7 +1102,7 @@
         "x": 12,
         "y": 23
       },
-      "id": 16,
+      "id": null,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -1136,7 +1136,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "prometheus"
       },
       "description": "50th percentile (median) of Iteration Latency over the selected time range.",
       "fieldConfig": {
@@ -1169,7 +1169,7 @@
         "x": 18,
         "y": 23
       },
-      "id": 17,
+      "id": null,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -1208,7 +1208,7 @@
         "x": 0,
         "y": 27
       },
-      "id": 6,
+      "id": null,
       "panels": [],
       "title": "TPS (Tokens Per Second)",
       "type": "row"
@@ -1216,7 +1216,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "prometheus"
       },
       "description": "Rate of tokens processed per second, including prompt and generation phases.",
       "fieldConfig": {
@@ -1248,7 +1248,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": {
               "group": "A",
               "mode": "none"
@@ -1281,7 +1281,7 @@
         "x": 0,
         "y": 28
       },
-      "id": 20,
+      "id": null,
       "options": {
         "legend": {
           "calcs": [],
@@ -1298,7 +1298,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "rate(vllm:generation_tokens_total[$__interval])",
+          "expr": "rate(vllm:generation_tokens_total[$__rate_interval])",
           "legendFormat": "Generation TPS",
           "range": true,
           "refId": "A"
@@ -1306,10 +1306,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(vllm:prompt_tokens_total[$__interval])",
+          "expr": "rate(vllm:prompt_tokens_total[$__rate_interval])",
           "hide": false,
           "instant": false,
           "legendFormat": "Prompt TPS",
@@ -1319,10 +1319,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(vllm:iteration_tokens_total_count[$__interval])",
+          "expr": "rate(vllm:iteration_tokens_total_count[$__rate_interval])",
           "hide": false,
           "instant": false,
           "legendFormat": "Overall Iteration TPS",
@@ -1399,7 +1399,7 @@
   },
   "timezone": "browser",
   "uid": "performance-statistics",
-  "title": "Performance Statistics",
+  "title": "vLLM Performance Statistics",
   "version": 40,
   "weekStart": ""
 }

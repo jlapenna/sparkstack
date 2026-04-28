@@ -18,13 +18,14 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 8,
+  "id": null,
   "links": [],
   "panels": [
     {
       "datasource": {
         "default": true,
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -55,7 +56,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": {
               "group": "A",
               "mode": "none"
@@ -86,7 +87,7 @@
         "x": 0,
         "y": 0
       },
-      "id": 14,
+      "id": null,
       "options": {
         "legend": {
           "calcs": [],
@@ -105,7 +106,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ddyfngn31dg5cf"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "code",
@@ -121,7 +122,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ddyfngn31dg5cf"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "code",
@@ -138,7 +139,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ddyfngn31dg5cf"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "code",
@@ -155,7 +156,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ddyfngn31dg5cf"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "code",
@@ -176,7 +177,8 @@
     {
       "datasource": {
         "default": true,
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -199,7 +201,7 @@
         "x": 12,
         "y": 0
       },
-      "id": 17,
+      "id": null,
       "maxDataPoints": 30,
       "options": {
         "calculate": false,
@@ -225,7 +227,7 @@
           "color": "rgba(255,0,255,0.7)"
         },
         "filterValues": {
-          "le": 1e-9
+          "le": 1e-09
         },
         "legend": {
           "show": true
@@ -249,7 +251,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ddyfngn31dg5cf"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -270,7 +272,8 @@
     {
       "datasource": {
         "default": true,
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -301,7 +304,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": {
               "group": "A",
               "mode": "none"
@@ -332,7 +335,7 @@
         "x": 0,
         "y": 8
       },
-      "id": 20,
+      "id": null,
       "options": {
         "legend": {
           "calcs": [],
@@ -351,7 +354,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ddyfngn31dg5cf"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "code",
@@ -367,7 +370,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ddyfngn31dg5cf"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "code",
@@ -384,7 +387,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ddyfngn31dg5cf"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "code",
@@ -401,7 +404,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ddyfngn31dg5cf"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "code",
@@ -422,7 +425,8 @@
     {
       "datasource": {
         "default": true,
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -445,7 +449,7 @@
         "x": 12,
         "y": 8
       },
-      "id": 19,
+      "id": null,
       "maxDataPoints": 30,
       "options": {
         "calculate": false,
@@ -475,7 +479,7 @@
           "color": "rgba(255,0,255,0.7)"
         },
         "filterValues": {
-          "le": 1e-9
+          "le": 1e-09
         },
         "legend": {
           "show": true
@@ -498,7 +502,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ddyfngn31dg5cf"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "builder",
@@ -521,7 +525,8 @@
     {
       "datasource": {
         "default": true,
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -552,7 +557,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": {
               "group": "A",
               "mode": "none"
@@ -583,7 +588,7 @@
         "x": 0,
         "y": 16
       },
-      "id": 7,
+      "id": null,
       "options": {
         "legend": {
           "calcs": [],
@@ -602,7 +607,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ddyfngn31dg5cf"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "code",
@@ -623,7 +628,8 @@
     {
       "datasource": {
         "default": true,
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -654,7 +660,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": {
               "group": "A",
               "mode": "none"
@@ -685,7 +691,7 @@
         "x": 12,
         "y": 16
       },
-      "id": 18,
+      "id": null,
       "options": {
         "legend": {
           "calcs": [],
@@ -704,7 +710,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ddyfngn31dg5cf"
+            "uid": "prometheus"
           },
           "editorMode": "code",
           "expr": "sglang_gen_throughput",
@@ -720,7 +726,8 @@
     {
       "datasource": {
         "default": true,
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -751,7 +758,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": {
               "group": "A",
               "mode": "none"
@@ -782,7 +789,7 @@
         "x": 0,
         "y": 24
       },
-      "id": 11,
+      "id": null,
       "options": {
         "legend": {
           "calcs": [],
@@ -801,7 +808,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ddyfngn31dg5cf"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "code",
@@ -821,7 +828,8 @@
     {
       "datasource": {
         "default": true,
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -852,7 +860,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": {
               "group": "A",
               "mode": "none"
@@ -883,7 +891,7 @@
         "x": 12,
         "y": 24
       },
-      "id": 8,
+      "id": null,
       "options": {
         "legend": {
           "calcs": [],
@@ -902,7 +910,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "ddyfngn31dg5cf"
+            "uid": "prometheus"
           },
           "disableTextWrap": false,
           "editorMode": "code",

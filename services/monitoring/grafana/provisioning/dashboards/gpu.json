@@ -74,7 +74,7 @@
         "y": 0
       },
       "hiddenSeries": false,
-      "id": 12,
+      "id": null,
       "legend": {
         "alignAsTable": true,
         "avg": true,
@@ -157,7 +157,8 @@
         "defaults": {
           "custom": {
             "lineWidth": 2,
-            "fillOpacity": 10
+            "fillOpacity": 10,
+            "spanNulls": true
           }
         },
         "overrides": []
@@ -174,7 +175,7 @@
         "x": 18,
         "y": 0
       },
-      "id": 14,
+      "id": null,
       "options": {
         "fieldOptions": {
           "calcs": [
@@ -245,7 +246,7 @@
         "y": 8
       },
       "hiddenSeries": false,
-      "id": 10,
+      "id": null,
       "legend": {
         "alignAsTable": true,
         "avg": true,
@@ -328,7 +329,8 @@
         "defaults": {
           "custom": {
             "lineWidth": 2,
-            "fillOpacity": 10
+            "fillOpacity": 10,
+            "spanNulls": true
           }
         },
         "overrides": []
@@ -346,7 +348,7 @@
         "x": 18,
         "y": 8
       },
-      "id": 16,
+      "id": null,
       "links": [],
       "options": {
         "fieldOptions": {
@@ -419,7 +421,7 @@
         "y": 16
       },
       "hiddenSeries": false,
-      "id": 2,
+      "id": null,
       "interval": "",
       "legend": {
         "alignAsTable": true,
@@ -506,7 +508,8 @@
         "defaults": {
           "custom": {
             "lineWidth": 2,
-            "fillOpacity": 10
+            "fillOpacity": 10,
+            "spanNulls": true
           }
         },
         "overrides": []
@@ -529,7 +532,7 @@
         "y": 24
       },
       "hiddenSeries": false,
-      "id": 6,
+      "id": null,
       "legend": {
         "alignAsTable": true,
         "avg": true,
@@ -611,7 +614,8 @@
         "defaults": {
           "custom": {
             "lineWidth": 2,
-            "fillOpacity": 10
+            "fillOpacity": 10,
+            "spanNulls": true
           }
         },
         "overrides": []
@@ -634,7 +638,7 @@
         "y": 32
       },
       "hiddenSeries": false,
-      "id": 18,
+      "id": null,
       "legend": {
         "avg": true,
         "current": false,
@@ -715,7 +719,8 @@
         "defaults": {
           "custom": {
             "lineWidth": 2,
-            "fillOpacity": 10
+            "fillOpacity": 10,
+            "spanNulls": true
           }
         },
         "overrides": []
@@ -738,7 +743,7 @@
         "y": 24
       },
       "hiddenSeries": false,
-      "id": 4,
+      "id": null,
       "legend": {
         "alignAsTable": true,
         "avg": true,
@@ -820,7 +825,8 @@
         "defaults": {
           "custom": {
             "lineWidth": 2,
-            "fillOpacity": 10
+            "fillOpacity": 10,
+            "spanNulls": true
           }
         },
         "overrides": []

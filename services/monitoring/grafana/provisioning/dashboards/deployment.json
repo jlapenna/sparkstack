@@ -9,7 +9,7 @@
   "liveNow": true,
   "panels": [
     {
-      "id": 1,
+      "id": null,
       "type": "row",
       "title": "High-Level Deployment Progress",
       "gridPos": {
@@ -27,7 +27,7 @@
       }
     },
     {
-      "id": 2,
+      "id": null,
       "type": "stat",
       "title": "Deploy Step Progress",
       "datasource": {
@@ -80,7 +80,7 @@
       "transparent": true
     },
     {
-      "id": 3,
+      "id": null,
       "type": "stat",
       "title": "SparkRun Provisioning",
       "datasource": {
@@ -128,7 +128,7 @@
       "transparent": true
     },
     {
-      "id": 4,
+      "id": null,
       "type": "stat",
       "title": "Overall Model Load",
       "datasource": {
@@ -176,7 +176,7 @@
       "transparent": true
     },
     {
-      "id": 5,
+      "id": null,
       "type": "row",
       "title": "Deployment Telemetry Details",
       "gridPos": {
@@ -187,7 +187,7 @@
       }
     },
     {
-      "id": 6,
+      "id": null,
       "type": "row",
       "title": "Fleet Inventory",
       "gridPos": {
@@ -198,7 +198,7 @@
       }
     },
     {
-      "id": 7,
+      "id": null,
       "type": "bargauge",
       "title": "Model VRAM Load Progress",
       "datasource": {
@@ -249,7 +249,7 @@
       "transparent": true
     },
     {
-      "id": 8,
+      "id": null,
       "type": "state-timeline",
       "title": "Deploy Status Timeline",
       "datasource": {
@@ -337,7 +337,7 @@
       "transparent": true
     },
     {
-      "id": 9,
+      "id": null,
       "type": "stat",
       "title": "Active Hosts",
       "datasource": {
@@ -381,7 +381,7 @@
       "transparent": true
     },
     {
-      "id": 10,
+      "id": null,
       "type": "table",
       "title": "Active Models Inventory",
       "datasource": {
@@ -472,7 +472,7 @@
       "transparent": true
     },
     {
-      "id": 11,
+      "id": null,
       "type": "piechart",
       "title": "Models Distribution by Host",
       "datasource": {

@@ -396,7 +396,7 @@
         "w": 24,
         "h": 1
       },
-      "id": 1000,
+      "id": null,
       "panels": [
         {
           "datasource": {
@@ -438,7 +438,7 @@
             "w": 6,
             "h": 6
           },
-          "id": 1001,
+          "id": null,
           "options": {
             "colorMode": "value",
             "graphMode": "area",
@@ -781,7 +781,8 @@
             "axisLabel": "CPU %",
             "drawStyle": "line",
             "fillOpacity": 10,
-            "lineWidth": 1
+            "lineWidth": 1,
+            "spanNulls": true
           },
           "unit": "percent"
         }
@@ -825,7 +826,8 @@
             "axisLabel": "RAM %",
             "drawStyle": "line",
             "fillOpacity": 10,
-            "lineWidth": 1
+            "lineWidth": 1,
+            "spanNulls": true
           },
           "max": 100,
           "min": 0,
@@ -871,7 +873,8 @@
             "axisLabel": "GPU %",
             "drawStyle": "line",
             "fillOpacity": 10,
-            "lineWidth": 1
+            "lineWidth": 1,
+            "spanNulls": true
           },
           "max": 100,
           "min": 0,
@@ -930,7 +933,8 @@
             "axisLabel": "CPU %",
             "drawStyle": "line",
             "fillOpacity": 10,
-            "lineWidth": 1
+            "lineWidth": 1,
+            "spanNulls": true
           },
           "unit": "percent"
         }
@@ -944,7 +948,7 @@
       "id": null,
       "targets": [
         {
-          "expr": "sum(rate(container_cpu_usage_seconds_total{name=~\"openclaw.*|vllm.*|litellm.*|grafana|prometheus|vector|cadvisor|dcgm-exporter|node-exporter|vllm-progress-manager\"}[$__rate_interval])) by (name) * 100",
+          "expr": "sum(rate(container_cpu_usage_seconds_total{container_label_sparkrun_monitoring=\"true\"}[$__rate_interval])) by (name) * 100",
           "legendFormat": "{{name}}",
           "refId": "A"
         }
@@ -974,7 +978,8 @@
             "axisLabel": "Memory",
             "drawStyle": "line",
             "fillOpacity": 10,
-            "lineWidth": 1
+            "lineWidth": 1,
+            "spanNulls": true
           },
           "unit": "bytes"
         }
@@ -988,7 +993,7 @@
       "id": null,
       "targets": [
         {
-          "expr": "sum(container_memory_usage_bytes{name=~\"openclaw.*|vllm.*|litellm.*|grafana|prometheus|vector|cadvisor|dcgm-exporter|node-exporter|vllm-progress-manager\"}) by (name)",
+          "expr": "sum(container_memory_usage_bytes{container_label_sparkrun_monitoring=\"true\"}) by (name)",
           "legendFormat": "{{name}}",
           "refId": "A"
         }
@@ -1031,7 +1036,8 @@
             "axisLabel": "CPU %",
             "drawStyle": "line",
             "fillOpacity": 10,
-            "lineWidth": 1
+            "lineWidth": 1,
+            "spanNulls": true
           },
           "unit": "percent"
         }
@@ -1075,7 +1081,8 @@
             "axisLabel": "Memory",
             "drawStyle": "line",
             "fillOpacity": 10,
-            "lineWidth": 1
+            "lineWidth": 1,
+            "spanNulls": true
           },
           "unit": "bytes"
         }

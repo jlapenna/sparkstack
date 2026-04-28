@@ -231,7 +231,10 @@
           "color": {
             "mode": "palette-classic"
           },
-          "unit": "req/s"
+          "unit": "req/s",
+          "custom": {
+            "spanNulls": true
+          }
         }
       },
       "gridPos": {
@@ -266,6 +269,9 @@
         "defaults": {
           "color": {
             "mode": "palette-classic"
+          },
+          "custom": {
+            "spanNulls": true
           }
         }
       },
@@ -315,7 +321,10 @@
           "color": {
             "mode": "palette-classic"
           },
-          "unit": "tokens/s"
+          "unit": "tokens/s",
+          "custom": {
+            "spanNulls": true
+          }
         }
       },
       "gridPos": {
@@ -410,7 +419,8 @@
             "axisLabel": "CPU %",
             "drawStyle": "line",
             "fillOpacity": 10,
-            "lineWidth": 1
+            "lineWidth": 1,
+            "spanNulls": true
           },
           "unit": "percent"
         }
@@ -452,7 +462,8 @@
             "axisLabel": "Memory",
             "drawStyle": "line",
             "fillOpacity": 10,
-            "lineWidth": 1
+            "lineWidth": 1,
+            "spanNulls": true
           },
           "unit": "bytes"
         }
