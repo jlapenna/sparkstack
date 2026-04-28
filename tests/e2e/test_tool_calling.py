@@ -12,7 +12,7 @@ from tests.e2e.context import E2EContext
 
 @pytest.mark.order(10)
 @pytest.mark.asyncio
-async def test_tool_calling_verification(ctx: E2EContext):
+async def test_tool_calling(ctx: E2EContext):
     unique_token = str(uuid.uuid4())
     session_id = f"verifier_tool_{int(time.time())}_{unique_token[:8]}"
 

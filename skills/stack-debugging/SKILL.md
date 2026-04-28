@@ -79,3 +79,20 @@ If a service is completely missing from Tempo:
 - Verify network reachability: Ensure the container can resolve and route to `alloy:4318`.
 - Ensure OTel is enabled (`VLLM_OTEL_TRACING_ENABLED=1`).
 - Check Alloy logs (`docker compose logs alloy`) for `rpc error` or dropping metrics, which indicates backend ingestion failures.
+
+## 5. Recovering from Stale State Locks (OpenClaw)
+
+Sometimes `openclaw-gateway` will throw "Previous run is still shutting down" or log `[diagnostic] stuck session` errors. This is typically caused by SQLite database lock contention when concurrent instances (like the E2E script bypassing the gateway API and using the CLI daemon directly) spawn embedded agents.
+
+### Recovery Pattern
+
+To safely recover stuck sessions without manual intervention, use the provided recovery script:
+
+```bash
+uv run scripts/clear_stuck_sessions.py
+docker restart openclaw-openclaw-gateway-1
+```
+
+This script parses all `sessions.json` state stores under `~/.openclaw` and resets any session stuck in the `processing` state back to `idle`. Restarting the gateway ensures the changes take effect.
+
+**Best Practice:** When invoking agents programmatically, use `openclaw agent` from the host wrapper, which connects to the Gateway websocket. Avoid using `docker exec ... node dist/index.js agent` inside the container as `root`, because it bypasses the gateway configuration, spawns a standalone embedded agent, and contends for the same SQLite lock.

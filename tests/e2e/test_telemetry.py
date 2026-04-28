@@ -9,7 +9,7 @@ from tests.e2e.context import E2EContext
 
 @pytest.mark.order(14)
 @pytest.mark.asyncio
-async def test_telemetry_verification(ctx: E2EContext):
+async def test_telemetry(ctx: E2EContext):
     max_retries = 6
     async with httpx.AsyncClient() as client:
         for attempt in range(max_retries):

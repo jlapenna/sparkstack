@@ -11,7 +11,7 @@ from tests.e2e.context import E2EContext
 
 @pytest.mark.order(13)
 @pytest.mark.asyncio
-async def test_regression_testing(ctx: E2EContext):
+async def test_anti_repetition(ctx: E2EContext):
     load_dotenv(ctx.root_dir / ".env")
     api_key = os.getenv("LITELLM_MASTER_KEY", "")
 

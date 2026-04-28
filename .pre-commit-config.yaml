@@ -5,18 +5,17 @@ repos:
     rev: v0.15.12
     hooks:
       - id: ruff
-        args: [ --exit-zero ]
         verbose: true
         stages: [pre-push]
       - id: ruff-format
-        entry: bash -c 'ruff format --check "$@" || true' --
+        entry: bash -c 'ruff format --check "$@"' --
         verbose: true
         stages: [pre-push]
   - repo: https://github.com/executablebooks/mdformat
     rev: 1.0.0
     hooks:
       - id: mdformat
-        entry: bash -c 'mdformat --check "$@" || true' --
+        entry: bash -c 'mdformat --check "$@"' --
         verbose: true
         additional_dependencies:
           - mdformat-gfm
@@ -25,7 +24,7 @@ repos:
     rev: v1.1.409
     hooks:
       - id: pyright
-        entry: bash -c 'pyright --pythonpath .venv/bin/python "$@" || true' --
+        entry: bash -c 'pyright --pythonpath .venv/bin/python "$@"' --
         verbose: true
         args: [ core/, scripts/, tests/ ]
         additional_dependencies:
