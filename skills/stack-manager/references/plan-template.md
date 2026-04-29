@@ -14,7 +14,7 @@ ______________________________________________________________________
 
 - **Quirk Investigated**: [Describe the quirk, e.g., SGLang Mamba Speculation Crash]
 - **Web Research Summary**: [Describe findings from internet search regarding recent hardware/engine optimizations for this model]
-- **Invalidation Test**: [Describe the exact test from the docs, e.g., "Run with `--speculative-algo EAGLE3` enabled"]
+- **Invalidation Test**: \[Describe the exact test from the docs, e.g., "Run with `--speculative-algo EAGLE3` enabled"\]
 - **Result**: [Did it crash? Yes/No]
 - **Action Taken**: [e.g., "Crash still present on nightly image, leaving quirk active" OR "Boot succeeded, removing quirk from documentation and re-enabling feature"]
 
@@ -24,7 +24,7 @@ ______________________________________________________________________
 
 *If the new deployment causes a catastrophic failure, you MUST have the exact rollback commands pre-defined here so the system can be restored instantly without further research.*
 
-- **Previous Stable Stack Name**: [e.g., `core-upgrade-20260320`]
+- **Previous Stable Stack Name**: \[e.g., `core-upgrade-20260320`\]
 - **Rollback Command**: `uv run python manager/set_current.py spark-stack-registry/stacks/[PREVIOUS_STABLE]`
 
 ______________________________________________________________________
@@ -36,7 +36,7 @@ ______________________________________________________________________
 - **SparkRun Branch**: `cd ../sparkrun && git branch --show-current` → Must be `local-dev`
 - **SparkRun State**: `cd ../sparkrun && git status --porcelain` → Must be empty
 - **Registry Sync**: `uv run sparkrun update` → Ensure recipe cache is current
-- **SparkRun Version**: `uv run sparkrun --version` → Record version hash: [_______]
+- **SparkRun Version**: `uv run sparkrun --version` → Record version hash: [\_\_\_\_\_\_\_]
 
 ______________________________________________________________________
 
