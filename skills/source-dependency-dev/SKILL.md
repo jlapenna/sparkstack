@@ -201,7 +201,7 @@ You MUST conclude your integration actions with this exact structure:
 *(Detail the branches fetched, merged, and worktrees created)*
 
 ### 2. Active Integrations
-*(Directly output the results from running `python3 manager/source_dependency_status.py` here)*
+*(Directly output the results from running `python3 util/source_dependency_status.py` here)*
 
 ### 3. Repo Health
 *(Confirm that the primary source dependency and the root `spark-stack` repo show zero dangling/untracked files)*
