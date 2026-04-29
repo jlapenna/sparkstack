@@ -19,7 +19,7 @@ async def test_functional_embeddings(ctx: E2EContext):
         raise AssertionError()
 
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
-    
+
     async with httpx.AsyncClient() as client:
         # Check if an embedding model is mapped before running the test
         models_res = await client.get(f"{ctx.gateway_url}/models", headers=headers, timeout=10)
@@ -27,9 +27,11 @@ async def test_functional_embeddings(ctx: E2EContext):
             models_data = models_res.json()
             available_models = [m.get("id") for m in models_data.get("data", [])]
             if "embedding" not in available_models:
-                logger.info("⏭️ Skip: No 'embedding' model mapped in LiteLLM. Stack may have been built with --allow-no-embedding.")
+                logger.info(
+                    "⏭️ Skip: No 'embedding' model mapped in LiteLLM. Stack may have been built with --allow-no-embedding."
+                )
                 pytest.skip("No embedding model mapped.")
-        
+
         payload = {"input": "test", "model": "embedding"}
         res = await client.post(
             f"{ctx.gateway_url}/embeddings", headers=headers, json=payload, timeout=30
