@@ -1797,7 +1797,7 @@ wheels = [
 
 [[package]]
 name = "sparkrun"
-version = "0.2.24"
+version = "0.2.29"
 source = { editable = "../sparkrun" }
 dependencies = [
     { name = "click" },
