@@ -164,7 +164,7 @@ uv run sparkrun benchmark /path/recipe.yaml --port 4000
 
 ```bash
 # GOOD: Explicitly maps the internal container target (main), injects the gateway secret, applies the full Arena testing profile, and avoids double-launching by using --skip-run
-export $(grep -v '^#' .env | xargs) && uv run sparkrun benchmark /path/recipe.yaml --port 4000 --skip-run -b served_model_name=main -b api_key=$LITELLM_MASTER_KEY --profile spark-arena-v1
+export $(rg -v '^#' .env | xargs) && uv run sparkrun benchmark /path/recipe.yaml --port 4000 --skip-run -b served_model_name=main -b api_key=$LITELLM_MASTER_KEY --profile spark-arena-v1
 ```
 
 ## Output Format
