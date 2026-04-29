@@ -1,5 +1,5 @@
 """
-core/utils.py - Domain-agnostic async utilities.
+Domain-agnostic async utilities.
 """
 
 import asyncio

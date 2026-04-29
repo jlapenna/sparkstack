@@ -1,5 +1,5 @@
 """
-core/discovery.py - vLLM and Sparkrun specific container discovery.
+vLLM and Sparkrun specific container discovery.
 """
 
 from loguru import logger

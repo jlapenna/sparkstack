@@ -1,5 +1,5 @@
 """
-core/schemas.py - Pydantic models for service configurations.
+Pydantic models for service configurations.
 """
 
 from enum import Enum
