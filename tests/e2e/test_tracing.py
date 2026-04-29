@@ -8,6 +8,7 @@ from tests.e2e.context import E2EContext
 
 
 @pytest.mark.order(15)
+@pytest.mark.timeout(300)
 @pytest.mark.asyncio
 async def test_tracing(ctx: E2EContext):
     """

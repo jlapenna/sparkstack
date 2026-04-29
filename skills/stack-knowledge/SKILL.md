@@ -128,12 +128,10 @@ When interacting with OpenClaw, it is critical to distinguish between its immuta
 ### Key Routing Paths
 
 - **OpenClaw → LLM**: openclaw-gateway → `litellm:4000` (via proxy-tier) → backend
-- **litellm → main_solo**: Currently configured as `host.docker.internal:8001` in litellm-config.yaml
-- **litellm → embedding_solo**: Currently configured as `host.docker.internal:8002` in litellm-config.yaml
+- **litellm → main_solo**: Uses direct container hostname `main_solo:8001` on shared `proxy-tier` network
+- **litellm → embedding_solo**: Uses direct container hostname `embedding_solo:8002` on shared `proxy-tier` network
 
-### `host.docker.internal` Resolution
-
-`host.docker.internal` resolves to `172.17.0.1` (the docker0 bridge gateway IP), NOT the host's real IP. This is set via `extra_hosts: host.docker.internal:host-gateway` in the gateway's docker-compose.yaml.
+> **Note:** Legacy stacks may still reference `host.docker.internal`. See Rule 2 below for why this is prohibited.
 
 ### OpenClaw Volume Architecture
 

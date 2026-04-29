@@ -11,6 +11,7 @@ from tests.e2e.context import E2EContext
 
 
 @pytest.mark.order(10)
+@pytest.mark.timeout(300)
 @pytest.mark.asyncio
 async def test_tool_calling(ctx: E2EContext):
     unique_token = str(uuid.uuid4())

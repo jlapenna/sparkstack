@@ -44,12 +44,17 @@ _(Refer to `skills/stack-manager/references/plan-template.md` for the exact requ
 
 ## Core Mandates (Blackwell Safety)
 
-### 1. The Memory Law (108GB Aggregate)
+### 1. The Memory Law (128GB Unified / 120GB Docker Ceiling)
 
-- **Total Limit**: Aggregate memory limits in all containers MUST NOT exceed **108GB**.
-- **GPU Utilization**: Aggregate `gpu-memory-utilization` MUST NOT exceed **0.90** (Hard limit 0.95).
+The DGX Spark (GB10) has **128GB total unified memory**. After OS and driver overhead, **~121GB** is usable by applications. The Docker container memory ceiling is **120GB** (`MAX_DOCKER_MEMORY_GB`).
+
+- **Total Docker Limit**: Aggregate memory limits in all containers MUST NOT exceed **120GB**.
+- **GPU Utilization Range**: Aggregate `gpu-memory-utilization` should be tuned within the **0.80–0.95** range depending on workload:
+  - **Conservative (0.80)**: Recommended when co-locating multiple models (e.g., dense + embedding). Provides maximum headroom against OOM.
+  - **Standard (0.90)**: Suitable for single-model stacks with moderate context windows.
+  - **Hard Limit (0.95)**: The code-enforced ceiling (`MAX_VRAM_UTILIZATION`). Only use when maximizing a single model's KV cache on an otherwise idle system.
 - **Context Preservation**: For 128k+ context, monitor VRAM usage carefully.
-- **System RAM Maximization**: Do not leave System RAM unutilized. The main LLM container/sparkrun instance MUST be allocated the lion's share of System RAM (e.g., `cpu-offload-gb: 40-60`) to prevent OOM during weight loading and to support KV cache CPU offloading. If GPU utilization hits the 0.90 limit, heavily leverage CPU offloading to absorb the difference.
+- **System RAM Maximization**: Do not leave System RAM unutilized. The main LLM container/sparkrun instance MUST be allocated the lion's share of System RAM (e.g., `cpu-offload-gb: 40-60`) to prevent OOM during weight loading and to support KV cache CPU offloading. If GPU utilization hits the upper range, heavily leverage CPU offloading to absorb the difference.
 - **Under-Utilization Warnings**: If a recipe utilizes `< 85%` VRAM or leaves > `30GB` of System RAM unallocated, you MUST issue a prominent warning in your plan that hardware capacity is being wasted. You MUST proactively suggest maximizing `max_model_len` (e.g., bumping to 128k or 262k) to utilize the remaining memory, especially when deploying heavily quantized models (like NVFP4) which leave massive amounts of VRAM available for the KV cache.
 - **Unified Memory Architectures (Grace Hopper)**: DO NOT USE `--cpu-offload-gb` on systems with Unified Memory architectures (e.g., GH200). System RAM and VRAM are the same physical pool. Using CPU offload simply thrashes the interconnect for zero capacity gain and crashes Triton attention backends. Only use CPU offload on discrete GPU architectures (e.g., standard PCIe DGX systems).
 
@@ -139,7 +144,7 @@ If `sparkrun benchmark` (using `llama-benchy`) fails immediately with `HTTP 400 
 ## Prerequisites (Depth Gates)
 
 1. You MUST verify that the physical model weights or valid `repo_id` are actively accessible on HuggingFace Hub or locally before touching existing active deployments.
-1. You MUST verify the 108GB aggregate Spark constraint rule is maintained before initiating Phase 1 of `plan-template.md`.
+1. You MUST verify the 120GB Docker memory ceiling and GPU utilization range (0.80–0.95) are respected before initiating Phase 1 of `plan-template.md`.
 
 ## When NOT to use this skill (Negative Triggers)
 

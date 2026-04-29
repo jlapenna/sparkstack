@@ -11,6 +11,7 @@ from tests.e2e.context import E2EContext
 
 
 @pytest.mark.order(11)
+@pytest.mark.timeout(900)
 @pytest.mark.asyncio
 async def test_long_conversation(ctx: E2EContext):
     """

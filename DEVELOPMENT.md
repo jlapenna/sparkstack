@@ -108,7 +108,7 @@ The service orchestration scripts (`update_services.py` and `update_openclaw.py`
 
 1. **Stuck Task Clearing**: Automatically scans the OpenClaw task database (`~/.openclaw/tasks/runs.sqlite`) and resets any tasks stuck in the "running" state to "failed". This prevents session locks in Telegram and other channels.
 1. **Container Pruning**: Runs `docker container prune` and `docker network prune` to remove orphaned resources that may cause port collisions.
-1. **Process Purging**: Force-kills any remaining `vllm`, `sparkrun`, or `EngineCore` processes on the host to ensure a clean VRAM state for the new stack.
+1. **Telemetry Cache Flush**: Restarts the Alloy telemetry collector to flush stale caches and ensure clean metric ingestion for the new stack.
 
 ### When it runs:
 

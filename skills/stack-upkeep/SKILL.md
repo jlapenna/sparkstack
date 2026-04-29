@@ -36,7 +36,7 @@ This skill dictates the exact sequence of commands to execute when a user asks t
 
 OpenClaw receives updates through branch maintenance. Do NOT perform tag-based updates, as they interfere with active development in the `local-dev` branch.
 
-- **Command:** `./manager/update_openclaw.py` (Do NOT pass `--pull-latest` as it will overwrite local development changes with upstream release tags. Do NOT pass `--run-setup` during routine updates unless you intentionally want to execute `setup.sh`.)
+- **Command:** `uv run python manager/update_openclaw.py` (Do NOT pass `--pull-latest` as it will overwrite local development changes with upstream release tags. Do NOT pass `--run-setup` during routine updates unless you intentionally want to execute `setup.sh`.)
 - **Behavior:** This ensures local development branches and in-progress PRs are preserved without being forcibly detached to upstream tags.
 
 ### 3. Update Model Weights & Images
@@ -87,7 +87,7 @@ All update scripts (`update_services.py`, `update_openclaw.py`) now execute the 
 - **Behavior:**
   - Clears stuck tasks from `~/.openclaw/tasks/runs.sqlite`.
   - Prunes exited containers and unused networks.
-  - Purges orphaned host processes (`vllm`, `sparkrun`).
+  - Restarts the Alloy telemetry collector to flush stale caches.
 - **Manual Trigger:** If sessions are hung without an update, run `uv run manager/update_services.py`.
 
 ### 5. Update SparkRun Recipes
@@ -97,7 +97,7 @@ The `sparkrun` registry receives frequent updates to optimization parameters.
 - **Command:** `uv run sparkrun update`
 - **Behavior:** Syncs the local recipe cache with the upstream `official` and `eugr` registries.
 
-### 5. Re-apply Configuration (If necessary)
+### 6. Re-apply Configuration (If necessary)
 
 If any model configuration changes were detected upstream, rebuild and restart the stack to apply them.
 
@@ -107,11 +107,11 @@ If any model configuration changes were detected upstream, rebuild and restart t
   uv run python manager/set_current.py spark-stack-registry/stacks/official-main-20260325
   ```
 
-### 6. Final Verification (MANDATORY)
+### 7. Final Verification (MANDATORY)
 
-After any update, you MUST invoke the `stack-verifier` skill to ensure the system didn't break during the upgrade process.
+After any update, you MUST invoke the `stack-verification` skill to ensure the system didn't break during the upgrade process.
 
-### 7. Performance Benchmarking
+### 8. Performance Benchmarking
 
 After applying updates and verifying functionality, run the full `spark-arena-v1` performance suite to gather regression metrics on the main model:
 
@@ -126,14 +126,14 @@ After applying updates and verifying functionality, run the full `spark-arena-v1
   ```
 - **Behavior:** This profiles the token generation speed, prefill times, and latency jitter after the update, without tearing down the containers. It serves as a performance regression baseline.
 
-### 8. Container Build & Runtime Tool Persistence
+### 9. Container Build & Runtime Tool Persistence
 
 When modifying Docker images (e.g., `Dockerfile.openclaw-custom`), you MUST consult the **openclaw-image-manager** skill to understand the dual-persistence pattern and prevent tools from being masked by volume mounts.
 
 ## Important Safety Notes
 
 - **Never modify `openclaw/` directory contents directly.** OpenClaw is an immutable upstream dependency managed purely by Git tags and Docker builds.
-- Always run the `stack-verifier` pipeline after applying updates to catch breaking changes from upstream.
+- Always run the `stack-verification` pipeline after applying updates to catch breaking changes from upstream.
 
 ## Prerequisites
 
@@ -156,7 +156,7 @@ When modifying Docker images (e.g., `Dockerfile.openclaw-custom`), you MUST cons
 
 ```bash
 # GOOD: Applies stable background updates while preserving the developer's worktree
-./manager/update_openclaw.py
+uv run python manager/update_openclaw.py
 ```
 
 ## Output Format

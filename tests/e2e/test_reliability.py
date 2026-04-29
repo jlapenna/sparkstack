@@ -11,6 +11,7 @@ from tests.e2e.context import E2EContext
 
 
 @pytest.mark.order(16)
+@pytest.mark.timeout(1200)
 @pytest.mark.asyncio
 async def test_reliability(ctx: E2EContext):
     minutes = ctx.soak_minutes

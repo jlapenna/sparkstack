@@ -131,6 +131,6 @@ class PrometheusConfig(PassThroughModel):
     """Schema for prometheus.yml"""
 
     global_config: dict[str, str] = Field(
-        default_factory=lambda: {"scrape_interval": "5s"}, serialization_alias="global"
+        default_factory=lambda: {"scrape_interval": "15s"}, serialization_alias="global"
     )
     scrape_configs: list[ScrapeConfig] = Field(default_factory=list)

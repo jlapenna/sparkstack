@@ -1,5 +1,5 @@
 """
-core/constants.py - System-wide constants and constraints.
+System-wide constants and constraints.
 """
 
 import os

@@ -54,7 +54,7 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for critical host-level tuning to ensure Do
 
 ## Contributing
 
-Please refer to [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for details on our code of conduct, and the process for submitting pull requests to us.
+Please refer to [DEVELOPMENT.md](DEVELOPMENT.md) for setup and development guidelines, and [AGENTS.md](AGENTS.md) for contribution protocols.
 
 ## License
 

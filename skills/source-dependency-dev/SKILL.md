@@ -39,10 +39,7 @@ Upstream maintainers will not merge PRs that have failing checks or unaddressed 
 1. **Continuous Integration (CI):** You MUST regularly check the CI status of open PRs using `gh pr checks`. You should only address CI issues if they are related to your changes. If you identify failures that are directly caused by your work, promptly push fixes to the PR branch. Do not fix unrelated CI failures inherited from `main`.
 1. **Scope Checking:** When updating a PR or submitting new code, you MUST use the `pr-gutcheck` skill. This ensures all implementation changes strictly adhere to the PR description and any accepted review comments, guarding against scope creep or the unintentional inclusion of unrelated modifications.
 1. **Review Comments:** You MUST actively address feedback from human reviewers and automated bots (like Codex bots). Use the `address-github-comments` skill (located globally) to help evaluate and resolve these comments. When updating a PR to address feedback, you MUST reply to every human comment (such as via `gh pr comment`) to explicitly confirm that their concerns have been resolved and what actions were taken. Do not leave reviewers "awaiting replies."
-1. **Resolve Conversations:** Pushing code fixes and leaving a top-level `@comment` reply does **not** actually mark the review thread as resolved in GitHub! Once feedback is addressed, you MUST explicitly resolve the individual review conversations programmatically. Use the helper script:
-   ```bash
-   uv run python skills/source-dependency-dev/manager/resolve_pr_threads.py
-   ```
+1. **Resolve Conversations:** Pushing code fixes and leaving a top-level `@comment` reply does **not** actually mark the review thread as resolved in GitHub! Once feedback is addressed, you MUST explicitly resolve the individual review conversations programmatically using the GitHub GraphQL API or the `gh` CLI.
    Do not assume conversations will be resolved automatically.
 1. **OpenClaw Specific:** For `openclaw` PRs, if the GitHub Codex review bot does not trigger, you should run `codex review --base origin/main` locally and treat the findings as mandatory review items.
 
@@ -159,8 +156,8 @@ Before closing the process, you MUST verify that the git tree for the primary so
 
 ### 5. Output and Track the Integration State
 
-After completing the source dependency process, you MUST run `python3 manager/source_dependency_status.py` to output the current integrated source dependency PRs to the user cleanly.
-Do not embed dynamic markdown tables inside this skill document, as they become stale immediately. Depend entirely on the `source_dependency_status.py` script to generate contextual awareness for the user.
+After completing the source dependency process, you MUST verify and output the current integrated source dependency state to the user by running `git log --oneline -10` and `git status` in each source dependency directory.
+Do not embed dynamic markdown tables inside this skill document, as they become stale immediately. Depend entirely on live git state to generate contextual awareness for the user.
 
 ### 6. Completion Condition
 

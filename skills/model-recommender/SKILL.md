@@ -28,7 +28,7 @@ To identify and evaluate frontier LLMs specifically for the **NVIDIA Spark (GB10
 This skill makes you a pure **Research, Discovery, and Configuration Engine**. Your job is to hunt down the best new models on the internet, figure out their quirks, and formulate the ideal configurations and recipes for them. **You MUST activate and utilize the guidelines in this skill whenever the user asks for model recommendations or asks if there are new models to try.**
 
 > [!WARNING]
-> Once you have utilized this skill to identify the optimal model, formulated its configuration, and statically verified its VRAM math, you **MUST STOP**. Defer strictly to the `stack-manager` or `stack-verifier` skills for all local deployment, container management, and live benchmarking workflows.
+> Once you have utilized this skill to identify the optimal model, formulated its configuration, and statically verified its VRAM math, you **MUST STOP**. Defer strictly to the `stack-manager` or `stack-verification` skills for all local deployment, container management, and live benchmarking workflows.
 
 ## Discovery Sources
 
@@ -90,7 +90,7 @@ Never rely on theoretical parameter math (e.g., 0.5 GB/B). Many mixed-precision 
 
 - **Rule**: If a SparkRun recipe exists or can be simulated, you MUST determine the actual weight footprint and KV cache overhead before recommending. You MUST explicitly write out your math calculation as a codeblock step in your response before formulating the comparison table. (Use `uv run python -m sparkrun.scripts.recipe vram <recipe> --tp 1` if available locally).
 - **Mandatory Quantization Hunting**: You MUST search for an `NVFP4` or heavily optimized quantization (e.g., `AWQ`) variant of the model FIRST. Do not recommend a massive FP16/FP8 base model if an NVFP4 variant exists that fits natively within the workstation's compute budget.
-- **VRAM Ceiling**: The aggregate `gpu-memory-utilization` across all models must stay under **0.80** (working beautifully within the 108GB Spark limit) to prevent system-wide swapping.
+- **VRAM Ceiling**: The aggregate `gpu-memory-utilization` across all models should be tuned within the **0.80–0.95** range (see `stack-manager` Memory Law for guidance). Use **0.80** when co-locating multiple models for maximum headroom, up to the **0.95** hard limit for single-model stacks. The Docker memory ceiling is **120GB**.
 
 #### Logical Math Checkpoints
 
@@ -121,7 +121,7 @@ To ensure the recommender operates accurately, **NEVER** do the following:
 
 - **Recommending Ancient Models**: AI moves at lightspeed. A model released more than a month ago is obsolete. You MUST check the current system date and restrict your internet searches to models released exclusively within the **last 30 days**. Recommending models older than 30 days is a catastrophic failure.
 - **Hallucinating Repositories / Phantom Models**: You MUST NEVER fabricate a Hugging Face repository or assume an open-weights version exists just because an API is available (e.g., hallucinating an open `GLM-5` when only its endpoint exists). Before formulating any configurations, you MUST actively verify the precise repository exists physically by running the mandatory verification script: `uv run python manager/verify_hf_model.py <repo_id>`. Do not recommend a model unless this script returns `✅ VERIFIED`.
-- **Ignoring the VRAM Ceiling**: Do not pitch a model solely because it is #1 on a leaderboard. If it exceeds 108GB in available precision formats, the recommendation is invalid.
+- **Ignoring the VRAM Ceiling**: Do not pitch a model solely because it is #1 on a leaderboard. If it exceeds the 120GB Docker memory ceiling in available precision formats, the recommendation is invalid.
 
 ## Presentation of Findings (Comparison Table)
 
@@ -171,7 +171,7 @@ I recommend Llama-4-400B FP8. It is amazing. I will schedule the deployment.
 Let's figure out if [Model-X-120B] fits.
 - Quantization format hunted: `NVFP4` (Base FP8 would be ~130GB, disqualifying it).
 - Parameter load (NVFP4): `120B * 0.55 GB/B overhead = ~66GB`
-- Leftover VRAM Budget (at 0.80 ceiling limit on 108GB): `86GB - 66GB = 20GB`
+- Leftover VRAM Budget (at 0.80 conservative ceiling on 120GB): `96GB - 66GB = 30GB`
 - Context cache footprint: A 64K context window takes roughly `12GB` of KV cache.
 - Dynamic `max_model_len` assignment: `65536` fits perfectly within the remaining 20GB budget.
 - Total footprint: `78GB`.

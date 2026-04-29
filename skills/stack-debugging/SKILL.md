@@ -109,7 +109,7 @@ If a service is completely missing from Tempo:
 - Ensure OTel is enabled (`VLLM_OTEL_TRACING_ENABLED=1`).
 - Check Alloy logs (`docker compose logs alloy`) for `rpc error` or dropping metrics, which indicates backend ingestion failures.
 
-## 6Proactive Debugging & Hunting Patterns
+## 6. Proactive Debugging & Hunting Patterns
 
 Unlike reactive debugging (where you respond to an active incident or broken test), **Proactive Debugging** involves open-ended hunting for anomalies, unhandled edge cases, and regressions *before* they surface to the user.
 
