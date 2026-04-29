@@ -4,7 +4,7 @@ For every new session, you **MUST** do the following:
 
 1. Before making a plan or writing code, ALWAYS use the `grep_search` tool on the `skills/` and `sparkrun/sparkrun-cc-plugin/skills/` directories for keywords related to the user's prompt to identify the correct protocol to follow. (Do NOT try to read all skills at once).
 1. Read and strictly follow all rules defined in `.agents/rules/`.
-1. Activate local (this repo only) skills: `stack-manager`, `submodule-dev`, `monitoring`, `stack-upkeep`, `stack-debugging`
+1. Activate local (this repo only) skills: `stack-manager`, `source-dependency-dev`, `monitoring`, `stack-upkeep`, `stack-debugging`
 1. When working with Python, Docker, or architecture, explicitly search for and load relevant skills like `python-pro`, `async-python-patterns`, `docker-expert`, and `senior-architect` to apply modern best practices.
 
 ## Knowledge and memory.
@@ -36,7 +36,7 @@ When interacting with OpenClaw, it is critical to distinguish between its immuta
 1. **State Directory Isolation:** NEVER bind the `~/.openclaw/sandboxes` directory into an agent sandbox. Doing so destroys agent isolation, allowing an agent to traverse the lateral state, sessions, and memory of all other agents in the environment.
 1. **Configuration Updates:** Always use the `openclaw config set` CLI (available via `docker exec openclaw-openclaw-gateway-1 openclaw config ...`) to update `openclaw.json` (e.g. adding binds). The JSON must be rigorously validated to avoid dropping critical default behaviors or introducing parsing errors.
 
----
+______________________________________________________________________
 
 # Project Overview: Spark Services Orchestrator
 
@@ -50,9 +50,9 @@ The project is designed for Linux hosts, utilizing Docker and Docker Compose for
 - **Package Manager:** [uv](https://github.com/astral-sh/uv)
 - **Containerization:** Docker & Docker Compose V2
 - **Key Services:**
-    - **OpenClaw:** Backend gateway and API router (Managed as a read-only Git submodule).
-    - **SparkRun:** Automated orchestration and evaluation (Managed as an editable path dependency).
-    - **vLLM:** High-throughput LLM inference backend.
+  - **OpenClaw:** Backend gateway and API router (Managed as a read-only Git source dependency in ../openclaw).
+  - **SparkRun:** Automated orchestration and evaluation (Managed as an editable path source dependency in ../sparkrun).
+  - **vLLM:** High-throughput LLM inference backend.
 - **Monitoring:** Prometheus, Grafana, and Tempo (Managed via Grafana Alloy).
 - **Registry:** `spark-stack-registry` for deployment recipes and model configurations.
 
@@ -63,16 +63,15 @@ The project relies on `uv` for dependency management and script execution.
 - **Initialization:**
   ```bash
   make setup  # Synchronizes dependencies and installs pre-commit hooks
-  git submodule update --init --recursive  # Initializes spark-stack-registry
   ```
 - **Deploying/Updating the Stack:**
   ```bash
-  uv run scripts/update_services.py  # Main orchestration entry point
+  uv run manager/update_services.py  # Main orchestration entry point
   ```
 - **Updating Specific Components:**
   ```bash
-  uv run scripts/update_openclaw.py  # Updates OpenClaw source and service
-  uv run scripts/update_sparkrun.py  # Updates SparkRun source
+  uv run manager/update_openclaw.py  # Updates OpenClaw source and service
+  uv run manager/update_sparkrun.py  # Updates SparkRun source
   ```
 - **Stack Verification:**
   ```bash
@@ -80,39 +79,44 @@ The project relies on `uv` for dependency management and script execution.
   ```
 - **Manual Launch:**
   ```bash
-  uv run scripts/launch.py
+  uv run manager/launch.py
   ```
 
 ## Development Conventions
 
-### Submodule Policy
-- **OpenClaw (`openclaw/`)**: Treated as an **immutable upstream dependency**. NEVER modify source files here. Solve configuration issues by modifying inputs (like `jq` filtering) or host-level settings.
-- **SparkRun (`sparkrun/`)**: Treated as an editable dependency.
+### Source Dependency Policy
+
+- **OpenClaw (`../openclaw/`)**: Treated as an **immutable upstream source dependency**. NEVER modify source files here. Solve configuration issues by modifying inputs (like `jq` filtering) or host-level settings.
+- **SparkRun (`../sparkrun/`)**: Treated as an editable source dependency. **CRITICAL:** You must ensure the `local-dev` branch is checked out before making any modifications or running tests. You **MUST** strictly follow the "Trunk-Based Feature Integration" workflow documented in the `source-dependency-dev` skill for any `sparkrun` changes (creating feature branches from `main`, merging them into `local-dev`, and rebasing `local-dev` via the orchestration script).
 
 ### Runtime vs. Source (OpenClaw)
-- **Source Code**: Located in `openclaw/`.
+
+- **Source Code**: Located in `../openclaw/`.
 - **Runtime Environment**: Located in `~/.openclaw/`. This directory contains active configurations (`openclaw.json`), logs, and database files. All state changes must occur here.
 - **CLI**: Use `~/bin/openclaw` for host-level gateway management.
 
 ### Scripting Standards
+
 - **Idiomatic Execution**: Use `uv run` for all scripts. Avoid `sys.path.insert()` hacks.
 - **Context Awareness**: Scripts should be domain-agnostic and use Pydantic schemas from `core/schemas.py`.
 - **Zombie Protocol**: The orchestration scripts include a cleanup phase to purge stuck tasks and stale containers, ensuring a clean state for the stack.
 
 ### Planning and Verification
+
 - **Planning**: For tasks related to `stack-manager`, use the templates in `skills/stack-manager/references/plan-template.md`.
 - **Verification**: No infrastructure change is complete without a passing run of `uv run pytest tests/e2e/`.
 
 ## Directory Structure
 
 - `core/`: Shared async utilities, health probes, and Pydantic configuration schemas.
-- `scripts/`: High-level orchestration scripts for building, updating, and syncing the stack.
+- `manager/`: High-level orchestration scripts for building, updating, and syncing the stack.
 - `services/`: Configuration fragments, `docker-compose.yml` files, and service-specific managers.
-- `skills/`: Local AI agent skills (e.g., `stack-manager`, `submodule-dev`).
-- `spark-stack-registry/`: Submodule containing model and stack deployment recipes.
+- `skills/`: Local AI agent skills (e.g., `stack-manager`, `source-dependency-dev`).
+- `../spark-stack-registry/`: Source dependency containing model and stack deployment recipes.
 - `tests/`: End-to-end and unit tests (Requires `pytest`).
 - `benchmarks/`: Performance testing and evaluation suites.
 
 ## Host Configuration
+
 This project requires specific host-level tuning (SSH protection, increased `inotify` limits) to prevent networking conflicts during Docker teardowns. See `DEVELOPMENT.md` for the full setup guide.
 ing Docker teardowns. See `DEVELOPMENT.md` for the full setup guide.

@@ -56,3 +56,12 @@
 ## Cache Scaling
 
 Standard transformer scaling. A 128k context window requires ~30GB - 40GB of overhead to prevent OOM during peak reasoning thinking. For SGLang on a single GB10 (121GB), a `max_model_len` of 262,144 combined with a static memory fraction of `0.85` successfully loads the 120B NVFP4 weights and allocates ~33GB for the KV cache.
+
+### Benchmarking Context Limits (`spark-arena-v1`)
+
+> [!NOTE]
+> **Expected Failure at `depth=65535`**
+>
+> The default `spark-arena-v1` profile scales up to `depth=100000`. If you deploy the `nemotron-super-nospec` stack with its default single-GPU `max_model_len: 65536` configuration, the benchmark will inevitably trigger a `ContextWindowExceededError` at the `depth=65535` step.
+>
+> This is intentional! The combination of `65535` past context + `2048` prompt + `128` output tokens = `67711` total tokens, which exceeds the `65536` container configuration limit. If using `--exit-on-first-fail`, the benchmark will abort at this threshold instead of finishing the remaining extreme combinations.

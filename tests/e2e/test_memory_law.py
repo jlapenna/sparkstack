@@ -1,7 +1,7 @@
 import pytest
 from loguru import logger
 
-from scripts.check_memory_law import check_compliance
+from manager.check_memory_law import check_compliance
 from tests.e2e.context import E2EContext
 
 

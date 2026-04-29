@@ -1,6 +1,9 @@
 ______________________________________________________________________
 
-## name: stack-debugging description: "Leverage OpenTelemetry distributed tracing to debug deployment, orchestration, and E2E stack issues. Includes tools and patterns for querying Grafana Tempo."
+name: stack-debugging
+description: "Leverage OpenTelemetry distributed tracing to debug deployment, orchestration, and E2E stack issues. Includes tools and patterns for querying Grafana Tempo."
+
+______________________________________________________________________
 
 # Stack Debugging with Distributed Tracing
 
@@ -14,13 +17,13 @@ Distributed tracing (OpenTelemetry) provides an end-to-end visualization of the 
 
 ## Debugging Philosophy
 
-1.  **Systematic Debugging:** Always prioritize fixing issues starting from base principles.
-    1.  **Understand the context:** Identify all involved services and their roles.
-    2.  **Isolate the problem:** Query each component systematically (e.g., query vLLM, then LiteLLM, then OpenClaw) to pinpoint where the failure originates.
-    3.  **Analyze the failure:** Check logs, schemas, and configurations at the point of failure.
-    4.  **Communicate Findings:** *Explicitly and comprehensively share your findings, logs, and hypothesis with the user before implementing a fix. Provide them with the exact reason why the problem is occurring.*
-    5.  **Formulate a fix:** Propose a solution based on root-cause analysis, not just applying a band-aid.
-    6.  **Verify the fix:** Run end-to-end tests or queries to confirm the resolution.
+1. **Systematic Debugging:** Always prioritize fixing issues starting from base principles.
+   1. **Understand the context:** Identify all involved services and their roles.
+   1. **Isolate the problem:** Query each component systematically (e.g., query vLLM, then LiteLLM, then OpenClaw) to pinpoint where the failure originates.
+   1. **Analyze the failure:** Check logs, schemas, and configurations at the point of failure.
+   1. **Communicate Findings:** *Explicitly and comprehensively share your findings, logs, and hypothesis with the user before implementing a fix. Provide them with the exact reason why the problem is occurring.*
+   1. **Formulate a fix:** Propose a solution based on root-cause analysis, not just applying a band-aid.
+   1. **Verify the fix:** Run end-to-end tests or queries to confirm the resolution. **CRITICAL: You MUST run the `tests/e2e/` suite and it MUST pass successfully before considering any debugging fix complete.**
 
 ## 1. Tempo Architecture Overview
 
@@ -106,26 +109,6 @@ If a service is completely missing from Tempo:
 - Ensure OTel is enabled (`VLLM_OTEL_TRACING_ENABLED=1`).
 - Check Alloy logs (`docker compose logs alloy`) for `rpc error` or dropping metrics, which indicates backend ingestion failures.
 
-## 5. Recovering from Stale State Locks (OpenClaw)
-
-Sometimes `openclaw-gateway` will throw "Previous run is still shutting down" or log `[diagnostic] stuck session` errors. This is typically caused by SQLite database lock contention when concurrent instances (like the E2E script bypassing the gateway API and using the CLI daemon directly) spawn embedded agents.
-
-### Recovery Pattern
-
-If you have identified that openclaw is experiencing stuck sessions, use the provided recovery script:
-
-```bash
-uv run scripts/clear_stuck_sessions.py
-docker restart openclaw-openclaw-gateway-1
-```
-
-This script parses all `sessions.json` state stores under `~/.openclaw` and resets any session stuck in the `processing` state back to `idle`. Restarting the gateway ensures the changes take effect.
-
-
-## Best Practices for invoking agents programmatically
-
-When invoking agents programmatically, use `openclaw agent` from the host wrapper, which connects to the Gateway websocket. Avoid using `docker exec ... node dist/index.js agent` inside the container as `root`, because it bypasses the gateway configuration, spawns a standalone embedded agent, and contends for the same SQLite lock.
-
 ## 6Proactive Debugging & Hunting Patterns
 
 Unlike reactive debugging (where you respond to an active incident or broken test), **Proactive Debugging** involves open-ended hunting for anomalies, unhandled edge cases, and regressions *before* they surface to the user.
@@ -162,6 +145,7 @@ curl -s "http://localhost:3200/api/search?limit=50&minDuration=15000ms" | jq '.t
 ```
 
 *Look for outlier durations and compare where the time is spent.*
+*Note: If you see traces with ~30000ms (30s) latency named `POST` pointing to Telegram's `/getUpdates` endpoint, this is expected behavior. Telegram uses HTTP long-polling which intentionally holds the connection open for 30s when there are no new messages.*
 
 ### C. Hunting for Truncated Context
 
@@ -187,7 +171,7 @@ To assist your hunt, you can use the `analyze_traces.py` script as a baseline ch
 **Usage:**
 
 ```bash
-uv run scripts/analyze_traces.py
+uv run util/analyze_traces.py
 ```
 
 This script will flag obvious issues (errors, slow traces, missing spans). **Use its output as a jumping-off point for deeper, manual investigation.**

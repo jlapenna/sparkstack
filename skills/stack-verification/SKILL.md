@@ -39,7 +39,7 @@ To manage and execute the End-to-End (E2E) verification suite located in `tests/
 ### 3. Debugging Test Failures
 
 - **`verify_layer` Decorator**: Understand that layers are wrapped in a `verify_layer` decorator. If collection errors occur, inspect decorator import paths.
-- **Proxy and Container Health**: When E2E verification fails on backend tests (e.g., vLLM timeouts), the root cause is almost always the proxy gateway (LiteLLM) dropping connections or container port mappings failing to resolve `127.0.0.11` internal Docker DNS. Always check `docker logs vllm-gateway` first.
+- **Proxy and Container Health**: When E2E verification fails on backend tests (e.g., vLLM timeouts), the root cause is almost always the proxy gateway (LiteLLM) dropping connections or container port mappings failing to resolve `127.0.0.11` internal Docker DNS. Always check `docker logs litellm` first.
 
 ## Prerequisites
 

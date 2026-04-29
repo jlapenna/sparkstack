@@ -30,6 +30,6 @@ def verify_model(repo_id):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: uv run python scripts/verify_hf_model.py <repo_id>")
+        print("Usage: uv run python manager/verify_hf_model.py <repo_id>")
         sys.exit(1)
     verify_model(sys.argv[1])

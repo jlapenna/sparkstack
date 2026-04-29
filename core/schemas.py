@@ -16,10 +16,16 @@ class ServiceStatus(Enum):
     FAILED = "failed"
 
 
+class PassThroughModel(BaseModel):
+    """Base model that allows extra attributes to pass through unmapped parameters to the output."""
+
+    model_config = ConfigDict(extra="allow")
+
+
 class BaseSchema(BaseModel):
     """Base model with automatic camelCase alias support for OpenClaw compatibility."""
 
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, extra="ignore")
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, extra="allow")
 
 
 # --- OpenClaw Models ---
@@ -52,7 +58,7 @@ class ComposeData(BaseModel):
     compose: dict[str, Any] = Field(default_factory=dict)
 
 
-class BaseRegistryModel(BaseModel):
+class BaseRegistryModel(PassThroughModel):
     identity: str
     vram_usage: float
 
@@ -82,41 +88,19 @@ class SparkProvider(BaseSchema):
     models: list[OpenClawModel] = Field(default_factory=list)
 
 
-class ModelsConfig(BaseModel):
+class ModelsConfig(PassThroughModel):
     """Schema for models.json"""
 
     spark: SparkProvider
 
 
-class LiteLLMModelInfo(BaseModel):
-    base_model: str | None = None
-    context_window: int = 32768
-    max_tokens: int = 32768
-    mode: str | None = None
-    supports_function_calling: bool | None = None
-    supports_reasoning: bool | None = None
-    input: list[str] = Field(default_factory=lambda: ["text"])
-
-
-class LiteLLMParams(BaseModel):
-    model: str
-    api_base: str
-    api_key: str = "${LITELLM_MASTER_KEY:-}"
-    role_map: dict[str, str] | None = None
-    encoding_format: str | None = None
-    temperature: float | None = None
-    frequency_penalty: float | None = None
-    presence_penalty: float | None = None
-    extra_body: dict[str, Any] | None = None
-
-
-class LiteLLMModelEntry(BaseModel):
+class LiteLLMModelEntry(PassThroughModel):
     model_name: str
-    litellm_params: LiteLLMParams
-    model_info: LiteLLMModelInfo
+    litellm_params: dict[str, Any]
+    model_info: dict[str, Any]
 
 
-class LiteLLMConfig(BaseModel):
+class LiteLLMConfig(PassThroughModel):
     """Schema for litellm-config.yaml"""
 
     model_list: list[LiteLLMModelEntry] = Field(default_factory=list)
@@ -128,12 +112,12 @@ class LiteLLMConfig(BaseModel):
 # --- Prometheus Models ---
 
 
-class StaticConfig(BaseModel):
+class StaticConfig(PassThroughModel):
     targets: list[str]
     labels: dict[str, str] | None = None
 
 
-class ScrapeConfig(BaseModel):
+class ScrapeConfig(PassThroughModel):
     job_name: str
     metrics_path: str | None = None
     params: dict[str, list[str]] | None = None
@@ -143,7 +127,7 @@ class ScrapeConfig(BaseModel):
     metric_relabel_configs: list[dict[str, Any]] | None = None
 
 
-class PrometheusConfig(BaseModel):
+class PrometheusConfig(PassThroughModel):
     """Schema for prometheus.yml"""
 
     global_config: dict[str, str] = Field(

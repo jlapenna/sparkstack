@@ -21,6 +21,11 @@ from loguru import logger
 AsyncValidator = Callable[[httpx.Response], Awaitable[bool]]
 
 
+def slugify(text: str) -> str:
+    slug = re.sub(r"[^a-z0-9]", "_", text.lower()).strip("_")
+    return re.sub(r"_+", "_", slug)
+
+
 class HealthStatus(Enum):
     HEALTHY = "healthy"
     UNHEALTHY = "unhealthy"

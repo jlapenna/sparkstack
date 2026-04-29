@@ -17,12 +17,12 @@ def run_cmd(cmd, cwd=None):
         return None
 
 
-def get_pr_status(submodule_dir, repo_name):
-    if not os.path.isdir(submodule_dir):
+def get_pr_status(source_dependency_dir, repo_name):
+    if not os.path.isdir(source_dependency_dir):
         return []
 
     cmd = f"gh pr list --repo {repo_name} --author '@me' --state open --json number,title,url,headRefName,reviews,commits,latestReviews,comments,updatedAt"
-    output = run_cmd(cmd, cwd=submodule_dir)
+    output = run_cmd(cmd, cwd=source_dependency_dir)
     if not output:
         return []
 
@@ -36,7 +36,7 @@ def get_pr_status(submodule_dir, repo_name):
 
 def main():
     root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    submodules = ["openclaw", "sparkrun", "spark-stack-registry"]
+    source_dependencys = ["openclaw", "sparkrun", "spark-stack-registry"]
 
     repo_map = {
         "openclaw": "openclaw/openclaw",
@@ -50,7 +50,7 @@ def main():
 
     pr_details = []
 
-    for sub in submodules:
+    for sub in source_dependencys:
         sub_dir = os.path.join(root_dir, sub)
         repo_name = repo_map.get(sub, "")
         prs = get_pr_status(sub_dir, repo_name)
@@ -90,13 +90,14 @@ def main():
             print()
 
     print("\n### 2. Integration Branch Status\n")
-    print("| Submodule | Integration Branch | Current Configured Tracking |")
+    print("| Source Dependency | Integration Branch | Current Configured Tracking |")
     print("| :--- | :--- | :--- |")
 
-    for sub in submodules:
+    for sub in source_dependencys:
         if sub == "spark-stack-registry":
             sub_dir = os.path.join(root_dir, sub)
         else:
+            parent_dir = os.path.dirname(root_dir)
             sub_dir = os.path.join(parent_dir, sub)
 
         branch = run_cmd("git rev-parse --abbrev-ref HEAD", cwd=sub_dir)
@@ -108,7 +109,7 @@ def main():
             base_ref = "origin/main"
         else:
             # For openclaw, local-dev tracks the newest stable tag
-            tag_cmd = "git describe --tags --abbrev=0 --exclude '*-beta*' --match 'v*'"
+            tag_cmd = "git tag -l 'v*' | grep -v beta | sort -V | tail -n 1"
             base_ref = run_cmd(tag_cmd, cwd=sub_dir)
             if not base_ref:
                 base_ref = "upstream/main"
@@ -130,11 +131,6 @@ def main():
 
         repo_col = f"**`{sub}`**"
         print(f"| {repo_col} | `{integration_branch}` | {status} |")
-
-
-if __name__ == "__main__":
-    main()
-")
 
 
 if __name__ == "__main__":

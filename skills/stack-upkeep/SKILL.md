@@ -29,14 +29,14 @@ This skill dictates the exact sequence of commands to execute when a user asks t
 
 ### 1. Update Sparkrun
 
-- **Command:** `uv run python scripts/update_sparkrun.py`
+- **Command:** `uv run python manager/update_sparkrun.py`
 - **Behavior:** This script automatically fetches the tip of tree from GitHub, rebases local changes, and runs `uv sync` from the project root to ensure the local path dependency is updated.
 
 ### 2. Update OpenClaw (Gateway & CLI)
 
 OpenClaw receives updates through branch maintenance. Do NOT perform tag-based updates, as they interfere with active development in the `local-dev` branch.
 
-- **Command:** `./scripts/update_openclaw.py` (Do NOT pass `--pull-latest` as it will overwrite local development changes with upstream release tags. Do NOT pass `--run-setup` during routine updates unless you intentionally want to execute `setup.sh`.)
+- **Command:** `./manager/update_openclaw.py` (Do NOT pass `--pull-latest` as it will overwrite local development changes with upstream release tags. Do NOT pass `--run-setup` during routine updates unless you intentionally want to execute `setup.sh`.)
 - **Behavior:** This ensures local development branches and in-progress PRs are preserved without being forcibly detached to upstream tags.
 
 ### 3. Update Model Weights & Images
@@ -53,7 +53,7 @@ The underlying vLLM and LiteLLM containers may have received upstream patches.
 
 If pulling the latest container image introduces a breaking registry change or stability issue, you must rollback to a known-good configuration immediately:
 
-- **Command:** `uv run python scripts/set_current.py spark-stack-registry/stacks/<previous_stable_stack_directory>`
+- **Command:** `uv run python manager/set_current.py spark-stack-registry/stacks/<previous_stable_stack_directory>`
 - **Behavior:** This resets the `current` symlink and rebuilds the active docker-compose configuration using the older, verified images and recipes. Run `cd spark-stack-registry/stacks/current && docker compose up -d --force-recreate` to solidify the restore.
 
 ### 4. Manual Version Discovery & Pinning (When Renovate Fails)
@@ -72,7 +72,7 @@ While Renovate handles automated PRs for dependencies, you will sometimes need t
   - Run `uv pip list --outdated` to discover stale packages.
   - Pin the exact version in `pyproject.toml` or `requirements.txt`.
 - **Monitoring Stack**:
-  - For Grafana, Prometheus, or cAdvisor, explicitly run `uv run python scripts/update_monitoring.py`. This script securely queries GitHub/GCR APIs to find the true latest stable semantic versions and automatically pins them in the compose files.
+  - For Grafana, Prometheus, or cAdvisor, explicitly run `uv run python manager/update_monitoring.py`. This script securely queries GitHub/GCR APIs to find the true latest stable semantic versions and automatically pins them in the compose files.
 - **Community Grafana Dashboards**:
   - The vLLM and SGLang ecosystems update their Grafana dashboards frequently (e.g., migrating from `vllm_` prefixes to `vllm:` OpenMetrics standard).
   - To update **vLLM**, fetch `performance_statistics.json` and `query_statistics.json` from `https://raw.githubusercontent.com/vllm-project/vllm/main/examples/observability/dashboards/grafana/`.
@@ -88,7 +88,7 @@ All update scripts (`update_services.py`, `update_openclaw.py`) now execute the 
   - Clears stuck tasks from `~/.openclaw/tasks/runs.sqlite`.
   - Prunes exited containers and unused networks.
   - Purges orphaned host processes (`vllm`, `sparkrun`).
-- **Manual Trigger:** If sessions are hung without an update, run `uv run scripts/update_services.py`.
+- **Manual Trigger:** If sessions are hung without an update, run `uv run manager/update_services.py`.
 
 ### 5. Update SparkRun Recipes
 
@@ -104,7 +104,7 @@ If any model configuration changes were detected upstream, rebuild and restart t
 - **Commands:**
   ```bash
   # Assuming the active stack is 'spark-stack-registry/stacks/official-main-20260325'
-  uv run python scripts/set_current.py spark-stack-registry/stacks/official-main-20260325
+  uv run python manager/set_current.py spark-stack-registry/stacks/official-main-20260325
   ```
 
 ### 6. Final Verification (MANDATORY)
@@ -149,14 +149,14 @@ When modifying Docker images (e.g., `Dockerfile.openclaw-custom`), you MUST cons
 
 ```bash
 # BAD: Tears developer away from local-dev branch and hard resets tree
-./scripts/update_openclaw.py --pull-latest
+./manager/update_openclaw.py --pull-latest
 ```
 
 ### Correct Pattern: Safe Maintenance Cycle
 
 ```bash
 # GOOD: Applies stable background updates while preserving the developer's worktree
-./scripts/update_openclaw.py
+./manager/update_openclaw.py
 ```
 
 ## Output Format

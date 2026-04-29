@@ -11,7 +11,7 @@ triggers:
 - docker networking
 - container connectivity
 - proxy-tier routing
-- vllm-gateway network
+- litellm network
 - fix container DNS
 - why can't container reach
 - hairpin NAT
@@ -93,7 +93,7 @@ To serve as the single source of truth for Docker decisions in this repository. 
 | ----------------------------- | ----------------------- | ----------------------------------------------- |
 | `main_solo`                   | `proxy-tier`            | proxy-tier                                      |
 | `embedding_solo`              | `proxy-tier`            | proxy-tier                                      |
-| `vllm-gateway`                | `vllm-network`          | vllm-network, proxy-tier                        |
+| `litellm`                     | `vllm-network`          | vllm-network, proxy-tier                        |
 | `openclaw-openclaw-gateway-1` | `proxy-tier`            | proxy-tier                                      |
 | `prometheus`                  | `monitoring_monitoring` | monitoring_monitoring, proxy-tier, vllm-network |
 | `grafana`                     | `monitoring_monitoring` | monitoring_monitoring, proxy-tier               |
@@ -101,9 +101,9 @@ To serve as the single source of truth for Docker decisions in this repository. 
 
 ### Key Routing Paths
 
-- **OpenClaw → LLM**: openclaw-gateway → `vllm-gateway:4000` (via proxy-tier) → backend
-- **vllm-gateway → main_solo**: Currently configured as `host.docker.internal:8001` in litellm-config.yaml
-- **vllm-gateway → embedding_solo**: Currently configured as `host.docker.internal:8002` in litellm-config.yaml
+- **OpenClaw → LLM**: openclaw-gateway → `litellm:4000` (via proxy-tier) → backend
+- **litellm → main_solo**: Currently configured as `host.docker.internal:8001` in litellm-config.yaml
+- **litellm → embedding_solo**: Currently configured as `host.docker.internal:8002` in litellm-config.yaml
 
 ### `host.docker.internal` Resolution
 
@@ -165,6 +165,10 @@ Never use internal Docker IPs (e.g. `172.19.x.x`) in configuration, verification
 
 Do not invent networking hypotheses from symptoms. Find the actual error message in the logs first. `LLM request failed: network connection error` does NOT mean the network is broken — the process might simply not be listening.
 
+### Rule 6: Consult Core Specifications Before Generalizing
+
+When making configuration changes to core infrastructure components (like OpenAI API completions, OpenClaw properties, or LiteLLM mappings), do not apply generalized LLM heuristics. Always consult the official specification (e.g., OpenAI API docs or the specific backend documentation) to understand default behaviors. For example, omitting `max_tokens` in an `openai-completions` API request strictly defaults to 16 tokens per the OpenAI spec, which will silently truncate long reasoning contexts.
+
 ## Diagnostic Playbook
 
 When a container can't reach another container, run these steps **in order**:
@@ -212,7 +216,7 @@ If this fails with `ConnectionResetError [Errno 104]` → hairpin NAT issue. Swi
 
 > [!NOTE]
 > Append new entries below using the template. Most recent entries go last.
-> **Tip:** You should use the helper script `uv run python skills/stack-knowledge/scripts/append_incident.py` to interactively append your log accurately without mangling previous entries.
+> **Tip:** You should use the helper script `uv run python skills/stack-knowledge/manager/append_incident.py` to interactively append your log accurately without mangling previous entries.
 > Every entry must include: date, scenario, hypothesis, action taken, result, and learnings.
 
 ### Template
@@ -232,14 +236,14 @@ If this fails with `ConnectionResetError [Errno 104]` → hairpin NAT issue. Swi
 
 ### 2026-04-10T12:38 — Changed litellm backend URLs to host.docker.internal
 
-- **Scenario**: OpenClaw agent sessions were failing. The vllm-gateway couldn't reach sparkrun model backends.
+- **Scenario**: OpenClaw agent sessions were failing. The litellm couldn't reach sparkrun model backends.
 - **Hypothesis**: sparkrun launches containers on host network, making them unreachable via Docker-internal DNS from the bridge-networked gateway. Using `host.docker.internal` would route through the host's port bindings.
 - **Action**: Changed `build_stack.py` to generate litellm config with `host.docker.internal:PORT` instead of container hostnames.
 - **Result**: Appeared to work initially. Chat completions returned 200 OK from the host. **Hypothesis was wrong** — the containers were actually on `proxy-tier` bridge, not host network.
 
 **Learnings:**
 
-- Did NOT verify connectivity from inside vllm-gateway container — only tested from host
+- Did NOT verify connectivity from inside litellm container — only tested from host
 - Did NOT check what network mode sparkrun actually put the containers on
 - Assumed sparkrun uses host network based on previous session context, never verified
 
@@ -270,14 +274,14 @@ If this fails with `ConnectionResetError [Errno 104]` → hairpin NAT issue. Swi
 
 ### 2026-04-10T13:43 — Diagnosed actual connectivity failure
 
-- **Scenario**: vllm-gateway returns `InternalServerError: Connection error` when proxying to backends
-- **Hypothesis**: `host.docker.internal:8001` from inside vllm-gateway can't reach the sparkrun model container
-- **Action**: Systematic testing from inside vllm-gateway:
+- **Scenario**: litellm returns `InternalServerError: Connection error` when proxying to backends
+- **Hypothesis**: `host.docker.internal:8001` from inside litellm can't reach the sparkrun model container
+- **Action**: Systematic testing from inside litellm:
   1. `host.docker.internal` resolves to `172.17.0.1` (docker0 bridge) — confirmed
   1. `urllib.request.urlopen('http://host.docker.internal:8001/...')` → **ConnectionResetError [Errno 104]**
   1. `urllib.request.urlopen('http://main_solo:8001/...')` → **ConnectionRefused [Errno 111]**
   1. From host: `curl localhost:8001/v1/models` → **200 OK** (works through Docker port publishing)
-  1. Both `vllm-gateway` and `main_solo` are on `proxy-tier` network
+  1. Both `litellm` and `main_solo` are on `proxy-tier` network
 - **Result**: Docker hairpin NAT causes `ConnectionResetError`. Direct container name fails because vllm process inside `main_solo` crashed silently (`ValueError: KV cache too small`).
 
 **Learnings:**
@@ -375,7 +379,7 @@ This eliminates the Docker hairpin NAT issue entirely. Both containers are on pr
 
 ### 2026-04-18T03:35 — LiteLLM 500 Loop vs Host Process Collision
 
-- **Scenario**: LiteLLM proxy (vllm-gateway) was returning 500 Internal Server Error for `POST /model/new` and `POST /model/delete`. Logged error: `No DB Connected`. Simultaneously, OpenClaw gateway failed to inspect sandbox images due to missing Docker socket access.
+- **Scenario**: LiteLLM proxy (litellm) was returning 500 Internal Server Error for `POST /model/new` and `POST /model/delete`. Logged error: `No DB Connected`. Simultaneously, OpenClaw gateway failed to inspect sandbox images due to missing Docker socket access.
 - **Hypothesis**: (1) Orphaned `litellm` and `autodiscover` processes on the host were attempting to register models with the containerized LiteLLM. Since the container lacks the virtual-keys database, it failed. (2) The gateway container lacked `/var/run/docker.sock` mount required for DooD sandbox management.
 - **Action**: (1) Terminated orphaned host processes using `pkill -f litellm` and `pkill -f autodiscover`. (2) Modified `openclaw/docker-compose.yml` to mount `/var/run/docker.sock:/var/run/docker.sock`. (3) Verified gateway was on `proxy-tier` and binding to `lan`.
 - **Result**: LiteLLM 500 loop stopped immediately. Gateway successfully regained control over sandbox image inspection. Connectivity restored end-to-end via Cloudflare.
@@ -391,7 +395,7 @@ This eliminates the Docker hairpin NAT issue entirely. Both containers are on pr
 - **Scenario**: Agents received "Permission denied writing to workspace" after switching to full tool profile. Investigation revealed the sandbox mounted an empty, root-owned directory at /workspace.
 - **Hypothesis**: The Gateway passed container-local paths (/home/node/...) to the host Docker daemon via the socket. The host daemon evaluated these against the host FS where they did not exist, leading to dummy mounts.
 - **Action**:
-  1. Updated `scripts/update_openclaw.py` to robustly rewrite all internal `/home/node` and `~` paths in `openclaw.json` to identical host-absolute paths.
+  1. Updated `manager/update_openclaw.py` to robustly rewrite all internal `/home/node` and `~` paths in `openclaw.json` to identical host-absolute paths.
   1. Verified the gateway has an Identical Volume Map for the state directory.
   1. Purged stale `openclaw-sbx-*` containers to force recreation with correct binds.
 - **Result**: **Correct.** New sandboxes correctly mount the host workspace directory with RW permissions. Agents can now persist state.
@@ -437,8 +441,8 @@ This eliminates the Docker hairpin NAT issue entirely. Both containers are on pr
 ### 2026-04-18T18:25 — LLM request failed: network connection error (ConnectionResetError via Litellm)
 
 - **Scenario**: Agents failed to run models via the Litellm proxy. OpenClaw logged `LLM request failed: network connection error. rawError=500 litellm.InternalServerError: InternalServerError: OpenAIException - Connection error..`.
-- **Hypothesis**: The litellm gateway (vllm-gateway) was sending requests to the `sparkrun` proxy containers (`main_solo` and `embedding_solo`) using `http://host.docker.internal:PORT`, violating the container-direct communication rule and invoking Docker's hairpin NAT. This led to intermittent ConnectionResetErrors.
-- **Action**: Modified `litellm-config.yaml` to point `api_base` to the direct container network hostnames (`http://main_solo:8001/v1` and `http://embedding_solo:8002/v1`). Restarted `vllm-gateway` and `openclaw-gateway-1`.
+- **Hypothesis**: The litellm gateway (litellm) was sending requests to the `sparkrun` proxy containers (`main_solo` and `embedding_solo`) using `http://host.docker.internal:PORT`, violating the container-direct communication rule and invoking Docker's hairpin NAT. This led to intermittent ConnectionResetErrors.
+- **Action**: Modified `litellm-config.yaml` to point `api_base` to the direct container network hostnames (`http://main_solo:8001/v1` and `http://embedding_solo:8002/v1`). Restarted `litellm` and `openclaw-gateway-1`.
 - **Result**: **Successful.** The hairpin NAT traversal was eliminated, and all OpenClaw requests now safely land on the model endpoints across the shared `proxy-tier` network.
 
 **Learnings**:
@@ -515,9 +519,9 @@ This eliminates the Docker hairpin NAT issue entirely. Both containers are on pr
 
 ______________________________________________________________________
 
-### 2026-04-19T23:41 — Restarted vllm-gateway without VLLM_PORT context
+### 2026-04-19T23:41 — Restarted litellm without VLLM_PORT context
 
-- **Scenario**: Restarting vllm-gateway after enabling OTEL tracing via \`docker compose up\` resulted in the gateway binding to a random port instead of 4000.
+- **Scenario**: Restarting litellm after enabling OTEL tracing via \`docker compose up\` resulted in the gateway binding to a random port instead of 4000.
 - **Hypothesis**: The VLLM_PORT environment variable was missing because \`docker compose\` in the spark-stack-registry/stacks/... directory does not natively traverse upwards to find the repository root \`.env\` file.
 - **Action**: Recreated container using \`docker compose --env-file ../../.env up -d gateway\`, adhering to the standard \`launch.sh\` behavior.
 - **Result**: Gateway properly inherited the mapping to host port 4000.
@@ -542,8 +546,8 @@ ______________________________________________________________________
 
 ### 2026-04-24T07:33 — Hairpin NAT Resolution via Container Names
 
-- **Scenario**: The LiteLLM gateway (`vllm-gateway`) was failing to route traffic to the vLLM backends, resulting in `ConnectionResetError`s.
-- **Hypothesis**: `scripts/build_stack.py` was generating `api_base: http://host.docker.internal:8001/v1` for the LiteLLM config, triggering Docker's hairpin NAT limitations on Linux.
+- **Scenario**: The LiteLLM gateway (`litellm`) was failing to route traffic to the vLLM backends, resulting in `ConnectionResetError`s.
+- **Hypothesis**: `manager/build_stack.py` was generating `api_base: http://host.docker.internal:8001/v1` for the LiteLLM config, triggering Docker's hairpin NAT limitations on Linux.
 - **Action**: Modified `build_stack.py` to use direct container names (`http://main_solo:8001/v1`) since both containers share the `proxy-tier` Docker network.
 - **Result**: **Successful.** Gateway reliably routes to the backends with no connection resets.
 
@@ -583,11 +587,11 @@ ______________________________________________________________________
 
 ### 2026-04-26T09:35 — Tool Call Leakage and qwen3_xml Parser Transition
 
-- **Scenario**: XML-style function calls (`<function=exec>...</function>`) were leaking into the chat output instead of being intercepted. Additionally, the `vllm-gateway` was crash-looping with `Is a directory: '/app/config.yaml'`, causing sporadic 500 network connection errors in OpenClaw.
+- **Scenario**: XML-style function calls (`<function=exec>...</function>`) were leaking into the chat output instead of being intercepted. Additionally, the `litellm` was crash-looping with `Is a directory: '/app/config.yaml'`, causing sporadic 500 network connection errors in OpenClaw.
 - **Hypothesis**: The `qwen3_coder` tool parser and the legacy `super_v3` parser do not correctly intercept `<function>` tags generated by Cascade-2-30B. Furthermore, the gateway volume mount was mapped to a directory rather than the generated `litellm-config.yaml`.
 - **Action**:
   1. Updated `cascade2-30b-nvfp4-vllm.yaml` to use `--tool-call-parser qwen3_xml` and `--reasoning-parser nemotron_v3`.
-  1. Whitelisted `qwen3_xml` in `scripts/build_stack.py`.
+  1. Whitelisted `qwen3_xml` in `manager/build_stack.py`.
   1. Corrected `compose-litellm.yaml` volume mount from `litellm-settings.yaml` to `litellm-config.yaml`.
 - **Result**: **Successful**. The `qwen3_xml` parser correctly intercepts the XML tool calls and converts them to OpenAI tool formats. The gateway configuration is fixed, and E2E tool calling tests pass successfully.
 
@@ -603,7 +607,7 @@ ______________________________________________________________________
 - **Action**:
   1. Added `merge_reasoning_content_in_choices: true` to `services/litellm/litellm-settings.yaml` so LiteLLM merges reasoning into content as a fallback.
   1. Patched `~/.openclaw/openclaw.json` to set `reasoning: false` and remove `thinkingFormat` for the main model.
-  1. Updated `scripts/build_stack.py` to **never** set `model_info["reasoning"] = True` for the OpenClaw model config, even when a reasoning parser is detected. `supports_reasoning` is still set in the LiteLLM model_info.
+  1. Updated `manager/build_stack.py` to **never** set `model_info["reasoning"] = True` for the OpenClaw model config, even when a reasoning parser is detected. `supports_reasoning` is still set in the LiteLLM model_info.
 - **Result**: **Successful**. The model now returns non-empty `content` in all responses. Tool calling test passes. Consumer readiness test returns content (no more payloads=0).
 
 **Learnings:**
@@ -612,3 +616,44 @@ ______________________________________________________________________
 - **Separation of concerns**: The `supports_reasoning` flag in LiteLLM model_info tells LiteLLM the model *can* reason. The `reasoning` flag in OpenClaw model config tells OpenClaw to *use* reasoning mode. These are independent — you can have a reasoning-capable model without requesting reasoning mode.
 - **merge_reasoning_content_in_choices**: This LiteLLM setting ensures that when `content` is empty, reasoning output gets merged into the content field as a safety net. Always enable it for reasoning-capable models.
 - **Build system invariant**: The build system must NEVER auto-set `reasoning: true` for OpenClaw model configs based on parser detection. This was the root cause of the regression loop.
+
+### 2026-04-28T17:35 — Restored Native Reasoning Content Passthrough
+
+- **Scenario**: We previously enabled `merge_reasoning_content_in_choices: true` in LiteLLM to polyfill reasoning output into standard content, suppressing OpenClaw's `reasoning: true` capability to avoid `payloads=0` errors.
+- **Hypothesis**: Since all downstream clients (including OpenClaw) explicitly support parsing the native `reasoning_content` field from OpenAI-compatible streams, the polyfill is redundant and masks the native model capabilities from the clients.
+- **Action**:
+  1. Removed `merge_reasoning_content_in_choices: true` from LiteLLM configurations globally and from individual model recipes.
+  1. Reverted `manager/build_stack.py` to correctly map `reasoning: true` (for non-embedding models) so OpenClaw explicitly expects and handles the `reasoning_content` stream.
+  1. Synced configurations and restarted LiteLLM and OpenClaw Gateway.
+- **Result**: **Successful**. OpenClaw now natively parses the `reasoning_content` stream directly from the vLLM backend, rather than relying on LiteLLM to merge it into the text block.
+
+**Learnings:**
+
+- **Client Capabilities**: If downstream clients universally support `reasoning_content`, avoid using `merge_reasoning_content_in_choices` in LiteLLM. It is better to let clients parse the reasoning tokens natively.
+- **OpenClaw Support**: OpenClaw handles empty `content` payloads correctly as long as it is explicitly configured with `reasoning: true` and receives a valid `reasoning_content` delta stream.
+
+### 2026-04-29T11:45 — OpenClaw "stopReason=length payloads=0" on Reasoning Models
+
+- **Scenario**: End-to-end tests for long conversations were consistently failing at message 16 with "Agent couldn't generate a response." The `openclaw-gateway` logs showed `incomplete turn detected: runId=... stopReason=length payloads=0 — surfacing error to user`.
+- **Hypothesis**: The `nemotron-super` reasoning model hit the `maxTokens` limit configured in `openclaw.json` (16,384) while outputting extensive reasoning traces, before it could generate a final text payload. OpenClaw aborted the generation with `stopReason=length` and discarded the empty output.
+- **Action**: Used `openclaw config unset models.providers.spark.models[0].maxTokens` to completely remove the artificial token cap. Restarted the `openclaw-gateway` to allow it to inherit dynamic token limits entirely from LiteLLM and vLLM without pre-emptive truncation.
+- **Result**: **Successful**. OpenClaw now permits reasoning models to stream massive contexts indefinitely until they legitimately finish thinking, rather than terminating early with `stopReason=length`.
+
+**Learnings:**
+
+- **Reasoning Overhead:** Reasoning models generate tens of thousands of hidden tokens before producing `content`. Setting a static `maxTokens` ceiling in OpenClaw guarantees that these models will hit artificial cut-offs on long chats.
+- **Default behavior:** Omitting `maxTokens` in `openclaw.json` forces the gateway to defer to the underlying hardware context-window caps negotiated by LiteLLM/vLLM, allowing uninterrupted "thinking".
+
+______________________________________________________________________
+
+### 2026-04-29T14:19 — OpenClaw Gateway 16-Token Default Fallback
+
+- **Scenario**: The NVFP4 model randomly truncated reasoning blocks mid-thought, causing `payloads=0` and `stopReason=stop` errors in the E2E tests.
+- **Hypothesis**: Deleting `maxTokens` from the `openclaw.json` model configuration removes artificial constraints, allowing reasoning models to utilize their full context window.
+- **Action**: Completely removed static `maxTokens` configurations in `sync_registry.py` and `apigateway.py` based on an incorrect assumption.
+- **Result**: Removing `maxTokens` caused LiteLLM to fall back to the OpenAI default limit of 16 tokens. This choked reasoning and led to blank payloads being returned to OpenClaw.
+
+**Learnings:**
+
+- Never completely delete `maxTokens` configuration for OpenAI-completions APIs in OpenClaw/LiteLLM. Doing so defaults to a 16-token completion limit, causing silent truncation.
+- Instead of deleting it, dynamically calculate and explicitly set `maxTokens` to the model boundary (e.g., 16384 for a 262k context window).

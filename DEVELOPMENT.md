@@ -115,5 +115,5 @@ The service orchestration scripts (`update_services.py` and `update_openclaw.py`
 The protocol executes automatically at the start of any `update_services.py` run or during the `OpenClawUpdater` lifecycle. You can manually trigger it by running:
 
 ```bash
-uv run scripts/update_services.py
+uv run manager/update_services.py
 ```

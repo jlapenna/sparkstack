@@ -1,6 +1,7 @@
 #!/usr/bin/env -S uv run --env-file .env --frozen --offline python3
 import argparse
 import asyncio
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -29,7 +30,7 @@ async def wait_for_backends_to_load(stack_dir: Path, timeout: int = 1800) -> boo
     expected_containers = set()
     for svc in services:
         # Skip proxy gateway from progress monitoring
-        if "gateway" in svc["name"]:
+        if "gateway" in svc["name"] or "litellm" in svc["name"]:
             continue
         target = svc.get("container") or svc["name"]
         expected_containers.add(target)
@@ -96,7 +97,7 @@ async def wait_for_backends_to_load(stack_dir: Path, timeout: int = 1800) -> boo
                                         logs = subprocess.check_output(
                                             ["docker", "logs", "--tail", "20", c],
                                             stderr=subprocess.STDOUT,
-                                            text=True
+                                            text=True,
                                         )
                                         print(f"\n--- Last 20 lines of {c} logs ---")
                                         print(logs)
@@ -141,36 +142,47 @@ async def wait_for_backends_to_load(stack_dir: Path, timeout: int = 1800) -> boo
         logger.info("Running post-load smoke tests...")
 
         # Post-Load Smoke Test
+        api_key = os.getenv("LITELLM_MASTER_KEY", "")
+        headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+
         for svc in services:
             if svc.get("type") == "sparkrun" and svc.get("port"):
                 port = svc["port"]
                 container = svc.get("container", f"port-{port}")
-                logger.info(f"Smoke testing backend {container} on port {port}...")
+                logger.info(f"Smoke testing backend {container} via gateway...")
                 try:
                     async with httpx.AsyncClient() as client:
-                        res = await client.get(f"http://localhost:{port}/v1/models", timeout=10.0)
-                        if res.status_code != 200:
-                            logger.error(f"❌ Smoke test failed to fetch models for {container}")
+                        model_id = svc.get("name", "").split(":")[-1]
+                        if not model_id:
+                            logger.error(
+                                f"❌ Smoke test failed: Could not determine model_id for {container}"
+                            )
                             return False
-                        models = res.json().get("data", [])
-                        if not models:
-                            logger.error(f"❌ Smoke test found no models for {container}")
-                            return False
-                        model_id = models[0]["id"]
 
-                        res = await client.post(
-                            f"http://localhost:{port}/v1/chat/completions",
-                            json={
-                                "model": model_id,
-                                "messages": [{"role": "user", "content": "Say hi"}],
-                                "max_tokens": 5
-                            },
-                            timeout=60.0
-                        )
+                        if model_id == "embedding":
+                            res = await client.post(
+                                "http://localhost:4000/v1/embeddings",
+                                headers=headers,
+                                json={"model": model_id, "input": "Say hi"},
+                                timeout=60.0,
+                            )
+                        else:
+                            res = await client.post(
+                                "http://localhost:4000/v1/chat/completions",
+                                headers=headers,
+                                json={
+                                    "model": model_id,
+                                    "messages": [{"role": "user", "content": "Say hi"}],
+                                    "max_tokens": 5,
+                                },
+                                timeout=60.0,
+                            )
                         if res.status_code == 200:
                             logger.info(f"✅ Smoke test passed for {container}")
                         else:
-                            logger.error(f"❌ Smoke test inference failed for {container}: {res.text}")
+                            logger.error(
+                                f"❌ Smoke test inference failed for {container}: {res.text}"
+                            )
                             return False
                 except Exception as e:
                     logger.error(f"❌ Smoke test request failed for {container}: {e}")

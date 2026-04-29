@@ -29,6 +29,12 @@ otelcol.exporter.otlphttp "prometheus" {
   }
 }
 
+prometheus.remote_write "prometheus" {
+  endpoint {
+    url = "http://prometheus:9090/api/v1/write"
+  }
+}
+
 otelcol.exporter.otlp "tempo" {
   client {
     endpoint = "tempo:4317"
@@ -60,31 +66,59 @@ prometheus.exporter.cadvisor "default" {
   allowlisted_container_labels = ["openclaw.role", "openclaw.monitoring", "sparkrun.role", "sparkrun.monitoring", "com.docker.compose.service"]
 }
 
-// Internal scraper to collect exporter metrics and forward to OTLP
-prometheus.scrape "internal_exporters" {
-  targets = array.concat(
-    prometheus.exporter.statsd.default.targets,
-    prometheus.exporter.unix.default.targets,
-    prometheus.exporter.cadvisor.default.targets,
-  )
-  forward_to = [prometheus.relabel.internal_labels.receiver]
+// StatsD Scraping
+prometheus.scrape "statsd" {
+  targets    = prometheus.exporter.statsd.default.targets
+  forward_to = [prometheus.relabel.statsd_labels.receiver]
+  scrape_interval = "15s"
 }
 
-prometheus.relabel "internal_labels" {
-  forward_to = [otelcol.receiver.prometheus.bridge.receiver]
-  
+prometheus.relabel "statsd_labels" {
+  forward_to = [prometheus.remote_write.prometheus.receiver]
   rule {
     target_label = "instance"
     replacement  = "spark"
   }
   rule {
     target_label = "job"
-    replacement  = "monitoring"
+    replacement  = "statsd"
   }
 }
 
-otelcol.receiver.prometheus "bridge" {
-  output {
-    metrics = [otelcol.processor.batch.default.input]
+// Unix/Node Scraping
+prometheus.scrape "unix" {
+  targets    = prometheus.exporter.unix.default.targets
+  forward_to = [prometheus.relabel.unix_labels.receiver]
+  scrape_interval = "15s"
+}
+
+prometheus.relabel "unix_labels" {
+  forward_to = [prometheus.remote_write.prometheus.receiver]
+  rule {
+    target_label = "instance"
+    replacement  = "spark"
+  }
+  rule {
+    target_label = "job"
+    replacement  = "node-exporter"
+  }
+}
+
+// Cadvisor Scraping
+prometheus.scrape "cadvisor" {
+  targets    = prometheus.exporter.cadvisor.default.targets
+  forward_to = [prometheus.relabel.cadvisor_labels.receiver]
+  scrape_interval = "15s"
+}
+
+prometheus.relabel "cadvisor_labels" {
+  forward_to = [prometheus.remote_write.prometheus.receiver]
+  rule {
+    target_label = "instance"
+    replacement  = "spark"
+  }
+  rule {
+    target_label = "job"
+    replacement  = "cadvisor"
   }
 }

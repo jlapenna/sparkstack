@@ -12,7 +12,7 @@ The ecosystem relies on Docker and Docker Compose to network different services 
 - **Cloudflare Tunnels**: Exposes internal ports securely to the web.
 - **Monitoring**: Prometheus and Grafana dashboards.
 
-> **Note**: This repository is designed to be a deployment orchestrator. It manages `openclaw` and `sparkrun` as Git submodules. You will need access to those repositories to fully initialize this project, or you must configure it to point to public images.
+> **Note**: This repository is designed to be a deployment orchestrator. It manages `openclaw` and `sparkrun` as source dependencies in `../`. You will need access to those repositories to fully initialize this project, or you must configure it to point to public images.
 
 ## Prerequisites
 
@@ -30,11 +30,9 @@ The ecosystem relies on Docker and Docker Compose to network different services 
    cd spark-stack
    ```
 
-1. **Initialize submodules (if you have access):**
+1. **Clone source dependencies (if you have access):**
 
-   ```bash
-   git submodule update --init --recursive
-   ```
+   Ensure `openclaw`, `sparkrun`, and `spark-stack-registry` are cloned in the parent directory (`../`).
 
 1. **Configure Environment:**
    Copy `.env.example` to `.env` and fill in the appropriate values.
@@ -47,7 +45,7 @@ The ecosystem relies on Docker and Docker Compose to network different services 
    You can use the built-in python scripts (via `uv`) to orchestrate and update the deployment:
 
    ```bash
-   uv run scripts/update_services.py
+   uv run manager/update_services.py
    ```
 
 ## Development and Host Tuning

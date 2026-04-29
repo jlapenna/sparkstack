@@ -46,7 +46,7 @@ The monitoring stack is defined in `services/monitoring/docker-compose.yml` and 
 ### 0. Automated Updates (Zero-RAM Method)
 
 - **Do NOT use `:latest` tags.** The `gcr.io/cadvisor/cadvisor:latest` tag is permanently broken and abandoned. Prometheus `:latest` causes unexpected configuration breakages mid-week.
-- **Run Updates:** Use the `uv run python scripts/update_monitoring.py` script. It queries the GitHub, Docker Hub, and GCR APIs to find the true latest stable semantic versions. It also switches Docker Hub images to `quay.io` where possible to avoid API rate limits, and pins them in `docker-compose.yml`.
+- **Run Updates:** Use the `uv run python manager/update_monitoring.py` script. It queries the GitHub, Docker Hub, and GCR APIs to find the true latest stable semantic versions. It also switches Docker Hub images to `quay.io` where possible to avoid API rate limits, and pins them in `docker-compose.yml`.
 - **Memory Efficiency:** This script consumes 0MB of background RAM (unlike Watchtower/Keel), preserving 100% of host resources for AI model inference.
 
 ### 1. cAdvisor Configuration
@@ -60,7 +60,7 @@ The monitoring stack is defined in `services/monitoring/docker-compose.yml` and 
 
 - **Scrape Interval**: Use `15s` for production stability. Aggressive intervals (like 5s) cause TSDB bloat and CPU starvation.
 - **Metrics Path**: Always use `/metrics` (no trailing slash). Some engines (like SGLang) will fail with connection resets or 404s if a trailing slash is appended.
-- **Configuration Generation**: Do not manually edit `current/prometheus.yml` for permanent changes. Update `scripts/build_stack.py` (`_generate_prometheus_config`) to ensure future stacks inherit the correct configuration.
+- **Configuration Generation**: Do not manually edit `current/prometheus.yml` for permanent changes. Update `manager/build_stack.py` (`_generate_prometheus_config`) to ensure future stacks inherit the correct configuration.
 - **Permissions**: Do not run Prometheus as `user: root`. Drop privileges and manage volume permissions natively via `nobody` or a dedicated unprivileged user.
 
 ### 3. Vector & Progress Manager
@@ -75,7 +75,7 @@ The monitoring stack is defined in `services/monitoring/docker-compose.yml` and 
 
 ### 4. Decoupled Orchestration Integration (`build_stack.py`)
 
-The orchestration tool `scripts/build_stack.py` integrates seamlessly via a metadata-driven approach without hard coupling container names:
+The orchestration tool `manager/build_stack.py` integrates seamlessly via a metadata-driven approach without hard coupling container names:
 
 - **Prometheus Dynamic Discovery**: `build_stack.py` populates `/prometheus/targets.json` using File-based Service Discovery (File SD). `services/monitoring/docker-compose.yml` provides a static `prometheus.yml` that monitors this JSON file. The orchestration layer adds metadata labels explicitly to the SD config dict, cleanly registering models with the monitoring database.
 - **Progress Manager Decoupling**: Progress Manager now discovers monitoring-eligible containers natively using docker labels `sparkrun.monitoring=true` natively via filters (`docker ps -f label=sparkrun.monitoring=true`), avoiding implicit regex naming matches. The metrics fallback `model_id` uses the `sparkrun.role` label securely populated at instantiation.

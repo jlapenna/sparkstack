@@ -10,6 +10,7 @@ from loguru import logger
 from core.env import (
     MAX_DOCKER_MEMORY_GB,
     MAX_VRAM_UTILIZATION,
+    SPARKRUN_CMD,
     USABLE_SPARK_MEMORY_GB,
 )
 from core.utils import async_run_command
@@ -144,7 +145,7 @@ async def check_compliance(log_output: bool = True) -> bool:
             logger.error(f"❌ RAM Law BREACHED! ({total_ram:.2f}GB > {MAX_DOCKER_MEMORY_GB}GB)")
             breached = True
 
-        if vram_utilization > MAX_VRAM_UTILIZATION:
+        if round(vram_utilization, 3) > MAX_VRAM_UTILIZATION:
             logger.error(
                 f"❌ VRAM Law BREACHED! Utilization is {vram_utilization * 100:.1f}% "
                 f"({total_vram:.2f}GB) which exceeds {MAX_VRAM_UTILIZATION * 100:.1f}%."
@@ -165,15 +166,6 @@ async def check_compliance(log_output: bool = True) -> bool:
 
 async def main():
     if not await check_compliance(log_output=True):
-        sys.exit(1)
-    sys.exit(0)
-
-
-if __name__ == "__main__":
-    logger.remove()
-    logger.add(sys.stderr, format="<level>{message}</level>")
-    asyncio.run(main())
-iance(log_output=True):
         sys.exit(1)
     sys.exit(0)
 

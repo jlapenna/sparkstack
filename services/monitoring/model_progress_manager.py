@@ -3,6 +3,7 @@ import asyncio
 import contextlib
 import os
 import re
+import urllib.parse
 from collections.abc import AsyncGenerator
 from typing import Any
 
@@ -13,7 +14,7 @@ from loguru import logger
 from core.statsd import StatsdClient
 
 # Configuration
-STATSD_HOST = os.environ.get("SPARKRUN_STATSD_HOST", "vector")
+STATSD_HOST = os.environ.get("SPARKRUN_STATSD_HOST", "alloy")
 STATSD_PORT = int(os.environ.get("SPARKRUN_STATSD_PORT", "8125"))
 STATSD_ADDR = (STATSD_HOST, STATSD_PORT)
 POLL_INTERVAL = 5.0
@@ -129,8 +130,16 @@ class DockerHostMonitor:
             for container_name, pct in list(self.last_known_pct.items()):
                 info = self.container_info_cache.get(container_name, {})
                 model_id = info.get("model_id", container_name)
+                logger.debug(
+                    f"[{self.host_id}] Pushing metric: vllm_model_load_progress={pct} for {container_name}"
+                )
                 await push_to_statsd(
                     "vllm_model_load_progress", pct, container_name, model_id, self.host_id
+                )
+
+                status_val = 1 if self.last_known_phase.get(container_name) == "Ready" else 0
+                await push_to_statsd(
+                    "vllm_model_status", status_val, container_name, model_id, self.host_id
                 )
             await asyncio.sleep(10.0)
 
@@ -274,9 +283,10 @@ class DockerHostMonitor:
 
             if FATAL_REGEX.search(line):
                 logger.error(f"[{self.host_id}] Crash in {container_name}: {line.strip()}")
-                self.last_known_pct[container_name] = -1
+                self.last_known_pct[container_name] = 0
                 self.last_known_phase[container_name] = "Crash"
-                return
+                # Do NOT return; continue processing in case this is an old log line
+                # and a later "startup complete" or progress line exists.
 
             if "Application startup complete" in line:
                 logger.info(f"[{self.host_id}] {container_name} reported startup complete.")
@@ -355,13 +365,13 @@ class DockerHostMonitor:
                 try:
                     status, data = await self.docker_api_get(f"/containers/{container_name}/json")
                     if status == 200 and data and not data.get("State", {}).get("Running", False):
-                        self.last_known_pct[container_name] = -1
+                        self.last_known_pct[container_name] = 0
                         self.last_known_phase[container_name] = "Offline"
                         return
                 except Exception as e:
                     logger.debug(f"[{self.host_id}] Poller error for {container_name}: {e}")
 
-                if self.last_known_pct.get(container_name, 0) != -1:
+                if self.last_known_pct.get(container_name, 0) != 0:
                     # Exec into the container to curl its own port (avoiding external routing issues)
                     is_responsive = False
                     try:
@@ -442,8 +452,10 @@ class DockerHostMonitor:
     async def discovery_loop(self) -> None:
         while self.running:
             try:
+                filters_json = '{"label":["sparkrun.monitoring=true"]}'
+                encoded_filters = urllib.parse.quote(filters_json)
                 status, data = await self.docker_api_get(
-                    '/containers/json?filters={"label":["sparkrun.monitoring=true"]}'
+                    f"/containers/json?filters={encoded_filters}"
                 )
                 if status == 200 and data is not None:
                     containers = [c["Names"][0].lstrip("/") for c in data]
@@ -537,7 +549,7 @@ class FleetMultiplexer:
 
 
 async def main() -> None:
-    logger.info(f"Fleet Multiplexer V3 starting (StatsD tcp: {STATSD_ADDR[0]}:{STATSD_ADDR[1]})")
+    logger.info(f"Fleet Multiplexer V3 starting (StatsD: {STATSD_ADDR[0]}:{STATSD_ADDR[1]})")
     multiplexer = FleetMultiplexer()
 
     # Auto-register local docker socket as head-node

@@ -1,6 +1,13 @@
 ______________________________________________________________________
 
-## name: telegram-cli description: Send Telegram messages directly using the Telegram Bot API via curl. homepage: https://core.telegram.org/bots/api metadata: { "openclaw": { "emoji": "✈️" } }
+name: telegram-cli
+description: Send Telegram messages directly using the Telegram Bot API via curl.
+homepage: https://core.telegram.org/bots/api
+metadata:
+openclaw:
+emoji: "✈️"
+
+______________________________________________________________________
 
 # telegram-cli
 

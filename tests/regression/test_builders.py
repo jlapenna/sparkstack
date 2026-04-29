@@ -3,9 +3,9 @@ import json
 import pytest
 import yaml
 
-from core.builders.compose import ComposeBuilder
-from core.builders.litellm import LiteLLMBuilder
-from core.builders.prometheus import PrometheusBuilder
+from core.builders.apigateway import ApiGatewayBuilder
+from core.builders.docker import DockerComposeFileBuilder
+from core.builders.monitoring import MonitoringBuilder
 
 
 @pytest.fixture
@@ -15,10 +15,9 @@ def temp_stack_dir(tmp_path):
 
 def test_compose_builder(temp_stack_dir):
     base_config = {"services": {"gateway": {"image": "nginx"}}}
-    builder = ComposeBuilder(temp_stack_dir, base_config)
+    builder = DockerComposeFileBuilder(temp_stack_dir, base_config)
 
     builder.add_service("backend", {"image": "my-backend", "ports": ["8080:80"]})
-    builder.set_gateway_memory("4G")
     builder.write()
 
     compose_file = temp_stack_dir / "docker-compose.yaml"
@@ -30,19 +29,10 @@ def test_compose_builder(temp_stack_dir):
     assert "backend" in config["services"]
     assert config["services"]["backend"] == {"image": "my-backend", "ports": ["8080:80"]}
 
-    gateway_mem = (
-        config["services"]["gateway"]
-        .get("deploy", {})
-        .get("resources", {})
-        .get("limits", {})
-        .get("memory")
-    )
-    assert gateway_mem == "4G"
-
 
 def test_litellm_builder(temp_stack_dir):
     base_config = {"model_list": [], "litellm_settings": {}}
-    builder = LiteLLMBuilder(temp_stack_dir, base_config)
+    builder = ApiGatewayBuilder(temp_stack_dir, base_config)
 
     builder.add_model(
         role_id="main",
@@ -69,7 +59,7 @@ def test_litellm_builder(temp_stack_dir):
 
 
 def test_prometheus_builder(temp_stack_dir):
-    builder = PrometheusBuilder(temp_stack_dir)
+    builder = MonitoringBuilder(temp_stack_dir)
     builder.add_target("localhost:8001", "main")
     builder.add_target("localhost:8002", "embedding")
 

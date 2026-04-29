@@ -34,15 +34,17 @@ RuntimeError: Triton Error [CUDA]: an illegal memory access was encountered
 Before using a draft model for speculative decoding:
 
 1. **Verify architecture class match** — draft and target must use the same architecture (e.g., both `NemotronHForCausalLM`). Different-size models of the same family may NOT be compatible if QKV projection dimensions differ.
-2. **Check for `pard_token` / `ptd_token_id`** in the draft model's `config.json` — required for `parallel_drafting: true`.
-3. **Test weight loading** before committing to a full deploy.
+1. **Check for `pard_token` / `ptd_token_id`** in the draft model's `config.json` — required for `parallel_drafting: true`.
+1. **Test weight loading** before committing to a full deploy.
 
 ### Safe Fallback: `[ngram]`
 
 When in doubt, use `ngram` speculative decoding:
+
 ```
 --speculative-config '{"model":"[ngram]","num_speculative_tokens":5}'
 ```
+
 This requires no external draft model, works with any architecture, and provides modest throughput improvement. Note: ngram disables async scheduling (`WARNING: Async scheduling not supported with ngram-based speculative decoding`).
 
 ## Observability Pipeline
@@ -59,7 +61,16 @@ The progress manager and orchestration scripts send metrics via **UDP** StatsD t
 
 The progress manager's readiness check only verifies `/v1/models` responds with HTTP 200. This does **not** guarantee the model can actually serve inference. A model that passes health checks may still crash on the first real request (see `--disable-log-stats` above).
 
+### Smoke Test Routing (Embeddings vs Completions)
+
+When orchestrating or verifying backend readiness (e.g., via `wait_for_backends.py`), be aware that different model architectures require different endpoints:
+
+- **Completion/Chat Models (e.g., Nemotron, Llama)**: Respond to `/v1/chat/completions`.
+- **Embedding Models (e.g., BGE-M3)**: Respond to `/v1/embeddings` and will return `HTTP 404` if queried at the chat endpoint.
+
+If your readiness smoke-tests fail with `404 Not Found` against an embedding model, ensure the diagnostic payload is correctly formatted and routed to `/v1/embeddings` instead.
+
 ## Container Lifecycle
 
-- `update_services.py` auto-removes stale containers (`docker rm -f`) for `vllm-gateway` and `main_solo` during deploys.
+- `update_services.py` auto-removes stale containers (`docker rm -f`) for `litellm` and `main_solo` during deploys.
 - The progress manager must be rebuilt (`docker compose up --build vllm-progress-manager`) after code changes — it copies `model_progress_manager.py` into the image at build time.

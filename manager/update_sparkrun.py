@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --env-file .env --frozen --offline python3
 """
-update_sparkrun.py - Submodule management and rebase logic for SparkRun.
+update_sparkrun.py - Source Dependency management and rebase logic for SparkRun.
 """
 
 import argparse
@@ -12,7 +12,7 @@ from loguru import logger
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from core.env import PROJECT_ROOT
+from core.env import PROJECT_ROOT, SPARKRUN_DIR
 from core.utils import CommandError, async_run_command
 
 
@@ -22,7 +22,7 @@ class SparkrunSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     project_root: Path = Field(default=PROJECT_ROOT)
-    sparkrun_dir: Path = Field(default=PROJECT_ROOT.parent / "sparkrun")
+    sparkrun_dir: Path = Field(default=SPARKRUN_DIR)
     pull_latest: bool = False
 
 
@@ -34,7 +34,7 @@ class SparkrunUpdater:
 
     async def update_source(self) -> None:
         """
-        Maintains the SparkRun submodule by pulling the latest main branch.
+        Maintains the SparkRun source_dependency by pulling the latest main branch.
         """
         if not self.settings.pull_latest:
             logger.info("Skipping SparkRun source update. Use --pull-latest to update.")
@@ -56,15 +56,46 @@ class SparkrunUpdater:
             await async_run_command(["git", "fetch", "origin"], cwd=self.settings.sparkrun_dir)
 
             if current_branch == "local-dev" or current_branch.startswith("local/"):
-                logger.warning(
-                    f"Detected {current_branch} branch integration. Skipping checkout to develop and hard reset to origin/develop."
+                logger.info(
+                    f"Detected {current_branch} branch integration. Attempting to sync and rebase upstream/main."
                 )
+
+                # Check for upstream remote and sync if present
+                res_remotes = await async_run_command(
+                    ["git", "remote"], cwd=self.settings.sparkrun_dir
+                )
+                if "upstream" in res_remotes.stdout:
+                    logger.info("Fetching from upstream...")
+                    await async_run_command(
+                        ["git", "fetch", "upstream"], cwd=self.settings.sparkrun_dir
+                    )
+
+                    logger.info(f"Rebasing {current_branch} onto upstream/main...")
+                    try:
+                        await async_run_command(
+                            ["git", "rebase", "upstream/main"], cwd=self.settings.sparkrun_dir
+                        )
+                    except CommandError:
+                        logger.error(
+                            f"Rebase failed. You may have conflicts. Please resolve them in {self.settings.sparkrun_dir} and run 'git rebase --continue'."
+                        )
+                        await async_run_command(
+                            ["git", "rebase", "--abort"],
+                            cwd=self.settings.sparkrun_dir,
+                            check=False,
+                        )
+                        raise
+                else:
+                    logger.warning(
+                        "No 'upstream' remote configured. Skipping upstream sync. "
+                        "To enable automatic syncs, run: git remote add upstream https://github.com/spark-arena/sparkrun.git"
+                    )
             else:
                 await async_run_command(
-                    ["git", "checkout", "-f", "develop"], cwd=self.settings.sparkrun_dir
+                    ["git", "checkout", "-f", "main"], cwd=self.settings.sparkrun_dir
                 )
                 await async_run_command(
-                    ["git", "reset", "--hard", "origin/develop"], cwd=self.settings.sparkrun_dir
+                    ["git", "reset", "--hard", "origin/main"], cwd=self.settings.sparkrun_dir
                 )
 
             await async_run_command(["git", "clean", "-fd"], cwd=self.settings.sparkrun_dir)
@@ -86,7 +117,7 @@ class SparkrunUpdater:
 
 async def main():
 
-    parser = argparse.ArgumentParser(description="SparkRun submodule manager.")
+    parser = argparse.ArgumentParser(description="SparkRun source_dependency manager.")
     parser.add_argument("--pull-latest", action="store_true", help="Pull latest/rebase.")
     args = parser.parse_args()
 

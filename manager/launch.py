@@ -29,7 +29,7 @@ def main():
     # Clean up old instances
     print("🧹 Cleaning up old containers...")
     subprocess.run(
-        ["docker", "rm", "-f", "vllm-gateway", "vllm-progress"]
+        ["docker", "rm", "-f", "litellm", "vllm-progress"]
         + [b["name"] + "_solo" for b in stack.get("backends", [])],
         stderr=subprocess.DEVNULL,
     )
@@ -76,8 +76,11 @@ def main():
             str(backend.get("tensor_parallel", 1)),
             "--served-model-name",
             backend["name"],
+            "--cluster",
+            backend["name"],
             "--container-name",
             backend["name"],
+            "--solo",
             "--no-follow",
             "-o",
             f"network={global_network}",
@@ -87,16 +90,23 @@ def main():
             cmd.extend(["--memory-limit", backend["memory_limit"]])
 
         # Append overrides
-        for key, value in backend.get("overrides", {}).items():
+        overrides = backend.get("overrides", {}).copy()
+
+        # Pull out explicit flags if present in overrides
+        if "gpu_memory_utilization" in overrides:
+            cmd.extend(["--gpu-mem", str(overrides.pop("gpu_memory_utilization"))])
+        if "max_model_len" in overrides:
+            cmd.extend(["--max-model-len", str(overrides.pop("max_model_len"))])
+
+        for key, value in overrides.items():
             cmd.extend(["-o", f"{key}={value}"])
 
         # Append environment variables
         for key, value in backend.get("env", {}).items():
             cmd.extend(["-o", f"env.{key}={value}"])
 
-        # Append labels
-        for label in backend.get("labels", []):
-            cmd.extend(["--label", label])
+        for lbl in backend.get("labels", []):
+            cmd.extend(["--label", lbl])
 
         run_command(cmd, cwd=repo_root)
 

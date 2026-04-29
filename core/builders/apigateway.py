@@ -5,8 +5,6 @@ import yaml
 from core.schemas import (
     LiteLLMConfig,
     LiteLLMModelEntry,
-    LiteLLMModelInfo,
-    LiteLLMParams,
     ModelsConfig,
     OpenClawModel,
     OpenClawModelCompat,
@@ -14,7 +12,7 @@ from core.schemas import (
 )
 
 
-class LiteLLMBuilder:
+class ApiGatewayBuilder:
     def __init__(self, stack_dir: Path, litellm_base: dict):
         self.stack_dir = stack_dir
         self.litellm_config = LiteLLMConfig()
@@ -55,19 +53,29 @@ class LiteLLMBuilder:
         for k, v in litellm_kwargs.items():
             params[k] = v
 
+        minfo = {
+            "context_window": cwin,
+            "base_model": recipe_name or backend_model,
+        }
+        if "max_tokens" in model_info:
+            minfo["max_tokens"] = model_info["max_tokens"]
+        if "mode" in model_info:
+            minfo["mode"] = model_info["mode"]
+        if "supports_function_calling" in model_info:
+            minfo["supports_function_calling"] = model_info["supports_function_calling"]
+        if model_info.get("supports_reasoning") or (thinking_format is not None):
+            minfo["supports_reasoning"] = True
+        if "input" in model_info:
+            minfo["input"] = model_info["input"]
+
+        if "api_key" not in params:
+            params["api_key"] = "${LITELLM_MASTER_KEY:-}"
+
         self.litellm_config.model_list.append(
             LiteLLMModelEntry(
                 model_name=role_id,
-                litellm_params=LiteLLMParams(**params),
-                model_info=LiteLLMModelInfo(
-                    context_window=cwin,
-                    max_tokens=model_info.get("max_tokens", 16384),
-                    base_model=recipe_name or backend_model,
-                    mode=model_info.get("mode"),
-                    supports_function_calling=model_info.get("supports_function_calling"),
-                    supports_reasoning=model_info.get("supports_reasoning")
-                    or (thinking_format is not None),
-                ),
+                litellm_params=params,
+                model_info=minfo,
             )
         )
 
@@ -82,17 +90,17 @@ class LiteLLMBuilder:
             id=role_id,
             name=display_name,
             context_window=cwin,
-            max_tokens=model_info.get("max_tokens", 16384),
             input=model_info.get("input", ["text"]),
             reasoning=model_info.get("reasoning"),
             api="openai-completions",
         )
+        if "max_tokens" in model_info:
+            model_entry.max_tokens = model_info["max_tokens"]
         compat_kwargs = {}
         if model_info.get("reasoning"):
             compat_kwargs["thinking_format"] = thinking_format or "openai"
         if "supports_function_calling" in model_info:
             compat_kwargs["supports_tools"] = model_info["supports_function_calling"]
-            
         if compat_kwargs:
             model_entry.compat = OpenClawModelCompat(**compat_kwargs)
 

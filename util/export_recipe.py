@@ -5,7 +5,7 @@ import hashlib
 import sys
 from pathlib import Path
 
-from core.env import REGISTRY_DIR
+from core.env import REGISTRY_DIR, SPARKRUN_CMD
 from core.utils import CommandError, async_run_command
 
 
@@ -43,5 +43,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
     asyncio.run(main())

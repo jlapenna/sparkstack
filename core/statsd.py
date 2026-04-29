@@ -9,9 +9,7 @@ logger = logging.getLogger(__name__)
 class StatsdClient:
     """Async StatsD client supporting both UDP and TCP protocols."""
 
-    def __init__(
-        self, host: str, port: int, protocol: Literal["udp", "tcp"] = "udp"
-    ) -> None:
+    def __init__(self, host: str, port: int, protocol: Literal["udp", "tcp"] = "udp") -> None:
         self.host = host
         self.port = port
         self.protocol = protocol.lower()

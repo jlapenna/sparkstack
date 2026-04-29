@@ -72,8 +72,8 @@ async def main():
     if net_inspect.returncode != 0:
         await async_run_command(["docker", "network", "create", "vllm-network"], check=False)
 
-    # Force remove vllm-gateway to prevent naming conflicts during fast swaps
-    await async_run_command(["docker", "rm", "-f", "vllm-gateway"], check=False)
+    # Force remove litellm to prevent naming conflicts during fast swaps
+    await async_run_command(["docker", "rm", "-f", "litellm"], check=False)
 
     # Update symlink
     logger.info(f"Switching active stack to: {args.target}")
@@ -85,18 +85,22 @@ async def main():
 
     # Start new service
     logger.info("Starting new stack...")
-    launch_script = full_target / "launch.sh"
-    if launch_script.is_file():
+    stack_yaml = full_target / "stack.yaml"
+    if stack_yaml.is_file():
         logger.info("🚀 Using hybrid launcher (sparkrun + compose)...")
+        launch_script = ROOT_DIR / "manager" / "launch.py"
         res = await async_run_command(
-            [str(launch_script)], cwd=full_target, check=False, capture_output=True
+            ["uv", "run", "python", str(launch_script), str(full_target)],
+            cwd=ROOT_DIR,
+            check=False,
+            capture_output=True,
         )
         if res.stdout:
             for line in res.stdout.splitlines():
-                logger.info(f"[launch.sh] {line}")
+                logger.info(f"[launch.py] {line}")
         if res.stderr:
             for line in res.stderr.splitlines():
-                logger.error(f"[launch.sh] {line}")
+                logger.error(f"[launch.py] {line}")
         if res.returncode != 0:
             logger.error(f"Launch script failed with code {res.returncode}")
             sys.exit(res.returncode)

@@ -7,7 +7,7 @@ import yaml
 from core.schemas import PrometheusConfig, ScrapeConfig, StaticConfig
 
 
-class PrometheusBuilder:
+class MonitoringBuilder:
     def __init__(self, stack_dir: Path):
         self.stack_dir = stack_dir
         self.scrape_configs = [
@@ -19,8 +19,11 @@ class PrometheusBuilder:
         ]
         self.scrape_targets = []
 
-    def add_target(self, target: str, model_name: str):
-        self.scrape_targets.append({"targets": [target], "labels": {"model": model_name}})
+    def add_target(self, target: str, model_name: str, instance_name: str | None = None):
+        labels = {"model": model_name}
+        if instance_name:
+            labels["instance"] = instance_name
+        self.scrape_targets.append({"targets": [target], "labels": labels})
 
     def write(self):
         base_configs = self.scrape_configs + [
@@ -29,7 +32,7 @@ class PrometheusBuilder:
                 metrics_path="/metrics",
                 static_configs=[
                     StaticConfig(
-                        targets=[os.getenv("VLLM_GATEWAY_HOST", "vllm-gateway:4000")],
+                        targets=[os.getenv("VLLM_GATEWAY_HOST", "litellm:4000")],
                         labels={"instance": "spark"},
                     )
                 ],

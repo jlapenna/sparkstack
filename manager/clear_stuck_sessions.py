@@ -37,7 +37,10 @@ def clear_stuck_sessions():
             if isinstance(data, dict):
                 # Typically data is a dictionary of sessionKey -> sessionData
                 for session_key, session_data in data.items():
-                    if isinstance(session_data, dict) and session_data.get("status") == "running":
+                    if isinstance(session_data, dict) and session_data.get("status") in (
+                        "running",
+                        "processing",
+                    ):
                         print(f"Resetting stuck session: {session_key} in {file_path}")
                         session_data["status"] = "idle"
                         modified = True

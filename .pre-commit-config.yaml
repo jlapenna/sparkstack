@@ -15,7 +15,7 @@ repos:
     rev: 1.0.0
     hooks:
       - id: mdformat
-        entry: bash -c 'mdformat --check "$@"' --
+        entry: bash -c 'mdformat "$@"' --
         verbose: true
         additional_dependencies:
           - mdformat-gfm
@@ -26,7 +26,7 @@ repos:
       - id: pyright
         entry: bash -c 'pyright --pythonpath .venv/bin/python "$@"' --
         verbose: true
-        args: [ core/, scripts/, tests/ ]
+        args: [ core/, manager/, tests/ ]
         additional_dependencies:
           - pyright
         stages: [pre-push]
@@ -34,4 +34,5 @@ repos:
     rev: v8.30.0
     hooks:
       - id: gitleaks
+        args: ["--no-color"]
         stages: [pre-commit, pre-push]

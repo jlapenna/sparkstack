@@ -1,4 +1,5 @@
 import asyncio
+
 import pytest
 
 from core.statsd import StatsdClient
@@ -50,7 +51,7 @@ async def test_statsd_tcp():
     async with server:
         client = StatsdClient(host=host, port=port, protocol="tcp")
         await client.send("test_metric:2|c")
-        
+
         # Give TCP a moment to transfer
         await asyncio.sleep(0.1)
 

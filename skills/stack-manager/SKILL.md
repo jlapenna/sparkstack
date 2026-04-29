@@ -38,7 +38,7 @@ For **ANY** model addition, upgrade, or stack modification, you MUST defer to th
 1. **Execution & Verification**: Once approved, execute the plan strictly as written, progressing through all infrastructure, stack orchestration, E2E Verification, and **Formal Benchmarking (Phase 4)** phases detailed in the template.
 1. **ZERO HOT-PATCHING**: If a step fails, **HALT** and inform the user. Do not attempt quiet fixes or ad-hoc hacks.
 1. **No Log Summarization**: You are strictly banned from summarizing verification logs in Phase 6. You must dump the literal unedited `stdout` blocks into the `plan.md` to prevent hallucinated success records.
-1. **Cheat-Sheet Finalization**: For Phase 7 cleanup, the mandatory final rotation command is exactly `uv run python scripts/set_current.py spark-stack-registry/stacks/<clean_stack_name>`. Execute this after stripping the iterative suffix and deleting failed iterations.
+1. **Cheat-Sheet Finalization**: For Phase 7 cleanup, the mandatory final rotation command is exactly `uv run python manager/set_current.py spark-stack-registry/stacks/<clean_stack_name>`. Execute this after stripping the iterative suffix and deleting failed iterations.
 
 _(Refer to `skills/stack-manager/references/plan-template.md` for the exact requirements of Phase 1 through Phase 7)._
 
@@ -49,13 +49,14 @@ _(Refer to `skills/stack-manager/references/plan-template.md` for the exact requ
 - **Total Limit**: Aggregate memory limits in all containers MUST NOT exceed **108GB**.
 - **GPU Utilization**: Aggregate `gpu-memory-utilization` MUST NOT exceed **0.90** (Hard limit 0.95).
 - **Context Preservation**: For 128k+ context, monitor VRAM usage carefully.
-- **System RAM Maximization**: Do not leave System RAM unutilized. The main LLM container/sparkrun instance MUST be allocated the lion's share of System RAM (e.g., `cpu-offload-gb: 60`) to prevent OOM during weight loading and to support KV cache CPU offloading. If GPU utilization hits the 0.90 limit, heavily leverage CPU offloading to absorb the difference.
+- **System RAM Maximization**: Do not leave System RAM unutilized. The main LLM container/sparkrun instance MUST be allocated the lion's share of System RAM (e.g., `cpu-offload-gb: 40-60`) to prevent OOM during weight loading and to support KV cache CPU offloading. If GPU utilization hits the 0.90 limit, heavily leverage CPU offloading to absorb the difference.
+- **Under-Utilization Warnings**: If a recipe utilizes `< 85%` VRAM or leaves > `30GB` of System RAM unallocated, you MUST issue a prominent warning in your plan that hardware capacity is being wasted. You MUST proactively suggest maximizing `max_model_len` (e.g., bumping to 128k or 262k) to utilize the remaining memory, especially when deploying heavily quantized models (like NVFP4) which leave massive amounts of VRAM available for the KV cache.
+- **Unified Memory Architectures (Grace Hopper)**: DO NOT USE `--cpu-offload-gb` on systems with Unified Memory architectures (e.g., GH200). System RAM and VRAM are the same physical pool. Using CPU offload simply thrashes the interconnect for zero capacity gain and crashes Triton attention backends. Only use CPU offload on discrete GPU architectures (e.g., standard PCIe DGX systems).
 
 ### 2. Port & Network Integrity
 
 - **Port Arbitration**: Start at **8001**.
 - **External Networks**: `vllm-network` MUST be `external: true` in `compose-litellm.yaml` to prevent Prometheus disconnection.
-- **Proxy-First Verification**: Verification tools (like `pytest tests/e2e/`) and benchmarks (like `sparkrun benchmark`) SHOULD be routed through the `vllm-gateway` (port 4000) rather than hitting internal container ports directly, to ensure proxy integrity.
 
 ### 3. Tooling & Orchestration
 
@@ -102,7 +103,7 @@ OpenClaw gateway may crash with `TypeError: Cannot read properties of undefined 
 
 ### 4. Docker DNS Breakage (resolv.conf override)
 
-If containers cannot resolve internal hostnames (e.g. `vllm-gateway`) despite being on the same custom network (like `proxy-tier`):
+If containers cannot resolve internal hostnames (e.g. `litellm`) despite being on the same custom network (like `proxy-tier`):
 
 - **Cause**: Bind-mounting the host's `/etc/resolv.conf` into the container (`/run/systemd/resolve/resolv.conf:/etc/resolv.conf:ro`) forcibly overrides Docker's embedded DNS server (`127.0.0.11`). It blinds the container to internal Docker service discovery.
 - **Fix**: NEVER bind-mount `/etc/resolv.conf` locally when using Docker bridge networks. Let Docker natively inject its `127.0.0.11` resolver to ensure container restarts and dynamic IP mapping work correctly.
@@ -111,8 +112,8 @@ If containers cannot resolve internal hostnames (e.g. `vllm-gateway`) despite be
 
 If `sparkrun benchmark` (using `llama-benchy`) fails immediately with `HTTP 400 ... Invalid model name passed` against port 4000:
 
-- **Cause**: The `vllm-gateway` (LiteLLM) protects access by enforcing mapped dictionary names (e.g., `main` or `embedding`). By default, `llama-benchy` passes the literal HuggingFace path to the endpoint.
-- **Fix**: You must pass the internal mapped name through sparkrun by appending `-b served_model_name=main` to your `sparkrun benchmark` command.
+- **Cause**: The `litellm` proxy protects access by enforcing mapped dictionary names (e.g., `main` or `embedding`). By default, `llama-benchy` passes the literal HuggingFace path to the endpoint.
+- **Fix**: You must pass the internal mapped name and gateway secret through sparkrun by appending `-b served_model_name=main -b api_key=$LITELLM_MASTER_KEY` to your `sparkrun benchmark` command.
 
 ## Maintenance & Recovery
 
@@ -127,7 +128,6 @@ If `sparkrun benchmark` (using `llama-benchy`) fails immediately with `HTTP 400 
 #### 👍 The Dos
 
 - **Internal Log Tailing**: Always tail `/tmp/sparkrun_serve.log` inside model containers for high-signal diagnostics.
-- **Direct Benchmark Overrides**: Use `-o max_model_len={n}` in `sparkrun benchmark` to match the target stack's configuration.
 - **Benchmark Hygiene**: Since `sparkrun benchmark` hard-dumps its results in the repository root, you MUST immediately move the telemetry output files (`benchmark_*`) into the active stack's directory (e.g., `spark-stack-registry/stacks/<stack_name>/`) to keep the repository base clean.
 
 #### 👎 The Do-Nots
@@ -158,8 +158,8 @@ uv run sparkrun benchmark /path/recipe.yaml --port 4000
 ### Correct Pattern: Routed Benchmarking
 
 ```bash
-# GOOD: Explicitly maps the internal container target (main) via the override flag
-uv run sparkrun benchmark /path/recipe.yaml --port 4000 -b served_model_name=main
+# GOOD: Explicitly maps the internal container target (main), injects the gateway secret, applies the full Arena testing profile, and avoids double-launching by using --skip-run
+export $(grep -v '^#' .env | xargs) && uv run sparkrun benchmark /path/recipe.yaml --port 4000 --skip-run -b served_model_name=main -b api_key=$LITELLM_MASTER_KEY --profile spark-arena-v1
 ```
 
 ## Output Format

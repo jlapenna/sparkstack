@@ -25,7 +25,7 @@ ______________________________________________________________________
 *If the new deployment causes a catastrophic failure, you MUST have the exact rollback commands pre-defined here so the system can be restored instantly without further research.*
 
 - **Previous Stable Stack Name**: \[e.g., `core-upgrade-20260320`\]
-- **Rollback Command**: `uv run python scripts/set_current.py spark-stack-registry/stacks/[PREVIOUS_STABLE] && cd current && docker compose up -d --force-recreate`
+- **Rollback Command**: `uv run python manager/set_current.py spark-stack-registry/stacks/[PREVIOUS_STABLE] && cd current && docker compose up -d --force-recreate`
 
 ______________________________________________________________________
 
@@ -69,7 +69,7 @@ Identify if existing scripts require patching to support the new model role.
 
 Generate the multi-container configuration using the iterative naming convention.
 
-- **Action**: Use `uv run python scripts/build_stack.py` to generate the new stack configuration.
+- **Action**: Use `uv run python manager/build_stack.py` to generate the new stack configuration.
 
 ### Phase 4: Activation & Synchronization (Deployment Layer)
 
@@ -109,7 +109,7 @@ ______________________________________________________________________
 
 *While `scripts.verify` checks anti-repetition regression and system resilience, an explicit throughput/latency performance benchmark MUST be run to record the baseline performance delta of the newly configured model.*
 
-- **Action**: Run `uv run sparkrun benchmark [MODEL_NAME] --skip-run` (Note: telemetry defaults to `SparkrunConfig` output directories and auto-derives the inference alias).
+- **Action**: Run `export $(grep -v '^#' .env | xargs) && uv run sparkrun benchmark spark-stack-registry/sparkrun/[MODEL_NAME].yaml --skip-run --port 4000 -b served_model_name=main -b api_key=$LITELLM_MASTER_KEY --profile spark-arena-v1` (Note: telemetry defaults to `SparkrunConfig` output directories and auto-derives the inference alias).
 - **Cleanup Requirement**: The benchmark utility dumps `.csv`, `.json`, and `.yaml` result files into the repository root. You MUST immediately move them by running `mv benchmark_* benchmarks/` to maintain repository hygiene.
 - **Expect**: Securely capture Output Tokens per Second (T/s), Time to First Token (TTFT), and End-to-End Latency.
 - **Baseline Capture**:

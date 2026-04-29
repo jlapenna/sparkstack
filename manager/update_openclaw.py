@@ -12,18 +12,16 @@ from loguru import logger
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from core.env import OPENCLAW_CONFIG_DIR, OPENCLAW_CONFIG_PATH, OPENCLAW_ENV
+from core.env import OPENCLAW_CONFIG_DIR, OPENCLAW_CONFIG_PATH, OPENCLAW_DIR, OPENCLAW_ENV
 from core.utils import ServiceHealthManager, async_run_command, parse_cli_json
 
-OPENCLAW_REPO = "https://github.com/google/openclaw.git"
+OPENCLAW_REPO = "https://github.com/jlapenna/openclaw.git"
 
 
 class UpdaterSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     project_root: Path = Field(default_factory=lambda: Path(__file__).parent.parent.absolute())
-    openclaw_dir: Path = Field(
-        default_factory=lambda: Path(__file__).parent.parent.absolute().parent / "openclaw"
-    )
+    openclaw_dir: Path = Field(default=OPENCLAW_DIR)
     config_path: Path = Field(default=OPENCLAW_CONFIG_PATH)
     pull_latest: bool = False
     run_setup: str | None = None
@@ -59,7 +57,7 @@ class OpenClawUpdater:
         if not self.settings.openclaw_dir.exists():
             await async_run_command(
                 ["git", "clone", OPENCLAW_REPO, "openclaw"],
-                cwd=self.settings.project_root,
+                cwd=self.settings.openclaw_dir.parent,
                 stream_output=True,
             )
 
@@ -148,7 +146,7 @@ class OpenClawUpdater:
             env.update({"OPENCLAW_SANDBOX": "1"})
 
         await async_run_command(
-            ["bash", "-c", "bash scripts/docker/setup.sh < /dev/null"],
+            ["bash", "-c", "bash manager/docker/setup.sh < /dev/null"],
             cwd=self.settings.openclaw_dir,
             env=env,
             stream_output=self.verbose,
@@ -173,7 +171,7 @@ class OpenClawUpdater:
 
         # First ensure the un-customized sandbox base image exists
         await async_run_command(
-            ["bash", "scripts/sandbox-setup.sh"],
+            ["bash", "manager/sandbox-setup.sh"],
             cwd=self.settings.openclaw_dir,
             stream_output=self.verbose,
         )

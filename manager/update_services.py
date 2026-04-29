@@ -35,10 +35,10 @@ from core.utils import (
     ServiceHealthManager,
     async_run_command,
 )
-from scripts.sync_registry import sync_registry
-from scripts.update_openclaw import OpenClawUpdater
-from scripts.update_sparkrun import SparkrunUpdater
-from scripts.wait_for_backends import wait_for_backends_to_load
+from manager.sync_registry import sync_registry
+from manager.update_openclaw import OpenClawUpdater
+from manager.update_sparkrun import SparkrunUpdater
+from manager.wait_for_backends import wait_for_backends_to_load
 
 # Inject root dir for core imports
 
@@ -112,6 +112,13 @@ async def cleanup_zombies(settings: Settings):
     except Exception as e:
         logger.warning(f"Docker cleanup failed: {e}")
 
+    # 3. Flush stale telemetry caches
+    console.print("  → Flushing telemetry cache (restarting alloy)...")
+    try:
+        await async_run_command(["docker", "restart", "alloy"], check=False)
+    except Exception as e:
+        logger.warning(f"Failed to restart alloy: {e}")
+
 
 class ServiceState:
     """Tracks the live state of a service for the dashboard."""
@@ -134,9 +141,11 @@ class ServiceState:
         if not self.start_time:
             self.start_time = datetime.now()
         asyncio.create_task(
-            statsd.send(f"update_services_progress:{progress}|g|#service:{self.name}\n")
+            statsd.send(f"vllm_sparkrun_deploy_step_progress:{progress}|g|#service:{self.name}\n")
         )
-        asyncio.create_task(statsd.send(f"update_services_status:1|g|#service:{self.name}\n"))
+        asyncio.create_task(
+            statsd.send(f"vllm_sparkrun_deploy_step_status:1|g|#service:{self.name}\n")
+        )
 
     def complete(self):
         self.status = ServiceStatus.COMPLETE
@@ -144,8 +153,12 @@ class ServiceState:
         self.note = "Complete."
         logger.success(f"[{self.name}] Service update COMPLETE.")
         self.done_event.set()
-        asyncio.create_task(statsd.send(f"update_services_progress:100.0|g|#service:{self.name}\n"))
-        asyncio.create_task(statsd.send(f"update_services_status:2|g|#service:{self.name}\n"))
+        asyncio.create_task(
+            statsd.send(f"vllm_sparkrun_deploy_step_progress:100.0|g|#service:{self.name}\n")
+        )
+        asyncio.create_task(
+            statsd.send(f"vllm_sparkrun_deploy_step_status:2|g|#service:{self.name}\n")
+        )
 
     def fail(self, error: str):
         self.status = ServiceStatus.FAILED
@@ -153,7 +166,9 @@ class ServiceState:
         self.note = str(error)
         logger.error(f"[{self.name}] Service update FAILED: {error}")
         self.done_event.set()
-        asyncio.create_task(statsd.send(f"update_services_status:3|g|#service:{self.name}\n"))
+        asyncio.create_task(
+            statsd.send(f"vllm_sparkrun_deploy_step_status:3|g|#service:{self.name}\n")
+        )
 
 
 class Service(ABC):
@@ -221,7 +236,7 @@ class CloudflareService(Service):
     dependencies = ["OpenClaw", "Monitoring"]
 
     async def update(self) -> None:
-        cf_dir = self.settings.project_root / "cloudflare"
+        cf_dir = self.settings.project_root / "services" / "cloudflare"
         tunnel_sh = cf_dir / "tunnel.sh"
 
         if self.settings.pull_latest:
@@ -259,22 +274,27 @@ class VllmService(Service):
         logger.info("Purging orphaned VLLM/EngineCore processes...")
         await async_run_command(["pkill", "-9", "-f", "VLLM|sparkrun|vllm"], check=False)
         logger.info("Removing stale vLLM containers...")
-        await async_run_command(["docker", "rm", "-f", "vllm-gateway", "main_solo"], check=False)
+        await async_run_command(["docker", "rm", "-f", "litellm", "main_solo"], check=False)
 
-        launch_script = vllm_current / "launch.sh"
-        if launch_script.exists():
-            await async_run_command([str(launch_script)], cwd=vllm_current)
-        else:
+        stack_yaml = vllm_current / "stack.yaml"
+        if stack_yaml.exists():
+            launch_script = PROJECT_ROOT / "manager" / "launch.py"
+            await async_run_command(
+                ["uv", "run", "python", str(launch_script), str(vllm_current)], cwd=PROJECT_ROOT
+            )
+
+        compose_yaml = vllm_current / "docker-compose.yaml"
+        if compose_yaml.exists():
             await self.run_compose(vllm_current, "up", "-d", "--remove-orphans")
 
         self.state.set_task("Probing health", 80)
         # Use centralized health manager with explicit probes
         manager = ServiceHealthManager(
-            "vllm-gateway",
+            "litellm",
             probes=[
-                DockerProbe("vllm-gateway"),
-                LogProbe("vllm-gateway"),
-                HttpProbe("http://localhost:4000/v1/models"),
+                DockerProbe("litellm"),
+                LogProbe("litellm"),
+                HttpProbe("http://localhost:4000/health"),
             ],
         )
         if await manager.wait_for_ready(timeout=60):
