@@ -35,11 +35,11 @@ def parse_mem_usage(mem_str: str) -> float:
         usage_part = mem_str.split(" / ")[0].strip()
         if usage_part.endswith("GiB") or usage_part.endswith("GB"):
             return float(usage_part[:-3])
-        elif usage_part.endswith("MiB") or usage_part.endswith("MB"):
+        if usage_part.endswith("MiB") or usage_part.endswith("MB"):
             return float(usage_part[:-3]) / 1024.0
-        elif usage_part.endswith("KiB") or usage_part.endswith("KB"):
+        if usage_part.endswith("KiB") or usage_part.endswith("KB"):
             return float(usage_part[:-3]) / (1024.0 * 1024.0)
-        elif usage_part.endswith("B"):
+        if usage_part.endswith("B"):
             return float(usage_part[:-1]) / (1024.0 * 1024.0 * 1024.0)
         return 0.0
     except Exception:
@@ -154,10 +154,9 @@ async def check_compliance(log_output: bool = True) -> bool:
 
         if breached:
             return False
-        else:
-            if log_output:
-                logger.success("✅ Memory Law compliant across both RAM and VRAM dimensions.")
-            return True
+        if log_output:
+            logger.success("✅ Memory Law compliant across both RAM and VRAM dimensions.")
+        return True
 
     except Exception:
         logger.exception("Error running memory check")

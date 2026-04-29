@@ -153,8 +153,12 @@ class StackBuilder:
             ):
                 is_embedding = True
 
-            if is_embedding and "embedding" not in self.gateway_builder.added_roles:
-                target_role = "embedding"
+            if is_embedding:
+                target_role = (
+                    "embedding"
+                    if "embedding" not in self.gateway_builder.added_roles
+                    else slugify(recipe_name)
+                )
             elif "main" not in self.gateway_builder.added_roles:
                 target_role = "main"
             else:

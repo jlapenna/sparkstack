@@ -167,7 +167,7 @@ class SparkrunServiceHandler:
             backend["overrides"]["mem_fraction_static"] = "0.8"
 
         monitoring_builder.add_target(
-            f"host.docker.internal:{self.port}",
+            f"{self.container_hostname}:{self.port}",
             self.target_role,
             instance_name=f"{self.container_hostname}:{self.port}",
         )

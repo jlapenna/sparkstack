@@ -101,10 +101,9 @@ async def test_tracing(ctx: E2EContext):
                         )
                         found_e2e_trace = True
                         break
-                    else:
-                        logger.warning(
-                            f"Found trace {trace_id} with required services, but max gen_ai.input.messages length was only {max_len}. Expected > 2048. Skipping."
-                        )
+                    logger.warning(
+                        f"Found trace {trace_id} with required services, but max gen_ai.input.messages length was only {max_len}. Expected > 2048. Skipping."
+                    )
 
             if found_e2e_trace:
                 break

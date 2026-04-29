@@ -115,10 +115,9 @@ class ModelIDExtractor:
                 "served_model_name", recipe_dict.get("model") or model_config.identity
             )
             return served[0] if isinstance(served, list) else served
-        else:
-            data_dict = model_config.data.model_dump()
-            litellm_info = data_dict.get("litellm", {})
-            litellm_model = litellm_info.get("litellm_params", {}).get("model", "")
-            if litellm_model:
-                return litellm_model.replace("openai/", "").replace("hosted_vllm/", "")
-            return data_dict.get("benchmark", {}).get("model_id", model_config.identity)
+        data_dict = model_config.data.model_dump()
+        litellm_info = data_dict.get("litellm", {})
+        litellm_model = litellm_info.get("litellm_params", {}).get("model", "")
+        if litellm_model:
+            return litellm_model.replace("openai/", "").replace("hosted_vllm/", "")
+        return data_dict.get("benchmark", {}).get("model_id", model_config.identity)

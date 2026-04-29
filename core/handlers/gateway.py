@@ -17,6 +17,3 @@ class ApiGatewayServiceConfigurator:
 
         # Ensure proxy-tier network is defined as external
         docker_builder.compose_config.setdefault("networks", {})["proxy-tier"] = {"external": True}
-
-        # Inject host-gateway for docker-to-host routing (needed for sparkrun local backends)
-        gw["extra_hosts"] = ["host.docker.internal:host-gateway"]

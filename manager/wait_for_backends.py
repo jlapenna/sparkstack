@@ -188,9 +188,8 @@ async def wait_for_backends_to_load(stack_dir: Path, timeout: int = 1800) -> boo
                     logger.error(f"❌ Smoke test request failed for {container}: {e}")
                     return False
         return True
-    else:
-        logger.error("❌ Failure: Backend Readiness timed out")
-        return False
+    logger.error("❌ Failure: Backend Readiness timed out")
+    return False
 
 
 # Layer 1 logic has been moved to tests/verify/test_wait_for_backends.py

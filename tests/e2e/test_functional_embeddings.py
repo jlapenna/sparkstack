@@ -42,9 +42,7 @@ async def test_functional_embeddings(ctx: E2EContext):
                 dim = len(data["data"][0].get("embedding", []))
                 logger.info(f"✅ Pass: Embedding endpoint reachable (dimension: {dim})")
                 return
-            else:
-                logger.error("❌ Failure: Invalid embedding structure")
-                raise AssertionError()
-        else:
-            logger.error(f"❌ Failure: Embeddings returned {res.status_code}: {res.text}")
+            logger.error("❌ Failure: Invalid embedding structure")
             raise AssertionError()
+        logger.error(f"❌ Failure: Embeddings returned {res.status_code}: {res.text}")
+        raise AssertionError()

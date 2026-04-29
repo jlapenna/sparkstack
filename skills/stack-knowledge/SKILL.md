@@ -67,6 +67,32 @@ To serve as the single source of truth for Docker decisions in this repository. 
 1. **Update the topology tables** if network memberships or routing paths changed.
 1. **Commit this file** alongside whatever infra change you made.
 
+## Operational Rules
+
+### Debugging & Infrastructure Philosophy
+
+1. **Systematic Debugging:** Always prioritize fixing issues starting from base principles. Adopt a systematic debugging and understanding approach rather than blindly applying band-aid fixes.
+
+### Python Script Execution
+
+1. **Idiomatic Module Execution**:
+   - `package = false` in `pyproject.toml` because we do not want to require installs.
+   - Scripts MUST NOT contain `sys.path.insert()` hacks.
+
+### OpenClaw Files (Source vs Runtime)
+
+When interacting with OpenClaw, it is critical to distinguish between its immutable source code and its runtime environment:
+
+1. **`../openclaw/` (Source Code)**: This is the upstream, read-only dependency located in the parent directory. NEVER modify files here. This includes source files, base documentation, and master templates. Changes here violate the OpenClaw Modification Ban unless explicitly authorized.
+1. **`~/.openclaw/` (Runtime/State)**: This is the active runtime directory. It contains instantiated workspaces, sandboxes, active configuration (`.env`, `openclaw.json`), memory files, and active `BOOTSTRAP.md` copies. All state changes, runtime configurations, and template cleanups must happen here.
+1. **OpenClaw CLI**: The primary CLI executable is named `openclaw` and is located at `~/bin/openclaw`. Use this for all host-level configuration and gateway management.
+
+### OpenClaw Agent Sandbox Security
+
+1. **Skill Injection Boundary:** Agents must access bundled skills (`wacli`, `mcporter`, `summarize`) through a strict read-only bind mount directly from the `../openclaw/skills` source directory into the sandbox (`/app/skills:ro`).
+1. **State Directory Isolation:** NEVER bind the `~/.openclaw/sandboxes` directory into an agent sandbox. Doing so destroys agent isolation, allowing an agent to traverse the lateral state, sessions, and memory of all other agents in the environment.
+1. **Configuration Updates:** Always use the `openclaw config set` CLI (available via `docker exec openclaw-openclaw-gateway-1 openclaw config ...`) to update `openclaw.json` (e.g. adding binds). The JSON must be rigorously validated to avoid dropping critical default behaviors or introducing parsing errors.
+
 ## Docker Rigor
 
 - NEVER simply switch a container's network types, IP addresses, or host references without a ground-up evaluation of the intended and correct state of the world. Understand the base principles behind the existing Docker networks and topology first.
@@ -657,3 +683,36 @@ ______________________________________________________________________
 
 - Never completely delete `maxTokens` configuration for OpenAI-completions APIs in OpenClaw/LiteLLM. Doing so defaults to a 16-token completion limit, causing silent truncation.
 - Instead of deleting it, dynamically calculate and explicitly set `maxTokens` to the model boundary (e.g., 16384 for a 262k context window).
+
+### 2026-04-29T14:55 — Orchestrator Startup Race Condition
+
+- **Scenario**: The `vllm-progress-manager` failed to start in time, causing `manager/update_services.py` to hit 15 RequestError exceptions and abort the entire deployment.
+- **Hypothesis**: The orchestrator's `MonitoringService` completed immediately after executing `docker compose up -d`, allowing downstream sequential steps to begin pinging the progress manager before its Python runtime was fully listening on port 8126.
+- **Action**: Wired up a `ServiceHealthManager("vllm-progress-manager")` with an `HttpProbe` for `http://localhost:8126/status` to explicitly block orchestration until the telemetry stack reports healthy.
+- **Result**: Orchestrator now correctly waits for monitoring to boot before proceeding.
+
+**Learnings:**
+
+- Never assume a container is ready just because `docker compose up -d` returned successfully. Always use explicit health probes (`ServiceHealthManager`) to block orchestration steps that depend on the service being alive.
+
+### 2026-04-29T14:57 — Orchestrator Suicide via pkill
+
+- **Scenario**: The orchestrator used aggressive host-based commands (`pkill -9 -f "VLLM|sparkrun|vllm"`) to implement a "Zombie Protocol" for cleaning up stuck models.
+- **Hypothesis**: Running host-based `pkill` commands with broad regexes from an orchestrator script is highly dangerous. If the orchestration repository path or test script contains the keyword "sparkrun", the orchestrator will instantly kill itself.
+- **Action**: Removed the `pkill` command and replaced it with native Docker container lifecycle management (`docker rm -f ...` and `--remove-orphans`).
+- **Result**: Zombie models are cleaned up safely without risking host-process collateral damage.
+
+**Learnings:**
+
+- Never use global host-level process termination (`pkill`) inside orchestration scripts. Rely exclusively on native container namespace management (`docker rm -f`).
+
+### 2026-04-29T14:58 — Gateway Hairpin NAT Crash (host.docker.internal)
+
+- **Scenario**: The API Gateway was configured with `extra_hosts: host.docker.internal:host-gateway` to communicate with backends.
+- **Hypothesis**: Using `host.docker.internal` triggers Docker hairpin NAT, which can cause `ConnectionResetError`s during heavy traffic.
+- **Action**: Removed `extra_hosts: host.docker.internal:host-gateway` from `core/handlers/gateway.py` so the gateway relies strictly on internal Docker DNS (`proxy-tier` network).
+- **Result**: Inter-container communication is normalized and robust.
+
+**Learnings:**
+
+- When containers share a network (e.g., `proxy-tier`), always route traffic using direct container names. Remove any configuration that injects or relies on `host.docker.internal`.

@@ -19,8 +19,7 @@ async def test_system_health(ctx: E2EContext):
                 f"❌ Failure: Too many zombie processes on the host ({zombie_count}). Possible process leak."
             )
             raise AssertionError()
-        else:
-            logger.info(f"✅ Host zombie processes: {zombie_count} (acceptable)")
+        logger.info(f"✅ Host zombie processes: {zombie_count} (acceptable)")
     except Exception as e:
         logger.error(f"❌ Failure: Could not check host processes: {e}")
         raise AssertionError() from None
@@ -50,8 +49,7 @@ async def test_system_health(ctx: E2EContext):
             f"❌ Failure: Detected {exec_count} concurrent 'docker exec' processes. Possible leak."
         )
         raise AssertionError() from None
-    else:
-        logger.info(f"✅ Concurrent 'docker exec' processes: {exec_count} (acceptable)")
+    logger.info(f"✅ Concurrent 'docker exec' processes: {exec_count} (acceptable)")
 
     # Check 4: Check if any containers are in a Dead or restarting state
     try:
@@ -70,8 +68,7 @@ async def test_system_health(ctx: E2EContext):
         if bad_containers:
             logger.error(f"❌ Failure: Found containers in unexpected states: {bad_containers}")
             raise AssertionError() from None
-        else:
-            logger.info("✅ All containers are in expected states (running, created, or exited)")
+        logger.info("✅ All containers are in expected states (running, created, or exited)")
     except Exception as e:
         logger.error(f"❌ Failure: Could not check container states: {e}")
         raise AssertionError() from None

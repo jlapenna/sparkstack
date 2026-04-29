@@ -9,32 +9,8 @@ For every new session, you **MUST** do the following:
 
 ## Knowledge and memory.
 
-1. Do not add any learned information to AGENTS.md or GEMINI.md.
+1. Do not add operational learnings, incident findings, or debugging discoveries to AGENTS.md or GEMINI.md. The static project documentation below is intentional — do not confuse it with accumulated knowledge.
 1. Prefer creating or updating skills in the skills/ directory to keep track of learned information, processes or techniques.
-
-## Debugging & Infrastructure Philosophy
-
-1. **Systematic Debugging:** Always prioritize fixing issues starting from base principles. Adopt a systematic debugging and understanding approach rather than blindly applying band-aid fixes.
-
-## Python Script Execution
-
-1. **Idiomatic Module Execution**:
-   - `package = false` in `pyproject.toml` because we do not want to require installs.
-   - Scripts MUST NOT contain `sys.path.insert()` hacks.
-
-## OpenClaw Files (Source vs Runtime)
-
-When interacting with OpenClaw, it is critical to distinguish between its immutable source code and its runtime environment:
-
-1. **`../openclaw/` (Source Code)**: This is the upstream, read-only dependency located in the parent directory. NEVER modify files here. This includes source files, base documentation, and master templates. Changes here violate the OpenClaw Modification Ban unless explicitly authorized.
-1. **`~/.openclaw/` (Runtime/State)**: This is the active runtime directory. It contains instantiated workspaces, sandboxes, active configuration (`.env`, `openclaw.json`), memory files, and active `BOOTSTRAP.md` copies. All state changes, runtime configurations, and template cleanups must happen here.
-1. **OpenClaw CLI**: The primary CLI executable is named `openclaw` and is located at `~/bin/openclaw`. Use this for all host-level configuration and gateway management.
-
-## OpenClaw Agent Sandbox Security
-
-1. **Skill Injection Boundary:** Agents must access bundled skills (`wacli`, `mcporter`, `summarize`) through a strict read-only bind mount directly from the `../openclaw/skills` source directory into the sandbox (`/app/skills:ro`).
-1. **State Directory Isolation:** NEVER bind the `~/.openclaw/sandboxes` directory into an agent sandbox. Doing so destroys agent isolation, allowing an agent to traverse the lateral state, sessions, and memory of all other agents in the environment.
-1. **Configuration Updates:** Always use the `openclaw config set` CLI (available via `docker exec openclaw-openclaw-gateway-1 openclaw config ...`) to update `openclaw.json` (e.g. adding binds). The JSON must be rigorously validated to avoid dropping critical default behaviors or introducing parsing errors.
 
 ______________________________________________________________________
 
@@ -89,17 +65,10 @@ The project relies on `uv` for dependency management and script execution.
 - **OpenClaw (`../openclaw/`)**: Treated as an **immutable upstream source dependency**. NEVER modify source files here. Solve configuration issues by modifying inputs (like `jq` filtering) or host-level settings.
 - **SparkRun (`../sparkrun/`)**: Treated as an editable source dependency. **CRITICAL:** You must ensure the `local-dev` branch is checked out before making any modifications or running tests. You **MUST** strictly follow the "Trunk-Based Feature Integration" workflow documented in the `source-dependency-dev` skill for any `sparkrun` changes (creating feature branches from `main`, merging them into `local-dev`, and rebasing `local-dev` via the orchestration script).
 
-### Runtime vs. Source (OpenClaw)
-
-- **Source Code**: Located in `../openclaw/`.
-- **Runtime Environment**: Located in `~/.openclaw/`. This directory contains active configurations (`openclaw.json`), logs, and database files. All state changes must occur here.
-- **CLI**: Use `~/bin/openclaw` for host-level gateway management.
-
 ### Scripting Standards
 
-- **Idiomatic Execution**: Use `uv run` for all scripts. Avoid `sys.path.insert()` hacks.
+- **Idiomatic Execution**: Use `uv run` for all scripts. `package = false` in `pyproject.toml`; scripts MUST NOT contain `sys.path.insert()` hacks.
 - **Context Awareness**: Scripts should be domain-agnostic and use Pydantic schemas from `core/schemas.py`.
-- **Zombie Protocol**: The orchestration scripts include a cleanup phase to purge stuck tasks and stale containers, ensuring a clean state for the stack.
 
 ### Planning and Verification
 
@@ -119,4 +88,3 @@ The project relies on `uv` for dependency management and script execution.
 ## Host Configuration
 
 This project requires specific host-level tuning (SSH protection, increased `inotify` limits) to prevent networking conflicts during Docker teardowns. See `DEVELOPMENT.md` for the full setup guide.
-ing Docker teardowns. See `DEVELOPMENT.md` for the full setup guide.

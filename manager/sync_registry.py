@@ -53,8 +53,8 @@ async def sync_registry(
             # Allocate 25% of context window for generation, bounded between 2k and 16k tokens
             calc_max = min(16384, max(2048, ctx_window // 4))
 
-        # Do not enforce a static maxTokens limit in openclaw.json to prevent cutting off
-        # extensive reasoning traces. Let it defer to vLLM's dynamic context boundaries.
+        # We MUST enforce a calculated maxTokens limit. If omitted, the OpenAI/LiteLLM backend
+        # defaults to a 16-token fallback which silently truncates extensive reasoning traces.
         model["maxTokens"] = calc_max
 
         global_max_reserve = max(global_max_reserve, calc_max)

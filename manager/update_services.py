@@ -270,12 +270,8 @@ class VllmService(Service):
             await self.run_compose(vllm_current, "pull", "--ignore-pull-failures", check=False)
 
         self.state.set_task("Restarting stack", 50)
-        # Force kill orphaned vLLM/EngineCore processes (The "Zombie Protocol")
-        logger.info("Purging orphaned VLLM/EngineCore processes...")
-        await async_run_command(["pkill", "-9", "-f", "VLLM|sparkrun|vllm"], check=False)
-        logger.info("Removing stale vLLM containers...")
-        await async_run_command(["docker", "rm", "-f", "litellm", "main_solo"], check=False)
 
+        await self.run_compose(vllm_current, "up", "-d", "--remove-orphans")
         stack_yaml = vllm_current / "stack.yaml"
         if stack_yaml.exists():
             launch_script = PROJECT_ROOT / "manager" / "launch.py"
@@ -313,7 +309,15 @@ class MonitoringService(Service):
 
         self.state.set_task("Deploying stack", 60)
         await self.run_compose(mon_dir, "up", "-d", "--build")
-        self.state.complete()
+
+        self.state.set_task("Probing health", 80)
+        manager = ServiceHealthManager(
+            "vllm-progress-manager", probes=[HttpProbe("http://localhost:8126/status", timeout=2.0)]
+        )
+        if await manager.wait_for_ready(timeout=60):
+            self.state.complete()
+        else:
+            self.state.fail("Monitoring telemetry health check timed out")
 
 
 class RegistrySyncService(Service):

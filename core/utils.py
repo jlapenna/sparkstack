@@ -23,7 +23,7 @@ AsyncValidator = Callable[[httpx.Response], Awaitable[bool]]
 
 def slugify(text: str) -> str:
     slug = re.sub(r"[^a-z0-9]", "_", text.lower()).strip("_")
-    return re.sub(r"_+", "_", slug)
+    return re.sub(r"_+", "_", slug) or "default_role"
 
 
 class HealthStatus(Enum):
@@ -58,10 +58,10 @@ class CommandResult:
     cmd: Sequence[str]
 
 
-def parse_cli_json(stdout: str) -> dict[str, Any]:
-    """Robustly extract and parse a JSON object from CLI stdout (ignoring preambles/warnings)."""
+def parse_cli_json(stdout: str) -> dict[str, Any] | list[Any]:
+    """Robustly extract and parse a JSON object or array from CLI stdout (ignoring preambles/warnings)."""
 
-    match = re.search(r"\{.*\}", stdout, re.DOTALL)
+    match = re.search(r"(\{.*\}|\[.*\])", stdout, re.DOTALL)
     if not match:
         raise ValueError("Could not find a JSON object in the command output.")
 
@@ -157,6 +157,8 @@ class DockerClient:
             if result.returncode != 0:
                 return "not_found", "none"
             parts = result.stdout.strip().split()
+            if not parts:
+                return "unknown", "none"
             return (parts[0], parts[1]) if len(parts) >= 2 else (parts[0], "none")
         except Exception:
             return "unknown", "none"
@@ -340,4 +342,8 @@ class ServiceHealthManager:
             return False
 
         # Return the result of the first task to finish (either health pass, or crash fail)
-        return done.pop().result()
+        try:
+            return done.pop().result()
+        except Exception as e:
+            logger.error(f"Health check for {self.container} crashed unexpectedly: {e}")
+            return False

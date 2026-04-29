@@ -59,11 +59,6 @@ async def main():
         if containers:
             await async_run_command(["docker", "rm", "-f"] + containers, check=False)
 
-    # Force kill orphaned vLLM/EngineCore processes that may survive container removal
-    # This is critical on Blackwell to free up squatting RAM (The "Zombie Protocol")
-    logger.info("Purging orphaned VLLM/EngineCore processes...")
-    await async_run_command(["pkill", "-9", "-f", "VLLM|sparkrun|vllm"], check=False)
-
     # Clean up obsolete networks
     await async_run_command(["docker", "network", "prune", "-f"], check=False)
     net_inspect = await async_run_command(

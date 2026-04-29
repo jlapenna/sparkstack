@@ -27,9 +27,9 @@ def main():
         stack = yaml.safe_load(f)
 
     # Clean up old instances
-    print("🧹 Cleaning up old containers...")
+    print("🧹 Removing stale vLLM containers...")
     subprocess.run(
-        ["docker", "rm", "-f", "litellm", "vllm-progress"]
+        ["docker", "rm", "-f", "litellm", "vllm-progress-manager"]
         + [b["name"] + "_solo" for b in stack.get("backends", [])],
         stderr=subprocess.DEVNULL,
     )
@@ -48,9 +48,6 @@ def main():
         ],
         stderr=subprocess.DEVNULL,
     )
-
-    print("🧟 Purging orphaned VLLM/EngineCore processes...")
-    subprocess.run(["pkill", "-9", "-f", "VLLM|sparkrun|vllm"], stderr=subprocess.DEVNULL)
 
     # Launch backends
     print("🚀 Launching model instances via sparkrun...")

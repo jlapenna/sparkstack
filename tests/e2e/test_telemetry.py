@@ -36,29 +36,24 @@ async def test_telemetry(ctx: E2EContext):
                             logger.info(f"Target: {model} -> {health}")
                         logger.info("✅ Pass: Telemetry Verification")
                         return
-                    else:
-                        if attempt < max_retries - 1:
-                            logger.debug("Waiting for telemetry targets to sync...")
-                            await asyncio.sleep(5)
-                            continue
-                        else:
-                            for t in targets:
-                                model = t["labels"].get("model", "unknown")
-                                health = t.get("health", "unknown")
-                                logger.info(f"Target: {model} -> {health}")
-                            logger.error("❌ Failure: Not all telemetry targets are 'up'")
-                            raise AssertionError()
-                else:
                     if attempt < max_retries - 1:
+                        logger.debug("Waiting for telemetry targets to sync...")
                         await asyncio.sleep(5)
                         continue
-                    else:
-                        logger.error(f"❌ Failure: Prometheus returned HTTP {res.status_code}")
-                        raise AssertionError()
+                    for t in targets:
+                        model = t["labels"].get("model", "unknown")
+                        health = t.get("health", "unknown")
+                        logger.info(f"Target: {model} -> {health}")
+                    logger.error("❌ Failure: Not all telemetry targets are 'up'")
+                    raise AssertionError()
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(5)
+                    continue
+                logger.error(f"❌ Failure: Prometheus returned HTTP {res.status_code}")
+                raise AssertionError()
             except Exception as e:
                 if attempt < max_retries - 1:
                     await asyncio.sleep(5)
                     continue
-                else:
-                    logger.error(f"❌ Failure: Error polling Prometheus: {e}")
-                    raise AssertionError() from None
+                logger.error(f"❌ Failure: Error polling Prometheus: {e}")
+                raise AssertionError() from None

@@ -146,7 +146,7 @@ class OpenClawUpdater:
             env.update({"OPENCLAW_SANDBOX": "1"})
 
         await async_run_command(
-            ["bash", "-c", "bash manager/docker/setup.sh < /dev/null"],
+            ["bash", "-c", "bash scripts/docker/setup.sh < /dev/null"],
             cwd=self.settings.openclaw_dir,
             env=env,
             stream_output=self.verbose,
@@ -171,7 +171,7 @@ class OpenClawUpdater:
 
         # First ensure the un-customized sandbox base image exists
         await async_run_command(
-            ["bash", "manager/sandbox-setup.sh"],
+            ["bash", "scripts/sandbox-setup.sh"],
             cwd=self.settings.openclaw_dir,
             stream_output=self.verbose,
         )
@@ -382,9 +382,11 @@ class OpenClawUpdater:
             if result.returncode == 0:
                 try:
                     data = parse_cli_json(result.stdout)
-                    models = data.get("models", [])
+                    models = data.get("models", []) if isinstance(data, dict) else data
                     spark_models = [
-                        m["key"] for m in models if m.get("key", "").startswith("spark/")
+                        m["key"]
+                        for m in models
+                        if isinstance(m, dict) and m.get("key", "").startswith("spark/")
                     ]
                     if spark_models:
                         logger.info(

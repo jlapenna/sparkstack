@@ -25,6 +25,5 @@ async def test_openclaw_diagnosis(ctx: E2EContext):
     if any(m == "spark/main" for m in spark_models):
         logger.info("✅ Pass: OpenClaw System Diagnosis")
         return
-    else:
-        logger.error("❌ Failure: spark/main not found in OpenClaw")
-        raise AssertionError()
+    logger.error("❌ Failure: spark/main not found in OpenClaw")
+    raise AssertionError()

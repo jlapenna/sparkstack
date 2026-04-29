@@ -59,6 +59,5 @@ async def test_anti_repetition(ctx: E2EContext):
 
             logger.info("✅ Pass: Anti-Repetition Regression Test (Output is natural)")
             return
-        else:
-            logger.error(f"❌ Failure: Chat completions returned {res.status_code}: {res.text}")
-            raise AssertionError()
+        logger.error(f"❌ Failure: Chat completions returned {res.status_code}: {res.text}")
+        raise AssertionError()

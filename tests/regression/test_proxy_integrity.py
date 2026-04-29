@@ -17,12 +17,10 @@ async def test_proxy_integrity(ctx: E2EContext):
             if "main" in models and "embedding" in models:
                 logger.info("✅ Pass: Proxy Integrity")
                 return
-            else:
-                logger.error(f"❌ Failure: Expected 'main' and 'embedding', got {models}")
-                raise AssertionError()
-        else:
-            logger.error(f"❌ Failure: Gateway returned {res.status_code}")
+            logger.error(f"❌ Failure: Expected 'main' and 'embedding', got {models}")
             raise AssertionError()
+        logger.error(f"❌ Failure: Gateway returned {res.status_code}")
+        raise AssertionError()
 
 
 @pytest.mark.order(7)
