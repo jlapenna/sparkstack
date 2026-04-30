@@ -72,7 +72,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 COPY --from=oven/bun:1 /usr/local/bin/bun /usr/local/bin/bun
 
 # Copy manifest files for tools
-COPY package.json build-versions.json /tmp/
+COPY docker/package.json docker/build-versions.json /tmp/
 
 # Install global tools needed by the Gateway for ACP execution and Skills
 RUN npm install -g $(jq -r '.dependencies | to_entries | map("\(.key)@\(.value)") | join(" ")' /tmp/package.json) && \
@@ -123,7 +123,7 @@ USER node
 
 # Setup OpenTelemetry preloading
 RUN npm install @opentelemetry/auto-instrumentations-node @opentelemetry/core @opentelemetry/exporter-trace-otlp-proto @opentelemetry/sdk-node @opentelemetry/semantic-conventions @opentelemetry/resources
-COPY --chown=node:node otel-preload.mjs /app/otel-preload.mjs
+COPY --chown=node:node docker/otel-preload.mjs /app/otel-preload.mjs
 ENV NODE_OPTIONS="--import /app/otel-preload.mjs"
 ENV OTEL_EXPORTER_OTLP_ENDPOINT="http://alloy:4318"
 ENV OTEL_SERVICE_NAME="openclaw-gateway"

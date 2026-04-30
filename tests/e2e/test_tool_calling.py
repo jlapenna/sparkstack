@@ -43,7 +43,9 @@ async def test_tool_calling(ctx: E2EContext):
 
         json_match = re.search(r"(\{.*\})", output, re.DOTALL)
         if not json_match:
-            logger.error(f"❌ Failure: No JSON payload found in output.\nRaw Output:\n{output[:500]}")
+            logger.error(
+                f"❌ Failure: No JSON payload found in output.\nRaw Output:\n{output[:500]}"
+            )
             raise AssertionError()
 
         try:

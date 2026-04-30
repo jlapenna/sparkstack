@@ -37,7 +37,9 @@ async def test_consumer_readiness(ctx: E2EContext):
         # 1. Parse JSON result
         json_match = re.search(r"(\{.*\})", output, re.DOTALL)
         if not json_match:
-            logger.error(f"❌ Failure: No JSON payload found in output.\nRaw Output:\n{output[:500]}")
+            logger.error(
+                f"❌ Failure: No JSON payload found in output.\nRaw Output:\n{output[:500]}"
+            )
             raise AssertionError()
 
         try:

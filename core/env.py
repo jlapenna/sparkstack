@@ -60,3 +60,9 @@ SPARKRUN_DIR = Path(os.getenv("SPARKRUN_DIR") or str(PROJECT_ROOT.parent / "spar
 
 # The directory containing the openclaw source (for updates).
 OPENCLAW_DIR = Path(os.getenv("OPENCLAW_DIR") or str(PROJECT_ROOT.parent / "openclaw")).absolute()
+
+# The directory containing custom skills to install into the OpenClaw sandbox.
+SPARK_STACK_OPENCLAW_SKILLS_DIR = Path(
+    os.getenv("SPARK_STACK_OPENCLAW_SKILLS_DIR")
+    or str(PROJECT_ROOT / "services" / "openclaw" / "skills")
+).absolute()

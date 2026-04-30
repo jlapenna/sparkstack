@@ -85,7 +85,12 @@ RUN mkdir -p /home/sandbox/.config \
 COPY --from=oven/bun:1 /usr/local/bin/bun /usr/local/bin/bun
 
 # Copy manifest files for tools
-COPY package.json build-versions.json /tmp/
+COPY docker/package.json docker/build-versions.json /tmp/
+
+# Copy local skills
+COPY build_skills/ /app/skills/
+COPY build_skills/ /home/sandbox/skills/
+RUN chown -R sandbox:sandbox /app/skills /home/sandbox/skills
 
 # Install mcporter and summarize globally via npm
 RUN MCPORTER_VERSION=$(jq -r '.dependencies["mcporter"]' /tmp/package.json) && \

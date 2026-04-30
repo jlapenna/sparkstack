@@ -193,7 +193,7 @@ class DockerHostMonitor:
         )
         return {"port": port, "model_id": model_id, "enforce_eager": enforce_eager}
 
-    async def read_docker_stream(self, resp: aiohttp.ClientResponse) -> AsyncGenerator[str, None]:
+    async def read_docker_stream(self, resp: aiohttp.ClientResponse) -> AsyncGenerator[str]:
         while True:
             try:
                 header = await resp.content.readexactly(8)

@@ -12,7 +12,13 @@ from loguru import logger
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from core.env import OPENCLAW_CONFIG_DIR, OPENCLAW_CONFIG_PATH, OPENCLAW_DIR, OPENCLAW_ENV
+from core.env import (
+    OPENCLAW_CONFIG_DIR,
+    OPENCLAW_CONFIG_PATH,
+    OPENCLAW_DIR,
+    OPENCLAW_ENV,
+    SPARK_STACK_OPENCLAW_SKILLS_DIR,
+)
 from core.utils import ServiceHealthManager, async_run_command, parse_cli_json
 
 OPENCLAW_REPO = "https://github.com/jlapenna/openclaw.git"
@@ -176,6 +182,16 @@ class OpenClawUpdater:
             stream_output=self.verbose,
         )
 
+        # Prepare the skills directory for the Docker build context
+        build_skills_dir = self.settings.project_root / "services/openclaw/build_skills"
+        if build_skills_dir.exists():
+            shutil.rmtree(build_skills_dir)
+
+        if SPARK_STACK_OPENCLAW_SKILLS_DIR.exists():
+            shutil.copytree(SPARK_STACK_OPENCLAW_SKILLS_DIR, build_skills_dir)
+        else:
+            build_skills_dir.mkdir(parents=True, exist_ok=True)
+
         # Compile our custom override layers for agent usage
         await async_run_command(
             [
@@ -184,10 +200,10 @@ class OpenClawUpdater:
                 "-t",
                 "openclaw-sandbox-custom:latest",
                 "-f",
-                "Dockerfile.sandbox-custom",
+                "docker/Dockerfile.sandbox-custom",
                 ".",
             ],
-            cwd=self.settings.project_root / "services/openclaw/docker",
+            cwd=self.settings.project_root / "services/openclaw",
             stream_output=self.verbose,
         )
 
@@ -201,10 +217,10 @@ class OpenClawUpdater:
                 "-t",
                 "openclaw-gateway-custom:latest",
                 "-f",
-                "Dockerfile.gateway-custom",
+                "docker/Dockerfile.gateway-custom",
                 ".",
             ],
-            cwd=self.settings.project_root / "services/openclaw/docker",
+            cwd=self.settings.project_root / "services/openclaw",
             stream_output=self.verbose,
         )
 
@@ -431,6 +447,12 @@ class OpenClawUpdater:
                 await self.bootstrap_setup()
             await self.build_gateway_image()
             await self.build_sandbox_image()
+
+            # Clean up build context
+            build_skills_dir = self.settings.project_root / "services/openclaw/build_skills"
+            if build_skills_dir.exists():
+                shutil.rmtree(build_skills_dir)
+
             await self.cleanup_zombies()
             await self.run_compose_up()
             await self.verify_deployment()

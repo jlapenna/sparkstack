@@ -28,9 +28,7 @@ async def test_long_conversation(ctx: E2EContext):
         logger.info(f"Starting {total_messages}-message conversation test in session: {session_id}")
 
         for i in range(1, total_messages + 1):
-            prompt = (
-                f"Message {i} of {total_messages}. Please reply with ONLY the exact string 'ACK_{i}'."
-            )
+            prompt = f"Message {i} of {total_messages}. Please reply with ONLY the exact string 'ACK_{i}'."
 
             tool_cmd = [
                 str(ctx.oc_bin),
@@ -59,7 +57,9 @@ async def test_long_conversation(ctx: E2EContext):
             try:
                 data = json.loads(json_match.group(1))
             except json.JSONDecodeError as e:
-                logger.error(f"❌ Failure on message {i}/{total_messages}: Invalid JSON payload: {e}")
+                logger.error(
+                    f"❌ Failure on message {i}/{total_messages}: Invalid JSON payload: {e}"
+                )
                 raise AssertionError(f"Message {i} failed: JSON Decode Error") from None
 
             if data.get("status") != "ok":
