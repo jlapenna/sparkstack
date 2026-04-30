@@ -20,11 +20,16 @@ async def sync_registry(
         logger.warning(f"Source models.json missing at {models_json}")
         return
 
-    source_data = json.loads(models_json.read_text())
+    source_data_str = await asyncio.to_thread(models_json.read_text)
+    source_data = json.loads(source_data_str)
     spark_source = source_data.get("spark", {})
 
     # Load existing config raw
-    config = json.loads(config_path.read_text()) if config_path.exists() else {}
+    if config_path.exists():
+        config_str = await asyncio.to_thread(config_path.read_text)
+        config = json.loads(config_str)
+    else:
+        config = {}
 
     # Update providers
     models = config.setdefault("models", {})
@@ -76,7 +81,7 @@ async def sync_registry(
             agent_models[m_id] = {}
 
     # Save back raw JSON, preserving all unstructured fields perfectly
-    config_path.write_text(json.dumps(config, indent=2) + "\n")
+    await asyncio.to_thread(config_path.write_text, json.dumps(config, indent=2) + "\n")
     logger.info("openclaw.json synchronized correctly.")
 
 

@@ -110,6 +110,14 @@ class SparkrunUpdater:
         await async_run_command(["uv", "sync"], cwd=self.settings.project_root)
 
 
+    async def run_events(self):
+        """Maintains the SparkRun source and dependencies, yielding events."""
+        yield ("Updating source & Rebase", 40)
+        await self.update_source()
+        yield ("Installing", 80)
+        await self.run_install()
+        yield ("Complete", 100)
+
 async def main():
 
     parser = argparse.ArgumentParser(description="SparkRun source_dependency manager.")
@@ -117,8 +125,11 @@ async def main():
     args = parser.parse_args()
 
     updater = SparkrunUpdater(pull_latest=args.pull_latest)
-    await updater.update_source()
-    await updater.run_install()
+    async def _cli_run():
+        async for _ in updater.run_events():
+            pass
+
+    await _cli_run()
 
 
 if __name__ == "__main__":

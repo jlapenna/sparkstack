@@ -4,6 +4,8 @@ import asyncio
 import os
 import subprocess
 import sys
+from collections.abc import AsyncIterator
+from dataclasses import dataclass
 from pathlib import Path
 
 import httpx
@@ -20,6 +22,70 @@ from rich.progress import (
 
 from tests.e2e.utils import get_active_services
 
+
+@dataclass
+class BackendStatusUpdate:
+    container: str
+    pct: int
+    phase: str
+    is_crash: bool = False
+    error_msg: str | None = None
+    logs: str | None = None
+
+class BackendProbe:
+    def __init__(self, expected_containers: set[str]):
+        self.expected_containers = expected_containers
+
+    async def poll(self) -> AsyncIterator[BackendStatusUpdate]:
+        all_ready = False
+        async with httpx.AsyncClient() as client:
+            while not all_ready:
+                try:
+                    res = await client.get("http://localhost:8126/status", timeout=2.0)
+                    if res.status_code == 200:
+                        status_data = res.json()
+                        all_ready = True
+                        for c in self.expected_containers:
+                            c_data = {}
+                            if c in status_data:
+                                c_data = status_data[c]
+                            else:
+                                for node_data in status_data.values():
+                                    if isinstance(node_data, dict) and c in node_data:
+                                        c_data = node_data[c]
+                                        break
+
+                            if isinstance(c_data, dict):
+                                pct = c_data.get("pct", 0)
+                                phase = c_data.get("phase", "")
+                            else:
+                                pct = c_data
+                                phase = ""
+
+                            if pct == -1:
+                                logs = ""
+                                try:
+                                    logs = subprocess.check_output(
+                                        ["docker", "logs", "--tail", "20", c],
+                                        stderr=subprocess.STDOUT,
+                                        text=True,
+                                    )
+                                except Exception as e:
+                                    logs = f"Failed to fetch logs: {e}"
+                                yield BackendStatusUpdate(container=c, pct=-1, phase="Crash", is_crash=True, logs=logs)
+                                return
+
+                            if pct >= 0:
+                                yield BackendStatusUpdate(container=c, pct=pct, phase=phase)
+                                if pct < 100:
+                                    all_ready = False
+                except httpx.RequestError:
+                    all_ready = False
+                    # We continue looping and let the outer timeout handle failure, removing the premature 30s abort limit.
+
+                if all_ready:
+                    break
+                await asyncio.sleep(2)
 
 async def wait_for_backends_to_load(stack_dir: Path, timeout: int = 1800) -> bool:
     services = await get_active_services(stack_dir)
@@ -41,7 +107,8 @@ async def wait_for_backends_to_load(stack_dir: Path, timeout: int = 1800) -> boo
 
     logger.info(f"Waiting for {len(expected_containers)} backend containers to be fully loaded...")
 
-    all_ready = False
+    probe = BackendProbe(expected_containers)
+
     with Progress(
         SpinnerColumn("dots"),
         TextColumn("[progress.description]{task.description}"),
@@ -57,87 +124,36 @@ async def wait_for_backends_to_load(stack_dir: Path, timeout: int = 1800) -> boo
                 f"Loading [cyan]{c}[/]", total=100, phase="[dim]Initializing...[/dim]"
             )
 
-        async def poll_backend_status():
-            nonlocal all_ready
-            consecutive_errors = 0
-            async with httpx.AsyncClient() as client:
-                while True:
-                    try:
-                        res = await client.get("http://localhost:8126/status", timeout=2.0)
-                        if res.status_code == 200:
-                            consecutive_errors = 0
-                            status_data = res.json()
-                            all_ready = True
-                            for c in expected_containers:
-                                # status_data might be nested by node (e.g., {"head-node": {"main_solo": ...}}) or flat
-                                c_data = {}
-                                if c in status_data:
-                                    c_data = status_data[c]
-                                else:
-                                    for node_data in status_data.values():
-                                        if isinstance(node_data, dict) and c in node_data:
-                                            c_data = node_data[c]
-                                            break
+        async def poll_ui():
+            async for update in probe.poll():
+                if update.is_crash:
+                    print(f"\n❌ Failure: Fatal crash detected in backend {update.container}")
+                    progress.update(
+                        tasks[update.container],
+                        description=f"Loading [red]{update.container}[/] [FAILED]",
+                        phase="[red]Crash[/red]",
+                    )
+                    print(f"\n--- Last 20 lines of {update.container} logs ---")
+                    print(update.logs)
+                    print("----------------------------------\n")
+                    return False
+                if update.error_msg:
+                    logger.error(update.error_msg)
+                    return False
 
-                                if isinstance(c_data, dict):
-                                    pct = c_data.get("pct", 0)
-                                    phase = c_data.get("phase", "")
-                                else:
-                                    pct = c_data
-                                    phase = ""
+                phase_fmt = f"[blue]{update.phase}[/blue]" if update.phase else "[dim]Waiting...[/dim]"
+                progress.update(tasks[update.container], completed=update.pct, phase=phase_fmt)
+            return True
 
-                                if pct == -1:
-                                    print(f"\n❌ Failure: Fatal crash detected in backend {c}")
-                                    progress.update(
-                                        tasks[c],
-                                        description=f"Loading [red]{c}[/] [FAILED]",
-                                        phase="[red]Crash[/red]",
-                                    )
-                                    try:
-                                        logs = subprocess.check_output(
-                                            ["docker", "logs", "--tail", "20", c],
-                                            stderr=subprocess.STDOUT,
-                                            text=True,
-                                        )
-                                        print(f"\n--- Last 20 lines of {c} logs ---")
-                                        print(logs)
-                                        print("----------------------------------\n")
-                                    except Exception as e:
-                                        print(f"Failed to fetch logs for {c}: {e}")
-                                    return False
-
-                                # Handle normal progress
-                                if pct >= 0:
-                                    phase_fmt = (
-                                        f"[blue]{phase}[/blue]"
-                                        if phase
-                                        else "[dim]Waiting...[/dim]"
-                                    )
-                                    progress.update(tasks[c], completed=pct, phase=phase_fmt)
-                                    if pct < 100:
-                                        all_ready = False
-
-                            if all_ready:
-                                return True
-                    except httpx.RequestError:
-                        all_ready = False
-                        consecutive_errors += 1
-                        if consecutive_errors >= 15:
-                            logger.error(
-                                "❌ Failure: Progress Manager at port 8126 is unreachable. Ensure 'monitoring' stack is up."
-                            )
-                            return False
-
-                    await asyncio.sleep(2)
-
+        result = False
         try:
-            result = await asyncio.wait_for(poll_backend_status(), timeout=timeout)
+            result = await asyncio.wait_for(poll_ui(), timeout=timeout)
             if result is False:
                 return False
         except TimeoutError:
             pass
 
-    if all_ready:
+    if result:
         logger.info("✅ Pass: Backend Readiness (All models loaded)")
         logger.info("Running post-load smoke tests...")
 
@@ -149,7 +165,7 @@ async def wait_for_backends_to_load(stack_dir: Path, timeout: int = 1800) -> boo
             if svc.get("type") == "sparkrun" and svc.get("port"):
                 port = svc["port"]
                 container = svc.get("container", f"port-{port}")
-                logger.info(f"Smoke testing backend {container} via gateway...")
+                logger.info(f"Smoke testing backend {container} directly on port {port}...")
                 try:
                     async with httpx.AsyncClient() as client:
                         model_id = svc.get("name", "").split(":")[-1]
@@ -161,14 +177,14 @@ async def wait_for_backends_to_load(stack_dir: Path, timeout: int = 1800) -> boo
 
                         if model_id == "embedding":
                             res = await client.post(
-                                "http://localhost:4000/v1/embeddings",
+                                f"http://localhost:{port}/v1/embeddings",
                                 headers=headers,
                                 json={"model": model_id, "input": "Say hi"},
                                 timeout=60.0,
                             )
                         else:
                             res = await client.post(
-                                "http://localhost:4000/v1/chat/completions",
+                                f"http://localhost:{port}/v1/chat/completions",
                                 headers=headers,
                                 json={
                                     "model": model_id,

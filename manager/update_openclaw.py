@@ -162,7 +162,7 @@ class OpenClawUpdater:
         env_dest = self.settings.project_root / ".env"
         if env_example.exists() and not env_dest.exists():
             logger.info("Creating initial openclaw.json and .env from templates.")
-            shutil.copy2(env_example, env_dest)
+            await asyncio.to_thread(shutil.copy2, env_example, env_dest)
 
     async def build_sandbox_image(self) -> None:
         """Rebuild the isolated sandbox image and base."""
@@ -178,12 +178,12 @@ class OpenClawUpdater:
         # Prepare the skills directory for the Docker build context
         build_skills_dir = self.settings.project_root / "services/openclaw/build_skills"
         if build_skills_dir.exists():
-            shutil.rmtree(build_skills_dir)
+            await asyncio.to_thread(shutil.rmtree, build_skills_dir)
 
         if SPARK_STACK_OPENCLAW_SKILLS_DIR.exists():
-            shutil.copytree(SPARK_STACK_OPENCLAW_SKILLS_DIR, build_skills_dir)
+            await asyncio.to_thread(shutil.copytree, SPARK_STACK_OPENCLAW_SKILLS_DIR, build_skills_dir)
         else:
-            build_skills_dir.mkdir(parents=True, exist_ok=True)
+            await asyncio.to_thread(build_skills_dir.mkdir, parents=True, exist_ok=True)
 
         # Compile our custom override layers for agent usage
         await async_run_command(
@@ -263,13 +263,14 @@ class OpenClawUpdater:
         if task_db.exists():
             logger.info(f"Clearing zombie tasks in {task_db}")
             try:
-                import sqlite3
-
-                with sqlite3.connect(task_db) as conn:
-                    conn.execute(
-                        "UPDATE task_runs SET status = 'failed', error = 'Zombie task cleared by update_openclaw' WHERE status = 'running';"
-                    )
-                    conn.commit()
+                await async_run_command(
+                    [
+                        "sqlite3",
+                        str(task_db),
+                        "UPDATE task_runs SET status = 'failed', error = 'Zombie task cleared by update_openclaw' WHERE status = 'running';",
+                    ],
+                    check=False,
+                )
             except Exception as e:
                 logger.warning(f"Failed to clear zombie tasks: {e}")
 
@@ -398,14 +399,21 @@ class OpenClawUpdater:
             except Exception as e:
                 logger.warning(f"Failed to synchronize skills: {e}")
 
-    async def run(self) -> None:
-        """Full automated update lifecycle."""
+    async def run_events(self):
+        """Full automated update lifecycle, yielding progress events."""
         try:
+            yield ("Initializing", 10)
             await self.update_source()
+
+            yield ("Updating source", 30)
             await self.sync_local_skills()
             if self.settings.run_setup:
                 await self.bootstrap_setup()
+
+            yield ("Building gateway image", 45)
             await self.build_gateway_image()
+
+            yield ("Building sandbox image", 60)
             await self.build_sandbox_image()
 
             # Clean up build context
@@ -413,10 +421,17 @@ class OpenClawUpdater:
             if build_skills_dir.exists():
                 shutil.rmtree(build_skills_dir)
 
+            yield ("Cleaning up zombies", 75)
             await self.cleanup_zombies()
+
+            yield ("Deploying", 80)
             await self.run_compose_up()
+
+            yield ("Verifying deployment", 95)
             await self.verify_deployment()
+
             logger.info("OpenClaw update completed successfully.")
+            yield ("Complete", 100)
         except Exception:
             logger.exception("OpenClaw update failed")
             raise
@@ -445,4 +460,8 @@ if __name__ == "__main__":
     updater = OpenClawUpdater(
         pull_latest=args.pull_latest, run_setup=args.run_setup, verbose=args.verbose
     )
-    asyncio.run(updater.run())
+    async def _cli_run():
+        async for _ in updater.run_events():
+            pass
+
+    asyncio.run(_cli_run())

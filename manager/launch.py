@@ -1,56 +1,37 @@
-import subprocess
+import asyncio
 import sys
 from pathlib import Path
 
 import yaml
+from loguru import logger
+
+from core.utils import async_run_command
 
 
-def run_command(cmd, cwd=None):
-    print(f"🚀 Running: {' '.join(cmd)}")
-    subprocess.run(cmd, check=True, cwd=cwd)
-
-
-def main():
-    if len(sys.argv) < 2:
-        print("❌ Error: stack directory not provided.")
-        sys.exit(1)
-
-    stack_dir = Path(sys.argv[1]).resolve()
+async def launch_stack(stack_dir: Path) -> None:
     repo_root = Path(__file__).parent.parent.resolve()
     stack_yaml_path = stack_dir / "stack.yaml"
 
     if not stack_yaml_path.exists():
-        print(f"❌ Error: {stack_yaml_path} not found.")
-        sys.exit(1)
+        logger.error(f"❌ Error: {stack_yaml_path} not found.")
+        raise FileNotFoundError(f"{stack_yaml_path} not found.")
 
     with open(stack_yaml_path) as f:
         stack = yaml.safe_load(f)
 
-    # Clean up old instances
-    print("🧹 Removing stale vLLM containers...")
-    subprocess.run(
-        ["docker", "rm", "-f", "litellm", "vllm-progress-manager"]
-        + [b["name"] + "_solo" for b in stack.get("backends", [])],
-        stderr=subprocess.DEVNULL,
-    )
+    # Soft launch: Compose handles gateway/monitoring natively. Only recreate backends manually.
+    logger.info("🧹 Removing stale backend containers...")
+    backends_to_rm = [b["name"] + "_solo" for b in stack.get("backends", [])]
+    if backends_to_rm:
+        await async_run_command(
+            ["docker", "rm", "-f"] + backends_to_rm,
+            check=False,
+        )
 
     parent_env = repo_root / ".env"
-    subprocess.run(
-        [
-            "docker",
-            "compose",
-            "--env-file",
-            str(parent_env),
-            "-f",
-            str(stack_dir / "docker-compose.yaml"),
-            "down",
-            "--remove-orphans",
-        ],
-        stderr=subprocess.DEVNULL,
-    )
 
     # Launch backends
-    print("🚀 Launching model instances via sparkrun...")
+    logger.info("🚀 Launching model instances via sparkrun...")
     global_network = stack.get("globals", {}).get("network", "proxy-tier")
 
     for backend in stack.get("backends", []):
@@ -105,12 +86,12 @@ def main():
         for lbl in backend.get("labels", []):
             cmd.extend(["--label", lbl])
 
-        run_command(cmd, cwd=repo_root)
+        await async_run_command(cmd, cwd=repo_root)
 
     # Launch compose services
-    print("📦 Starting gateway and monitoring via docker compose...")
+    logger.info("📦 Starting gateway and monitoring via docker compose...")
     compose_file = stack.get("services", {}).get("compose_file", "docker-compose.yaml")
-    run_command(
+    await async_run_command(
         [
             "docker",
             "compose",
@@ -123,8 +104,17 @@ def main():
         ],
         cwd=stack_dir,
     )
-    print("✅ Stack is operational.")
+    logger.info("✅ Stack is operational.")
+
+
+async def main():
+    if len(sys.argv) < 2:
+        print("❌ Error: stack directory not provided.")
+        sys.exit(1)
+
+    stack_dir = Path(sys.argv[1]).resolve()
+    await launch_stack(stack_dir)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

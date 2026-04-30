@@ -35,6 +35,7 @@ from core.utils import (
     ServiceHealthManager,
     async_run_command,
 )
+from manager.launch import launch_stack
 from manager.sync_registry import sync_registry
 from manager.update_openclaw import OpenClawUpdater
 from manager.update_sparkrun import SparkrunUpdater
@@ -91,23 +92,34 @@ async def cleanup_zombies(settings: Settings):
     if task_db.exists():
         console.print(f"  → Clearing zombie tasks in {task_db}")
         try:
-            import sqlite3
-
-            with sqlite3.connect(task_db) as conn:
-                conn.execute(
-                    "UPDATE task_runs SET status = 'failed', error = 'Zombie task cleared by update_services' WHERE status = 'running';"
-                )
-                conn.commit()
+            await async_run_command(
+                [
+                    "sqlite3",
+                    str(task_db),
+                    "UPDATE task_runs SET status = 'failed', error = 'Zombie task cleared by update_services' WHERE status = 'running';",
+                ],
+                check=False,
+            )
         except Exception as e:
             console.print(f"    [yellow]Failed to clear zombie tasks: {e}[/yellow]")
 
     # 2. Cleanup stale containers (orphaned or exited long ago)
     console.print("  → Cleaning up stale containers and networks...")
     try:
-        # Remove exited containers
-        await async_run_command(["docker", "container", "prune", "-f"], check=False)
-        # Remove unused networks
-        await async_run_command(["docker", "network", "prune", "-f"], check=False)
+        # Restrict blast radius to ONLY our specific compose projects to prevent destroying unrelated host resources
+        compose_projects = ["current", "monitoring", "openclaw", "cloudflare"]
+        for proj in compose_projects:
+            await async_run_command([
+                "docker", "container", "prune", "-f",
+                "--filter", f"label=com.docker.compose.project={proj}"
+            ], check=False)
+
+            await async_run_command([
+                "docker", "network", "prune", "-f",
+                "--filter", f"label=com.docker.compose.project={proj}"
+            ], check=False)
+
+        # Target sparkrun natively launched containers if they are labeled (e.g., using prefix matching if possible, but compose is safer)
     except Exception as e:
         logger.warning(f"Docker cleanup failed: {e}")
 
@@ -218,16 +230,12 @@ class Service(ABC):
 
 class SparkrunService(Service):
     async def update(self) -> None:
-        self.state.set_task("Initializing", 10)
         updater = SparkrunUpdater(
             pull_latest=self.settings.pull_latest, project_root=self.settings.project_root
         )
 
-        self.state.set_task("Updating source & Rebase", 40)
-        await updater.update_source()
-
-        self.state.set_task("Installing", 80)
-        await updater.run_install()
+        async for task_name, progress in updater.run_events():
+            self.state.set_task(task_name, progress)
         self.state.complete()
 
 
@@ -270,17 +278,13 @@ class VllmService(Service):
 
         self.state.set_task("Restarting stack", 50)
 
-        await self.run_compose(vllm_current, "up", "-d", "--remove-orphans")
         stack_yaml = vllm_current / "stack.yaml"
         if stack_yaml.exists():
-            launch_script = PROJECT_ROOT / "manager" / "launch.py"
-            await async_run_command(
-                ["uv", "run", "python", str(launch_script), str(vllm_current)], cwd=PROJECT_ROOT
-            )
-
-        compose_yaml = vllm_current / "docker-compose.yaml"
-        if compose_yaml.exists():
-            await self.run_compose(vllm_current, "up", "-d", "--remove-orphans")
+            await launch_stack(vllm_current)
+        else:
+            compose_yaml = vllm_current / "docker-compose.yaml"
+            if compose_yaml.exists():
+                await self.run_compose(vllm_current, "up", "-d", "--remove-orphans")
 
         self.state.set_task("Probing health", 80)
         # Use centralized health manager with explicit probes
@@ -333,20 +337,12 @@ class OpenClawService(Service):
     dependencies = ["RegistrySync"]
 
     async def update(self) -> None:
-        self.state.set_task("Initializing", 10)
-
         updater = OpenClawUpdater(
             pull_latest=self.settings.pull_latest, project_root=self.settings.project_root
         )
 
-        self.state.set_task("Updating source", 30)
-        await updater.update_source()
-
-        self.state.set_task("Building sandbox image", 45)
-        await updater.build_sandbox_image()
-
-        self.state.set_task("Deploying", 80)
-        await updater.run_compose_up()
+        async for task_name, progress in updater.run_events():
+            self.state.set_task(task_name, progress)
         self.state.complete()
 
 

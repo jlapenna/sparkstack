@@ -8,7 +8,7 @@ import json
 import os
 import re
 import sys
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -75,7 +75,7 @@ def parse_cli_json(stdout: str) -> dict[str, Any] | list[Any]:
     while start_idx != -1:
         try:
             parsed, parsed_len = decoder.raw_decode(stdout[start_idx:])
-            
+
             if stdout[:start_idx].strip() or stdout[start_idx + parsed_len:].strip():
                 logger.warning(
                     "parse_cli_json encountered non-JSON text in output where only JSON was expected."
@@ -185,6 +185,13 @@ class HealthProbe:
     async def probe(self) -> HealthStatus:
         raise NotImplementedError
 
+    async def stream_crashes(self) -> AsyncIterator[str]:
+        """Yields crash strings as they happen."""
+        # By default, yield nothing and just sleep to keep the stream open
+        while True:
+            await asyncio.sleep(86400)
+            yield ""  # Unreachable, but satisfies AsyncIterator typing
+
 
 class DockerProbe(HealthProbe):
     """Probes container status and health label."""
@@ -273,13 +280,63 @@ class LogProbe(HealthProbe):
             logger.exception(f"LogProbe encountered an error while scanning {self.container}")
             return HealthStatus.UNKNOWN
 
+    def get_stream_cmd(self) -> list[str]:
+        return ["docker", "logs", "-f", self.container]
+
+    async def stream_crashes(self) -> AsyncIterator[str]:
+        cmd = self.get_stream_cmd()
+        process = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+        )
+        try:
+            assert process.stdout is not None
+            while True:
+                line = await process.stdout.readline()
+                if not line:
+                    break
+                line_str = line.decode(errors="replace").strip()
+                if line_str:
+                    logger.debug(f"[{self.container}] {line_str}")
+                    for pattern in self.patterns:
+                        if re.search(pattern, line_str, re.IGNORECASE):
+                            yield f"❌ FATAL ERROR DETECTED IN {self.container}: {line_str}"
+            while True:
+                await asyncio.sleep(86400)
+                yield ""
+        finally:
+            with contextlib.suppress(Exception):
+                process.terminate()
+                await process.wait()
+
+
+class SparkrunLogProbe(LogProbe):
+    """Specific log probe that checks the internal serve log file instead of docker logs."""
+
+    def get_stream_cmd(self) -> list[str]:
+        return [
+            "docker",
+            "exec",
+            self.container,
+            "tail",
+            "-n",
+            "+0",
+            "-f",
+            "/tmp/sparkrun_serve.log",
+        ]
+
 
 class ServiceHealthManager:
     """Orchestrates health probes for a service."""
 
     def __init__(self, container_name: str, probes: list[HealthProbe] | None = None):
         self.container = container_name
-        self.probes = probes or [DockerProbe(container_name), LogProbe(container_name)]
+        if probes is None:
+            self.probes = [
+                DockerProbe(container_name),
+                SparkrunLogProbe(container_name) if "sparkrun" in container_name else LogProbe(container_name)
+            ]
+        else:
+            self.probes = probes
 
     async def wait_for_ready(self, timeout: int = 60, stream_logs: bool = False) -> bool:
         """Wait until the service is healthy or definitely crashed."""
@@ -296,47 +353,22 @@ class ServiceHealthManager:
                 await asyncio.sleep(2)
 
         async def tail_for_crashes():
+            async def consume_crashes(probe: HealthProbe):
+                async for crash_msg in probe.stream_crashes():
+                    if crash_msg:  # Ignore empty keep-alive yields
+                        logger.error(crash_msg)
+                        return False
+                return True
 
-            if "sparkrun" in self.container:
-                cmd = [
-                    "docker",
-                    "exec",
-                    self.container,
-                    "tail",
-                    "-n",
-                    "+0",
-                    "-f",
-                    "/tmp/sparkrun_serve.log",
-                ]
-            else:
-                cmd = ["docker", "logs", "-f", self.container]
-
-            process = await asyncio.create_subprocess_exec(
-                *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
-            )
-
-            try:
-                assert process.stdout is not None  # guaranteed by PIPE above
-                while True:
-                    line = await process.stdout.readline()
-                    if not line:
-                        break
-                    line_str = line.decode(errors="replace").strip()
-                    if line_str:
-                        logger.debug(f"[{self.container}] {line_str}")
-                        for pattern in CRASH_PATTERNS:
-                            if re.search(pattern, line_str, re.IGNORECASE):
-                                logger.error(
-                                    f"❌ FATAL ERROR DETECTED IN {self.container}: {line_str}"
-                                )
-                                return False
-                # If stream ends without crash, just wait forever so poll_probes determines outcome
+            tasks = [asyncio.create_task(consume_crashes(p)) for p in self.probes]
+            if not tasks:
                 await asyncio.sleep(timeout)
                 return False
-            finally:
-                with contextlib.suppress(Exception):
-                    process.terminate()
-                    await process.wait()
+
+            done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+            for p in pending:
+                p.cancel()
+            return done.pop().result()
 
         tasks = [asyncio.create_task(poll_probes())]
         if stream_logs:
