@@ -27,8 +27,9 @@ To manage and execute the End-to-End (E2E) verification suite located in `tests/
 ### 1. Pytest Execution Strategy
 
 - All verification layers have been decoupled into a standard `pytest` framework within `tests/e2e/`.
-- **Command**: Run tests using `uv run pytest tests/e2e/`.
+- **Command**: Run tests using `uv run pytest -x tests/e2e/` to abort as soon as a test fails.
 - **Environment Variables**: Always ensure `tests/e2e/conftest.py` is respected. Pass `--stack` and `--soak` CLI arguments or rely on environment variables to control portability.
+- **Automated Reversion**: If tests fail, the workflow should immediately pause. Do NOT continue to the Finalize step without resolving the verification errors.
 - **Test Sequencing**: Tests are strictly ordered (e.g., using `pytest-order`). Do NOT attempt to run dependent backend inference tests without first verifying that the core network and proxy gateways are healthy.
 
 ### 2. Environment Portability

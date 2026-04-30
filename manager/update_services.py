@@ -91,16 +91,15 @@ async def cleanup_zombies(settings: Settings):
     if task_db.exists():
         console.print(f"  → Clearing zombie tasks in {task_db}")
         try:
-            await async_run_command(
-                [
-                    "sqlite3",
-                    str(task_db),
-                    "UPDATE task_runs SET status = 'failed', error = 'Zombie task cleared by update_services' WHERE status = 'running';",
-                ],
-                check=False,
-            )
+            import sqlite3
+
+            with sqlite3.connect(task_db) as conn:
+                conn.execute(
+                    "UPDATE task_runs SET status = 'failed', error = 'Zombie task cleared by update_services' WHERE status = 'running';"
+                )
+                conn.commit()
         except Exception as e:
-            logger.warning(f"Failed to clear zombie tasks: {e}")
+            console.print(f"    [yellow]Failed to clear zombie tasks: {e}[/yellow]")
 
     # 2. Cleanup stale containers (orphaned or exited long ago)
     console.print("  → Cleaning up stale containers and networks...")

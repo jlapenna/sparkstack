@@ -1,12 +1,11 @@
-import json
-import re
+
 import time
 import uuid
 
 import pytest
 from loguru import logger
 
-from core.utils import async_run_command
+from core.utils import async_run_command, parse_cli_json
 from tests.e2e.context import E2EContext
 
 
@@ -62,15 +61,11 @@ async def test_workspace_io(ctx: E2EContext):
     res_tool = await async_run_command(cmd_read, check=False)
     output = res_tool.stdout + res_tool.stderr
 
-    json_match = re.search(r"(\{.*\})", output, re.DOTALL)
-    if not json_match:
-        logger.error(f"❌ Failure: No JSON payload found in output.\nRaw Output:\n{output[:500]}")
-        raise AssertionError()
-
     try:
-        data = json.loads(json_match.group(1))
-    except json.JSONDecodeError as e:
-        logger.error(f"❌ Failure: Invalid JSON payload: {e}")
+        data = parse_cli_json(output)
+        assert isinstance(data, dict)
+    except (ValueError, AssertionError) as e:
+        logger.error(f"❌ Failure: {e}\nRaw Output:\n{output[:500]}")
         raise AssertionError() from None
 
     if data.get("status") != "ok":

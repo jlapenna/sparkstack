@@ -158,18 +158,11 @@ class OpenClawUpdater:
             stream_output=self.verbose,
         )
 
-        for fragment in ["docker-compose.extra.yml", "docker-compose.sandbox.yml"]:
-            src = self.settings.openclaw_dir / fragment
-            dest = self.settings.project_root / fragment
-            if src.exists():
-                logger.info(f"Copying {fragment} to project root.")
-                shutil.copy2(src, dest)
-            elif fragment == "docker-compose.sandbox.yml" and self.settings.run_setup != "sandbox":
-                if dest.exists():
-                    logger.info(
-                        "Removing stale docker-compose.sandbox.yml from project root (sandbox mode disabled)."
-                    )
-                    dest.unlink()
+        env_example = self.settings.openclaw_dir / ".env.example"
+        env_dest = self.settings.project_root / ".env"
+        if env_example.exists() and not env_dest.exists():
+            logger.info("Creating initial openclaw.json and .env from templates.")
+            shutil.copy2(env_example, env_dest)
 
     async def build_sandbox_image(self) -> None:
         """Rebuild the isolated sandbox image and base."""
@@ -247,44 +240,12 @@ class OpenClawUpdater:
         )
         if override_yml.exists():
             cmd.extend(["-f", str(override_yml)])
-        if (
-            self.settings.project_root
-            / "services"
-            / "openclaw"
-            / "docker"
-            / "docker-compose.extra.yml"
-        ).exists():
-            cmd.extend(
-                [
-                    "-f",
-                    str(
-                        self.settings.project_root
-                        / "services"
-                        / "openclaw"
-                        / "docker"
-                        / "docker-compose.extra.yml"
-                    ),
-                ]
-            )
-        if (
-            self.settings.project_root
-            / "services"
-            / "openclaw"
-            / "docker"
-            / "docker-compose.sandbox.yml"
-        ).exists():
-            cmd.extend(
-                [
-                    "-f",
-                    str(
-                        self.settings.project_root
-                        / "services"
-                        / "openclaw"
-                        / "docker"
-                        / "docker-compose.sandbox.yml"
-                    ),
-                ]
-            )
+        if (self.settings.openclaw_dir / "docker-compose.extra.yml").exists():
+            cmd.extend(["-f", str(self.settings.openclaw_dir / "docker-compose.extra.yml")])
+
+        if self.settings.run_setup == "sandbox":
+            if (self.settings.openclaw_dir / "docker-compose.sandbox.yml").exists():
+                cmd.extend(["-f", str(self.settings.openclaw_dir / "docker-compose.sandbox.yml")])
 
         cmd.extend(["up", "-d", "--build", "--force-recreate", "openclaw-gateway"])
 
@@ -302,14 +263,13 @@ class OpenClawUpdater:
         if task_db.exists():
             logger.info(f"Clearing zombie tasks in {task_db}")
             try:
-                await async_run_command(
-                    [
-                        "sqlite3",
-                        str(task_db),
-                        "UPDATE task_runs SET status = 'failed', error = 'Zombie task cleared by update_openclaw' WHERE status = 'running';",
-                    ],
-                    check=False,
-                )
+                import sqlite3
+
+                with sqlite3.connect(task_db) as conn:
+                    conn.execute(
+                        "UPDATE task_runs SET status = 'failed', error = 'Zombie task cleared by update_openclaw' WHERE status = 'running';"
+                    )
+                    conn.commit()
             except Exception as e:
                 logger.warning(f"Failed to clear zombie tasks: {e}")
 

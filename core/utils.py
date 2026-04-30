@@ -60,22 +60,37 @@ class CommandResult:
 
 def parse_cli_json(stdout: str) -> dict[str, Any] | list[Any]:
     """Robustly extract and parse a JSON object or array from CLI stdout (ignoring preambles/warnings)."""
+    decoder = json.JSONDecoder()
 
-    match = re.search(r"(\{.*\}|\[.*\])", stdout, re.DOTALL)
-    if not match:
-        raise ValueError("Could not find a JSON object in the command output.")
+    start_idx = -1
+    for i, char in enumerate(stdout):
+        if char in ("{", "["):
+            start_idx = i
+            break
 
-    json_str = match.group(0)
+    if start_idx == -1:
+        raise ValueError("Could not find a JSON object or array in the command output.")
 
-    if stdout.strip() != json_str:
-        logger.warning(
-            "parse_cli_json encountered non-JSON text in output where only JSON was expected."
-        )
+    last_error = None
+    while start_idx != -1:
+        try:
+            parsed, parsed_len = decoder.raw_decode(stdout[start_idx:])
+            
+            if stdout[:start_idx].strip() or stdout[start_idx + parsed_len:].strip():
+                logger.warning(
+                    "parse_cli_json encountered non-JSON text in output where only JSON was expected."
+                )
+            return parsed
+        except json.JSONDecodeError as e:
+            last_error = e
+            next_idx = -1
+            for i, char in enumerate(stdout[start_idx + 1:], start=start_idx + 1):
+                if char in ("{", "["):
+                    next_idx = i
+                    break
+            start_idx = next_idx
 
-    try:
-        return json.loads(json_str)
-    except json.JSONDecodeError as e:
-        raise ValueError(f"Found JSON-like structure but failed to parse: {e}") from e
+    raise ValueError(f"Found JSON-like structure but failed to parse: {last_error}")
 
 
 async def async_run_command(

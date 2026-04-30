@@ -1,11 +1,10 @@
-import json
-import re
+
 
 import pytest
 from loguru import logger
 
 from core.env import OPENCLAW_CONFIG_DIR
-from core.utils import async_run_command
+from core.utils import async_run_command, parse_cli_json
 from tests.e2e.context import E2EContext
 
 
@@ -24,12 +23,12 @@ async def test_agent_skills(ctx: E2EContext):
     # 1. Check skill list for a known personal skill (e.g., zustand-store-ts)
     # and a known built-in skill (e.g., mcporter)
     result = await async_run_command([str(ctx.oc_bin), "skills", "list", "--json"])
-    match = re.search(r"\{.*\}", result.stdout, re.DOTALL)
-    if not match:
+    try:
+        data = parse_cli_json(result.stdout)
+        assert isinstance(data, dict)
+    except (ValueError, AssertionError):
         logger.error("❌ Could not find JSON in 'openclaw skills list' output")
         raise AssertionError()
-
-    data = json.loads(match.group(0))
     skills = data.get("skills", [])
     skill_names = {s["name"] for s in skills if s.get("eligible")}
 

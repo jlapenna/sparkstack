@@ -119,7 +119,7 @@ ______________________________________________________________________
 
 *The following integration suite MUST be executed to verify the new stack.*
 
-- **Action**: `uv run pytest tests/e2e/`
+- **Action**: `uv run pytest -x tests/e2e/`
 - **Expect**: ✅ ALL verification stages pass.
 - **Verification Coverage**:
   - Memory Law Compliance (`test_memory_law.py`)
@@ -161,7 +161,7 @@ ______________________________________________________________________
 
 ## 5. Failure Recovery Protocol
 
-If `uv run pytest tests/e2e/` or `sparkrun benchmark` reports any failures:
+If `uv run pytest -x tests/e2e/` or `sparkrun benchmark` reports any failures:
 
 1. **Halt execution immediately.**
 1. **Inform the user** with the exact `stdout`/`stderr` of the failing layer. Do not attempt any automatic rollback or live-patching without explicit user permission.
@@ -182,5 +182,5 @@ Once verified functional:
 1. **Cleanup**: Remove all failed iterative stack directories from the `spark-stack-registry/stacks/` folder.
 1. **Standardize Name**: Rename the working stack directory to remove the iterative suffix (e.g., `core-upgrade-20260329-01` -> `core-upgrade-20260329`).
 1. **Reset Current**: Run `uv run python manager/set_current.py spark-stack-registry/stacks/<clean_stack_name>` to finalize symlinks to the clean name.
-1. **Post-Rename Verification**: Re-run `uv run pytest tests/e2e/test_memory_law.py tests/e2e/test_system_health.py` to confirm the renamed stack is still functional.
+1. **Post-Rename Verification**: Re-run `uv run pytest -x tests/e2e/test_memory_law.py tests/e2e/test_system_health.py` to confirm the renamed stack is still functional.
 1. **Commit**: Stage and commit the finalized stack directory and updated symlink changes to the `spark-stack-registry`.

@@ -1,5 +1,4 @@
 import json
-import re
 import time
 import uuid
 
@@ -46,19 +45,21 @@ async def test_long_conversation(ctx: E2EContext):
             res = await async_run_command(tool_cmd, check=False)
             output = res.stdout + res.stderr
             elapsed = time.time() - start_time
+            # 1. Extract JSON Payload
+            data = None
+            decoder = json.JSONDecoder()
+            idx = output.find("{")
+            while idx != -1:
+                try:
+                    parsed, parsed_len = decoder.raw_decode(output[idx:])
+                    data = parsed
+                    idx = output.find("{", idx + parsed_len)
+                except json.JSONDecodeError:
+                    idx = output.find("{", idx + 1)
 
-            json_match = re.search(r"(\{.*\})", output, re.DOTALL)
-            if not json_match:
+            if data is None:
                 logger.error(
                     f"❌ Failure on message {i}/{total_messages}: No JSON payload found in output. Raw Output: {output[:500]}"
-                )
-                raise AssertionError(f"Message {i} failed: No JSON payload")
-
-            try:
-                data = json.loads(json_match.group(1))
-            except json.JSONDecodeError as e:
-                logger.error(
-                    f"❌ Failure on message {i}/{total_messages}: Invalid JSON payload: {e}"
                 )
                 raise AssertionError(f"Message {i} failed: JSON Decode Error") from None
 

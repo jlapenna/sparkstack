@@ -79,11 +79,6 @@ class SparkrunUpdater:
                         logger.error(
                             f"Rebase failed. You may have conflicts. Please resolve them in {self.settings.sparkrun_dir} and run 'git rebase --continue'."
                         )
-                        await async_run_command(
-                            ["git", "rebase", "--abort"],
-                            cwd=self.settings.sparkrun_dir,
-                            check=False,
-                        )
                         raise
                 else:
                     logger.warning(
