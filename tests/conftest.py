@@ -5,6 +5,7 @@ import pytest
 from dotenv import load_dotenv
 
 from tests.e2e.context import E2EContext
+from tests.e2e.session_cleanup import wipe_all_sessions
 
 # Automatically load environment variables from the project root .env file
 load_dotenv(Path(__file__).parent.parent / ".env")
@@ -13,6 +14,16 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 def pytest_addoption(parser):
     parser.addoption("--stack", action="store", default="current", help="Stack to test")
     parser.addoption("--soak", type=int, default=15, help="Soak time in minutes")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _cleanup_verifier_sessions():
+    """Wipe verifier session store before and after the E2E suite."""
+    wipe_all_sessions("pre-suite")
+
+    yield
+
+    wipe_all_sessions("post-suite")
 
 
 @pytest.fixture(scope="session")
