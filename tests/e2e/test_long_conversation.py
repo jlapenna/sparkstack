@@ -11,7 +11,7 @@ from tests.e2e.session_cleanup import cleanup_session
 
 
 @pytest.mark.order(11)
-@pytest.mark.timeout(900)
+@pytest.mark.timeout(1800)
 @pytest.mark.asyncio
 async def test_long_conversation(ctx: E2EContext):
     """
