@@ -721,9 +721,9 @@ ______________________________________________________________________
 - **Hypothesis**: The verifier agent's response was empty because OpenClaw was sending requests without `maxTokens`, triggering the 16-token OpenAI default fallback documented in the `2026-04-29T14:19` incident.
 - **Action**:
   1. Discovered that OpenClaw maintains per-agent `models.json` files at `~/.openclaw/agents/<name>/agent/models.json` that override the global `openclaw.json` config.
-  2. The verifier's local `models.json` had a spark/main model definition **without `maxTokens`**, while the global config (managed by `sync_registry.py`) correctly set `maxTokens: 32768`.
-  3. Deleted all agent-level `models.json` files so agents inherit from the global config.
-  4. Confirmed OpenClaw auto-regenerates these files on gateway restart — so deletion alone is not a durable fix.
+  1. The verifier's local `models.json` had a spark/main model definition **without `maxTokens`**, while the global config (managed by `sync_registry.py`) correctly set `maxTokens: 32768`.
+  1. Deleted all agent-level `models.json` files so agents inherit from the global config.
+  1. Confirmed OpenClaw auto-regenerates these files on gateway restart — so deletion alone is not a durable fix.
 - **Result**: **Successful.** Test passes once the agent inherits the global `maxTokens` value. However, OpenClaw will regenerate agent-level configs on restart, re-introducing drift if `sync_registry.py` doesn't also update them.
 
 **Learnings:**
@@ -739,7 +739,7 @@ ______________________________________________________________________
 - **Hypothesis**: The host Linux kernel was executing an OOM Kill against the Ray worker. The vLLM V1 Engine (which relies on compiled Ray DAGs) was allocating massive shared memory (`/dev/shm`) and CPU swap space because the orchestrator injected an aggressive `max_model_len: '262144'` override.
 - **Action**:
   1. Restored `VLLM_V1: '1'` to ensure we correctly use the V1 engine for CUTLASS/NVFP4 optimizations.
-  2. Deleted the `max_model_len: '262144'` override in `stack.yaml`, allowing it to fall back to the recipe's default of `131072` (128K context length).
+  1. Deleted the `max_model_len: '262144'` override in `stack.yaml`, allowing it to fall back to the recipe's default of `131072` (128K context length).
 - **Result**: **Successful**. The Ray DAG successfully compiled the routing matrix without blowing past the 120GB system RAM limit, and the container loaded weights seamlessly.
 
 **Learnings:**
