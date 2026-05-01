@@ -7,7 +7,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from core.env import OPENCLAW_CONFIG_PATH, PROJECT_ROOT
+from core.env import OPENCLAW_CONFIG_DIR, OPENCLAW_CONFIG_PATH, PROJECT_ROOT
 from core.schemas import SparkProvider
 
 
@@ -83,6 +83,16 @@ async def sync_registry(
     # Save back raw JSON, preserving all unstructured fields perfectly
     await asyncio.to_thread(config_path.write_text, json.dumps(config, indent=2) + "\n")
     logger.info("openclaw.json synchronized correctly.")
+
+    # Purge stale agent-level models.json overrides to prevent configuration drift
+    agents_dir = OPENCLAW_CONFIG_DIR / "agents"
+    if agents_dir.is_dir():
+        for agent_models_path in agents_dir.glob("*/agent/models.json"):
+            try:
+                agent_models_path.unlink(missing_ok=True)
+                logger.info(f"Purged stale agent override: {agent_models_path.parent.parent.name}")
+            except OSError as e:
+                logger.warning(f"Failed to purge {agent_models_path}: {e}")
 
 
 if __name__ == "__main__":

@@ -31,10 +31,12 @@ ______________________________________________________________________
 
 ## 0.75 Source Dependency Verification (PRE-FLIGHT)
 
-*Verify that sparkrun, the registry, and all source dependencies are synchronized before building. A stale CLI or recipe cache will cause silent deployment failures.*
+*Verify that sparkrun, openclaw, the registry, and all source dependencies are synchronized before building. A stale CLI or recipe cache will cause silent deployment failures.*
 
 - **SparkRun Branch**: `cd ../sparkrun && git branch --show-current` → Must be `local-dev`
-- **SparkRun State**: `cd ../sparkrun && git status --porcelain` → Must be empty
+- **SparkRun State**: `cd ../sparkrun && git status --porcelain` → Must be a clean working directory (no uncommitted changes)
+- **OpenClaw Branch**: `cd ../openclaw && git branch --show-current` → Must be on a detached stable tag or `main` (Not a dev branch)
+- **OpenClaw State**: `cd ../openclaw && git status --porcelain` → Must be a clean working directory (immutable upstream)
 - **Registry Sync**: `uv run sparkrun update` → Ensure recipe cache is current
 - **SparkRun Version**: `uv run sparkrun --version` → Record version hash: [\_\_\_\_\_\_\_]
 
@@ -50,6 +52,7 @@ ______________________________________________________________________
 - **Other Models (e.g., embedding)**: [X]% VRAM | [Y]GB RAM
 - **Overhead (LiteLLM/Gateway)**: \<1% VRAM | 4GB RAM
 - **Aggregate Totals**: **[TOTAL]% VRAM** | **[TOTAL]GB RAM** (Must be within limits defined in **stack-manager**).
+- **Utilization Verification**: **[Pass/Fail]** -> Aggregate VRAM *MUST* be >= 85% (Conservative ceiling is 95%). If VRAM is < 85%, you MUST increase `gpu_memory_utilization` to maximize `max_num_seqs` or `max_model_len` before deploying. Do not leave hardware stranded.
 
 ______________________________________________________________________
 

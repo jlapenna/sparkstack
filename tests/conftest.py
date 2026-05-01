@@ -49,3 +49,17 @@ def ctx(request):
         telemetry_url=telemetry_url,
         soak_minutes=soak,
     )
+
+def pytest_sessionstart(session):
+    session.backends_failed = False
+
+@pytest.hookimpl(tryfirst=True, hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    outcome = yield
+    rep = outcome.get_result()
+    if rep.when == "call" and rep.failed and "wait_for_backends" in item.name:
+        item.session.backends_failed = True
+
+def pytest_runtest_setup(item):
+    if getattr(item.session, "backends_failed", False) and "wait_for_backends" not in item.name:
+        pytest.skip("Pre-condition failed: Backends did not load.")

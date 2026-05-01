@@ -714,3 +714,41 @@ ______________________________________________________________________
 **Learnings:**
 
 - When containers share a network (e.g., `proxy-tier`), always route traffic using direct container names. Remove any configuration that injects or relies on `host.docker.internal`.
+
+### 2026-04-29T15:25 — Agent-Level models.json Drift Causing payloads=0
+
+- **Scenario**: `test_tool_calling` consistently failed with `incomplete turn detected: stopReason=stop payloads=0`. Direct LiteLLM API calls (`curl`) returned valid `content` + `reasoning_content`, proving the model was healthy.
+- **Hypothesis**: The verifier agent's response was empty because OpenClaw was sending requests without `maxTokens`, triggering the 16-token OpenAI default fallback documented in the `2026-04-29T14:19` incident.
+- **Action**:
+  1. Discovered that OpenClaw maintains per-agent `models.json` files at `~/.openclaw/agents/<name>/agent/models.json` that override the global `openclaw.json` config.
+  2. The verifier's local `models.json` had a spark/main model definition **without `maxTokens`**, while the global config (managed by `sync_registry.py`) correctly set `maxTokens: 32768`.
+  3. Deleted all agent-level `models.json` files so agents inherit from the global config.
+  4. Confirmed OpenClaw auto-regenerates these files on gateway restart — so deletion alone is not a durable fix.
+- **Result**: **Successful.** Test passes once the agent inherits the global `maxTokens` value. However, OpenClaw will regenerate agent-level configs on restart, re-introducing drift if `sync_registry.py` doesn't also update them.
+
+**Learnings:**
+
+- **Agent-level config drift**: OpenClaw auto-generates `~/.openclaw/agents/<name>/agent/models.json` files that override global `openclaw.json` model definitions. `sync_registry.py` only writes to the global config and never touches these files, creating a silent drift vector.
+- **The 16-token fallback is contagious**: Even if the global config correctly sets `maxTokens`, any agent-level override missing the field will revert to the 16-token default for that specific agent.
+- **Durable fix required**: `sync_registry.py` must be extended to also sync `maxTokens` (and other critical fields) into all agent-level `models.json` files, or the agent configs must be managed to not override model provider definitions.
+- **Always check agent-level configs**: When debugging `payloads=0` for a specific agent, check `~/.openclaw/agents/<agent>/agent/models.json` first — the global config may be correct while the agent override is stale.
+
+### 2026-05-01T10:05 — vLLM V1 Engine OOM Killed due to max_model_len Override
+
+- **Scenario**: The `main_solo` container (`NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4`) was silently crashing immediately upon startup, returning `OOMKilled: true` via Docker, despite having plenty of VRAM capacity.
+- **Hypothesis**: The host Linux kernel was executing an OOM Kill against the Ray worker. The vLLM V1 Engine (which relies on compiled Ray DAGs) was allocating massive shared memory (`/dev/shm`) and CPU swap space because the orchestrator injected an aggressive `max_model_len: '262144'` override.
+- **Action**:
+  1. Restored `VLLM_V1: '1'` to ensure we correctly use the V1 engine for CUTLASS/NVFP4 optimizations.
+  2. Deleted the `max_model_len: '262144'` override in `stack.yaml`, allowing it to fall back to the recipe's default of `131072` (128K context length).
+- **Result**: **Successful**. The Ray DAG successfully compiled the routing matrix without blowing past the 120GB system RAM limit, and the container loaded weights seamlessly.
+
+**Learnings:**
+
+- **vLLM V1 Ray DAGs**: The V1 architecture is exceptionally memory-hungry on the CPU side during DAG compilation. Context window sizes (`max_model_len`) exponentially scale system RAM requirements due to chunked prefill buffers and DAG node allocations.
+- **VRAM vs System RAM**: OOM kills during the `Resolving architecture` phase are almost always caused by physical Host RAM exhaustion, not GPU VRAM. Ensure `max_model_len` aligns with available system memory when using vLLM V1.
+
+### Rule 7: Sync All Configuration Layers
+
+> **When updating model configuration, sync ALL layers — not just the global config.**
+
+OpenClaw resolves model settings with agent-level overrides taking precedence over global defaults. If `sync_registry.py` updates `openclaw.json` but leaves agent-level `models.json` files stale, agents will silently use outdated settings. This is especially dangerous for `maxTokens`, where a missing value triggers a 16-token default that truncates reasoning models.

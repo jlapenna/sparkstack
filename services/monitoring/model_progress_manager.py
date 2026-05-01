@@ -527,11 +527,11 @@ class FleetMultiplexer:
         for host_id, monitor in self.monitors.items():
             res[host_id] = {}
             for c, pct in monitor.last_known_pct.items():
+                phase = monitor.last_known_phase.get(c, "Initializing...")
                 res[host_id][c] = {
                     "pct": pct,
-                    "phase": monitor.last_known_phase.get(c, "Initializing...")
-                    if pct >= 0
-                    else "Failed",
+                    "phase": phase if pct >= 0 else "Failed",
+                    "is_crash": phase in ("Crash", "Offline", "Unresponsive")
                 }
         return web.json_response(res)
 

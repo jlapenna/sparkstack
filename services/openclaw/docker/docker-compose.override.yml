@@ -30,6 +30,9 @@ services:
       - ${OPENCLAW_CONFIG_DIR}:${OPENCLAW_CONFIG_DIR}
       - /var/run/docker.sock:/var/run/docker.sock
 
+    group_add:
+      - "${DOCKER_GID:-988}"
+
     networks:
       - default
       - proxy-tier

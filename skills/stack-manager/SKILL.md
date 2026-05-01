@@ -83,7 +83,9 @@ The DGX Spark (GB10) has **128GB total unified memory**. After OS and driver ove
 - **Physical Math Verification**: The `stack-manager` MUST invoke `sparkrun recipe vram <recipe>` every single time a recipe file is scaffolded or modified _before_ confirming success to the user.
 - **Cluster vs. Standalone Validation**: VRAM estimation calculates load by distributing weight via `shard_factor` (TP\*PP). This is mathematically correct *only* if the user possesses a physical deployment cluster of Spark nodes corresponding to that factor. If deploying to a *single* standalone workstation, do not allow parallelism settings to falsely validate a model footprint that exceeds the single-node 121GB unified limit.
 - **Immediate Failure Halting**: If the VRAM simulator outputs an OOM condition or flags a misaligned distributed size (`TP=1` on a 1T model), you MUST immediately halt and inform the user of the error rather than blindly deploying.
+- **Under-Utilization Strict Check**: If the VRAM simulation calculates an aggregate usage under `85%`, you MUST reject the build. You must manually boost `gpu_memory_utilization` to maximize `max_num_seqs` or `max_model_len` before deploying. Do not leave hardware stranded.
 - **Interpreter Path Verification**: The agent MUST actively verify that the `.venv/bin/python` interpreter exists in the workspace root via a sanity check before executing any Python commands or VS Code integrations, avoiding "interpreter path could not be resolved" failures.
+- **Source Dependency Verification**: The agent MUST verify that `sparkrun` is clean and on `local-dev`, and `openclaw` is clean and checked out to a stable tag (or `main`), NEVER a dev branch.
 
 ## Troubleshooting & Learnings
 

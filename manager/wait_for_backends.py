@@ -33,8 +33,9 @@ class BackendStatusUpdate:
     logs: str | None = None
 
 class BackendProbe:
-    def __init__(self, expected_containers: set[str]):
+    def __init__(self, expected_containers: set[str], fail_fast: bool = True):
         self.expected_containers = expected_containers
+        self.fail_fast = fail_fast
 
     async def poll(self) -> AsyncIterator[BackendStatusUpdate]:
         all_ready = False
@@ -58,11 +59,13 @@ class BackendProbe:
                             if isinstance(c_data, dict):
                                 pct = c_data.get("pct", 0)
                                 phase = c_data.get("phase", "")
+                                is_crash = c_data.get("is_crash", False)
                             else:
                                 pct = c_data
                                 phase = ""
+                                is_crash = False
 
-                            if pct == -1:
+                            if is_crash:
                                 logs = ""
                                 try:
                                     logs = subprocess.check_output(
@@ -73,7 +76,10 @@ class BackendProbe:
                                 except Exception as e:
                                     logs = f"Failed to fetch logs: {e}"
                                 yield BackendStatusUpdate(container=c, pct=-1, phase="Crash", is_crash=True, logs=logs)
-                                return
+                                if self.fail_fast:
+                                    return
+                                all_ready = False
+                                continue
 
                             if pct >= 0:
                                 yield BackendStatusUpdate(container=c, pct=pct, phase=phase)
@@ -87,7 +93,7 @@ class BackendProbe:
                     break
                 await asyncio.sleep(2)
 
-async def wait_for_backends_to_load(stack_dir: Path, timeout: int = 1800) -> bool:
+async def wait_for_backends_to_load(stack_dir: Path, timeout: int = 1800, fail_fast: bool = True) -> bool:
     services = await get_active_services(stack_dir)
     if not services:
         logger.error(f"❌ Failure: No active services discovered in '{stack_dir.name}/'")
@@ -107,7 +113,7 @@ async def wait_for_backends_to_load(stack_dir: Path, timeout: int = 1800) -> boo
 
     logger.info(f"Waiting for {len(expected_containers)} backend containers to be fully loaded...")
 
-    probe = BackendProbe(expected_containers)
+    probe = BackendProbe(expected_containers, fail_fast=fail_fast)
 
     with Progress(
         SpinnerColumn("dots"),
@@ -127,19 +133,30 @@ async def wait_for_backends_to_load(stack_dir: Path, timeout: int = 1800) -> boo
         async def poll_ui():
             async for update in probe.poll():
                 if update.is_crash:
-                    print(f"\n❌ Failure: Fatal crash detected in backend {update.container}")
+                    if fail_fast:
+                        print(f"\n❌ Failure: Fatal crash detected in backend {update.container}")
+                        progress.update(
+                            tasks[update.container],
+                            description=f"Loading [red]{update.container}[/] [FAILED]",
+                            phase="[red]Crash[/red]",
+                        )
+                        print(f"\n--- Last 20 lines of {update.container} logs ---")
+                        print(update.logs)
+                        print("----------------------------------\n")
+                        return False
+                    
                     progress.update(
                         tasks[update.container],
                         description=f"Loading [red]{update.container}[/] [FAILED]",
                         phase="[red]Crash[/red]",
                     )
-                    print(f"\n--- Last 20 lines of {update.container} logs ---")
-                    print(update.logs)
-                    print("----------------------------------\n")
-                    return False
+                    continue
+
                 if update.error_msg:
                     logger.error(update.error_msg)
-                    return False
+                    if fail_fast:
+                        return False
+                    continue
 
                 phase_fmt = f"[blue]{update.phase}[/blue]" if update.phase else "[dim]Waiting...[/dim]"
                 progress.update(tasks[update.container], completed=update.pct, phase=phase_fmt)
@@ -177,14 +194,14 @@ async def wait_for_backends_to_load(stack_dir: Path, timeout: int = 1800) -> boo
 
                         if model_id == "embedding":
                             res = await client.post(
-                                f"http://localhost:{port}/v1/embeddings",
+                                "http://localhost:4000/v1/embeddings",
                                 headers=headers,
                                 json={"model": model_id, "input": "Say hi"},
                                 timeout=60.0,
                             )
                         else:
                             res = await client.post(
-                                f"http://localhost:{port}/v1/chat/completions",
+                                "http://localhost:4000/v1/chat/completions",
                                 headers=headers,
                                 json={
                                     "model": model_id,
@@ -215,6 +232,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Wait for backends in a stack to load.")
     parser.add_argument("--stack", help="Stack name to wait for (optional, defaults to 'current')")
     parser.add_argument("--timeout", type=int, default=1800, help="Timeout in seconds")
+    parser.add_argument("--no-fail-fast", action="store_true", help="Monitor mode: do not exit on crash")
     args = parser.parse_args()
 
     root_dir = Path(__file__).parent.parent.absolute()
@@ -225,7 +243,7 @@ if __name__ == "__main__":
     )
 
     try:
-        if not asyncio.run(wait_for_backends_to_load(stack_dir, args.timeout)):
+        if not asyncio.run(wait_for_backends_to_load(stack_dir, args.timeout, fail_fast=not args.no_fail_fast)):
             sys.exit(1)
     except KeyboardInterrupt:
         print("\n❌ Aborted by user.")
