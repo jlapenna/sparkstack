@@ -10,6 +10,7 @@ from core.schemas import (
     OpenClawModelCompat,
     SparkProvider,
 )
+from core.utils import calculate_model_context_limits
 
 
 class ApiGatewayBuilder:
@@ -41,6 +42,19 @@ class ApiGatewayBuilder:
             return
 
         cwin = model_info.get("context_window", context_window)
+        max_tokens_override = model_info.get("max_tokens")
+
+        # Check all possible indicators of a reasoning model
+        is_reasoning = (
+            model_info.get("reasoning", False)
+            or model_info.get("supports_reasoning", False)
+            or (thinking_format is not None)
+        )
+
+        safe_frontend_ctx, calc_max = calculate_model_context_limits(
+            cwin, max_tokens_override, is_reasoning
+        )
+
         params = {
             "model": f"openai/{backend_model}",
             "api_base": backend_url,
@@ -54,16 +68,15 @@ class ApiGatewayBuilder:
             params[k] = v
 
         minfo = {
-            "context_window": cwin,
+            "context_window": safe_frontend_ctx,
             "base_model": recipe_name or backend_model,
+            "max_tokens": calc_max,
         }
-        if "max_tokens" in model_info:
-            minfo["max_tokens"] = model_info["max_tokens"]
         if "mode" in model_info:
             minfo["mode"] = model_info["mode"]
         if "supports_function_calling" in model_info:
             minfo["supports_function_calling"] = model_info["supports_function_calling"]
-        if model_info.get("supports_reasoning") or (thinking_format is not None):
+        if is_reasoning:
             minfo["supports_reasoning"] = True
         if "input" in model_info:
             minfo["input"] = model_info["input"]
@@ -89,15 +102,14 @@ class ApiGatewayBuilder:
         model_entry = OpenClawModel(
             id=role_id,
             name=display_name,
-            context_window=cwin,
+            context_window=safe_frontend_ctx,
+            max_tokens=calc_max,
             input=model_info.get("input", ["text"]),
-            reasoning=model_info.get("reasoning"),
+            reasoning=is_reasoning,
             api="openai-completions",
         )
-        if "max_tokens" in model_info:
-            model_entry.max_tokens = model_info["max_tokens"]
         compat_kwargs = {}
-        if model_info.get("reasoning"):
+        if model_info.get("reasoning") or is_reasoning:
             compat_kwargs["thinking_format"] = thinking_format or "openai"
         if "supports_function_calling" in model_info:
             compat_kwargs["supports_tools"] = model_info["supports_function_calling"]

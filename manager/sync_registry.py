@@ -8,7 +8,8 @@ from pathlib import Path
 from loguru import logger
 
 from core.env import OPENCLAW_CONFIG_DIR, OPENCLAW_CONFIG_PATH, PROJECT_ROOT
-from core.schemas import SparkProvider
+from core.schemas import OpenClawModel, SparkProvider
+from core.utils import calculate_model_context_limits
 
 
 async def sync_registry(
@@ -50,16 +51,17 @@ async def sync_registry(
     global_max_reserve = 8192
     # Calculate output buffer sizes (maxTokens) based on the model's actual capacity
     for model in provider_dict.get("models", []):
-        # Prefer the value from models.json if it's already a sensible override
-        if model.get("maxTokens") and model["maxTokens"] > 8192:
-            calc_max = model["maxTokens"]
-        else:
-            ctx_window = model.get("contextWindow", 32768)
-            # Allocate 25% of context window for generation, bounded between 2k and 16k tokens
-            calc_max = min(16384, max(2048, ctx_window // 4))
+        hardware_ctx = model.get(
+            "contextWindow", OpenClawModel.model_fields["context_window"].default
+        )
+        max_tokens_override = model.get("maxTokens")
+        is_reasoning = model.get("reasoning", False)
 
-        # We MUST enforce a calculated maxTokens limit. If omitted, the OpenAI/LiteLLM backend
-        # defaults to a 16-token fallback which silently truncates extensive reasoning traces.
+        safe_frontend_ctx, calc_max = calculate_model_context_limits(
+            hardware_ctx, max_tokens_override, is_reasoning
+        )
+
+        model["contextWindow"] = safe_frontend_ctx
         model["maxTokens"] = calc_max
 
         global_max_reserve = max(global_max_reserve, calc_max)

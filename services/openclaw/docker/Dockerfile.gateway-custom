@@ -118,6 +118,9 @@ RUN set -ex; \
     UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin uv tool install nano-pdf==${NANO_PDF_VERSION} && \
     uv cache clean
 
+# Prepare directory for plugin runtime dependencies
+RUN mkdir -p /var/lib/openclaw/plugin-runtime-deps && chown -R node:node /var/lib/openclaw
+
 # Return to node user for execution
 USER node
 

@@ -18,12 +18,14 @@ Distributed tracing (OpenTelemetry) provides an end-to-end visualization of the 
 ## Debugging Philosophy
 
 1. **Systematic Debugging:** Always prioritize fixing issues starting from base principles.
-   1. **Understand the context:** Identify all involved services and their roles.
-   1. **Isolate the problem:** Query each component systematically (e.g., query vLLM, then LiteLLM, then OpenClaw) to pinpoint where the failure originates.
-   1. **Analyze the failure:** Check logs, schemas, and configurations at the point of failure.
-   1. **Communicate Findings:** *Explicitly and comprehensively share your findings, logs, and hypothesis with the user before implementing a fix. Provide them with the exact reason why the problem is occurring.*
-   1. **Formulate a fix:** Propose a solution based on root-cause analysis, not just applying a band-aid.
-   1. **Verify the fix:** Run end-to-end tests or queries to confirm the resolution. **CRITICAL: You MUST run the `tests/e2e/` suite and it MUST pass successfully before considering any debugging fix complete.**
+   1. **Verify the Process Before the Network:** A container showing as "running" does not mean the service inside is alive (especially if it uses `sleep infinity` as an entrypoint). Always check logs and use `docker exec <container> ss -tlnp` before assuming a network issue.
+   2. **Read the Actual Error Before Hypothesizing:** Do not invent hypotheses from vague symptoms. "Network connection error" might just mean the backend process crashed and isn't listening. Find the explicit error message first.
+   3. **Understand the context:** Identify all involved services and their roles.
+   4. **Isolate the problem:** Query each component systematically (e.g., query vLLM, then LiteLLM, then OpenClaw) to pinpoint where the failure originates.
+   5. **Analyze the failure:** Check logs, schemas, and configurations at the point of failure.
+   6. **Communicate Findings:** *Explicitly and comprehensively share your findings, logs, and hypothesis with the user before implementing a fix. Provide them with the exact reason why the problem is occurring.*
+   7. **Formulate a fix:** Propose a solution based on root-cause analysis, not just applying a band-aid.
+   8. **Verify the fix:** Run end-to-end tests or queries to confirm the resolution. **CRITICAL: You MUST run the `tests/e2e/` suite and it MUST pass successfully before considering any debugging fix complete.**
 
 ## 1. Tempo Architecture Overview
 
@@ -41,21 +43,21 @@ Use the Tempo Search API to find recent traces.
 **Basic Recent Search (Last 15 traces):**
 
 ```bash
-curl -s "http://localhost:3200/api/search?limit=15" | jq '.traces[] | .traceID'
+curl -s -m 10 "http://localhost:3200/api/search?limit=15" | jq '.traces[] | .traceID'
 ```
 
 **Filter by Service Name:**
 Useful when a specific node (like `litellm`) is acting up:
 
 ```bash
-curl -s "http://localhost:3200/api/search?limit=20&tags=service.name=litellm" | jq '.traces[] | .traceID'
+curl -s -m 10 "http://localhost:3200/api/search?limit=20&tags=service.name=litellm" | jq '.traces[] | .traceID'
 ```
 
 **Filter by Endpoint/Target:**
 Useful to find specific completions:
 
 ```bash
-curl -s "http://localhost:3200/api/search?limit=20&tags=http.target=/api/v1/chat/completions" | jq '.traces[] | .traceID'
+curl -s -m 10 "http://localhost:3200/api/search?limit=20&tags=http.target=/api/v1/chat/completions" | jq '.traces[] | .traceID'
 ```
 
 ## 3. Fetching and Analyzing a Trace
@@ -67,7 +69,7 @@ Once you have a `traceID` (e.g., `7722917bbf566111293f51c2434aedaa`), you can pu
 To verify that all expected services successfully connected and propagated the trace context:
 
 ```bash
-curl -s http://localhost:3200/api/traces/<traceID> | jq '[.batches[].resource.attributes[] | select(.key == "service.name") | .value.stringValue] | unique'
+curl -s -m 10 http://localhost:3200/api/traces/<traceID> | jq '[.batches[].resource.attributes[] | select(.key == "service.name") | .value.stringValue] | unique'
 ```
 
 *Expected Output:* `["litellm", "openclaw-gateway", "vllm-main"]`
@@ -79,10 +81,10 @@ To debug prompt truncation, parsing errors, or system instructions:
 
 ```bash
 # Print the exact string value of the input messages
-curl -s http://localhost:3200/api/traces/<traceID> | jq -r '[.batches[].scopeSpans[].spans[].attributes[]? | select(.key == "gen_ai.input.messages")] | .[0].value.stringValue'
+curl -s -m 10 http://localhost:3200/api/traces/<traceID> | jq -r '[.batches[].scopeSpans[].spans[].attributes[]? | select(.key == "gen_ai.input.messages")] | .[0].value.stringValue'
 
 # Check the length of the payload
-curl -s http://localhost:3200/api/traces/<traceID> | jq -r '[.batches[].scopeSpans[].spans[].attributes[]? | select(.key == "gen_ai.input.messages")] | .[0].value.stringValue' | wc -c
+curl -s -m 10 http://localhost:3200/api/traces/<traceID> | jq -r '[.batches[].scopeSpans[].spans[].attributes[]? | select(.key == "gen_ai.input.messages")] | .[0].value.stringValue' | wc -c
 ```
 
 ## 4. Common Tracing Pitfalls & Fixes
@@ -109,7 +111,74 @@ If a service is completely missing from Tempo:
 - Ensure OTel is enabled (`VLLM_OTEL_TRACING_ENABLED=1`).
 - Check Alloy logs (`docker compose logs alloy`) for `rpc error` or dropping metrics, which indicates backend ingestion failures.
 
-## 6. Proactive Debugging & Hunting Patterns
+## 5. Examining Container Logs
+
+When distributed tracing (Tempo) does not provide enough information or if a service fails before traces are emitted, you must examine the raw container logs using Docker.
+
+**Viewing OpenClaw Logs:**
+OpenClaw runs as the gateway container. View its logs to debug embedded agent crashes, configuration/secret resolution errors (e.g., unresolved `SecretRef`), and prompt construction issues:
+```bash
+docker logs --tail 200 openclaw-openclaw-gateway-1
+```
+*(If the container name varies, use `docker ps` to find it).*
+
+**Viewing LiteLLM Logs:**
+LiteLLM handles proxying LLM requests to the vLLM backends. To debug routing issues, upstream model errors, or token limit rejections:
+```bash
+docker logs --tail 200 litellm
+```
+
+**Viewing General Docker Logs:**
+For any other service in the `spark-stack` deployment:
+```bash
+docker logs --tail 200 <container-name>
+```
+*(Tip: Add the `-f` flag to follow logs live).*
+
+## 6. Diagnostic Playbook (Networking)
+
+When a container can't reach another container, run these steps **in order**:
+
+### Step 1: Is the target process alive?
+
+```bash
+docker exec <target> tail -n 20 /tmp/sparkrun_serve.log
+docker exec <target> ss -tlnp
+```
+
+If the process crashed or isn't listening → this is NOT a networking problem.
+
+### Step 2: Are both containers on a shared network?
+
+```bash
+docker inspect <source> --format '{{json .NetworkSettings.Networks}}' | python3 -m json.tool
+docker inspect <target> --format '{{json .NetworkSettings.Networks}}' | python3 -m json.tool
+```
+
+If they share a network → use the container name directly.
+
+### Step 3: Can the source resolve the target?
+
+```bash
+docker exec <source> getent hosts <target_name>
+```
+
+### Step 4: Can the source reach the target?
+
+```bash
+docker exec <source> python3 -c "import urllib.request; print(urllib.request.urlopen('http://<target_name>:<port>/v1/models').read())"
+```
+
+### Step 5: Check hairpin NAT (if using host.docker.internal)
+
+```bash
+docker exec <source> python3 -c "import socket; print(socket.getaddrinfo('host.docker.internal', None))"
+docker exec <source> python3 -c "import urllib.request; print(urllib.request.urlopen('http://host.docker.internal:<port>/v1/models').read())"
+```
+
+If this fails with `ConnectionResetError [Errno 104]` → hairpin NAT issue. Switch to direct container name routing.
+
+## 7. Proactive Debugging & Hunting Patterns
 
 Unlike reactive debugging (where you respond to an active incident or broken test), **Proactive Debugging** involves open-ended hunting for anomalies, unhandled edge cases, and regressions *before* they surface to the user.
 
@@ -129,7 +198,7 @@ Some services might experience localized errors that are handled gracefully and 
 **Query Tempo for traces containing an error tag:**
 
 ```bash
-curl -s "http://localhost:3200/api/search?limit=50&tags=error=true" | jq '.traces[] | {id: .traceID, start: .startTimeUnixNano, name: .rootTraceName}'
+curl -s -m 10 "http://localhost:3200/api/search?limit=50&tags=error=true" | jq '.traces[] | {id: .traceID, start: .startTimeUnixNano, name: .rootTraceName}'
 ```
 
 *If you find traces here, pull the full trace and identify the exact span and service throwing the error.*
@@ -141,7 +210,7 @@ Identify requests taking unusually long, which may indicate locking issues, thra
 **Query Tempo for traces taking longer than 15 seconds:**
 
 ```bash
-curl -s "http://localhost:3200/api/search?limit=50&minDuration=15000ms" | jq '.traces[] | {id: .traceID, duration: .durationMs, name: .rootTraceName}'
+curl -s -m 10 "http://localhost:3200/api/search?limit=50&minDuration=15000ms" | jq '.traces[] | {id: .traceID, duration: .durationMs, name: .rootTraceName}'
 ```
 
 *Look for outlier durations and compare where the time is spent.*
@@ -154,9 +223,9 @@ Find traces where the LLM input messages are dangerously close to the OTel attri
 **Check the length of `gen_ai.input.messages`:**
 
 ```bash
-for TRACE in $(curl -s "http://localhost:3200/api/search?limit=5" | jq -r '.traces[].traceID'); do
+for TRACE in $(curl -s -m 10 "http://localhost:3200/api/search?limit=5" | jq -r '.traces[].traceID'); do
   echo -n "Trace $TRACE length: "
-  curl -s "http://localhost:3200/api/traces/$TRACE" | jq -r '[.batches[].scopeSpans[].spans[].attributes[]? | select(.key == "gen_ai.input.messages")] | .[0].value.stringValue' | wc -c
+  curl -s -m 10 "http://localhost:3200/api/traces/$TRACE" | jq -r '[.batches[].scopeSpans[].spans[].attributes[]? | select(.key == "gen_ai.input.messages")] | .[0].value.stringValue' | wc -c
 done
 ```
 

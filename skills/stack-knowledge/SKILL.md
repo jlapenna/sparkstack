@@ -120,9 +120,14 @@ When interacting with OpenClaw, it is critical to distinguish between its immuta
 | `main_solo`                   | `proxy-tier`            | proxy-tier                                      |
 | `embedding_solo`              | `proxy-tier`            | proxy-tier                                      |
 | `litellm`                     | `vllm-network`          | vllm-network, proxy-tier                        |
-| `openclaw-openclaw-gateway-1` | `proxy-tier`            | proxy-tier                                      |
+| `openclaw-openclaw-gateway-1` | `openclaw_default`      | openclaw_default, proxy-tier                    |
 | `prometheus`                  | `monitoring_monitoring` | monitoring_monitoring, proxy-tier, vllm-network |
+| `alloy`                       | `monitoring_monitoring` | monitoring_monitoring, proxy-tier               |
+| `dcgm-exporter`               | `monitoring_monitoring` | monitoring_monitoring                           |
 | `grafana`                     | `monitoring_monitoring` | monitoring_monitoring, proxy-tier               |
+| `vllm-progress-manager`       | `monitoring_monitoring` | monitoring_monitoring, proxy-tier               |
+| `blackbox-exporter`           | `monitoring_monitoring` | monitoring_monitoring                           |
+| `tempo`                       | `monitoring_monitoring` | monitoring_monitoring, proxy-tier               |
 | `cloudflared`                 | `proxy-tier`            | proxy-tier                                      |
 
 ### Key Routing Paths
@@ -151,19 +156,7 @@ Model-specific quirks, engine optimizations, and hardware-specific configuration
 
 These rules are distilled from real incidents. They are non-negotiable.
 
-### Rule 1: Verify the Process Before Touching the Network
-
-> **Before touching any network configuration, verify the target process is alive.**
-
-The single most expensive debugging mistake in this repo's history was spending 45+ minutes chasing networking hypotheses when the vllm backend process had silently crashed inside its container. The container stayed "running" because `sleep infinity` was the entrypoint.
-
-**The diagnostic that should always be run first:**
-
-```bash
-docker exec <container> tail -n 20 /tmp/sparkrun_serve.log
-```
-
-### Rule 2: Use Container Names on Shared Networks, Not `host.docker.internal`
+### Rule 1: Use Container Names on Shared Networks, Not `host.docker.internal`
 
 When containers share a network (e.g., `proxy-tier`), route traffic using **direct container names**. `host.docker.internal` routing depends on Docker's hairpin NAT which can and does fail with `ConnectionResetError`.
 
@@ -175,580 +168,57 @@ api_base: http://host.docker.internal:8001/v1
 api_base: http://main_solo:8001/v1
 ```
 
-### Rule 3: Never Bind-Mount `/etc/resolv.conf`
+### Rule 2: Never Bind-Mount `/etc/resolv.conf`
 
 Bind-mounting the host's `/etc/resolv.conf` into a container (`/run/systemd/resolve/resolv.conf:/etc/resolv.conf:ro`) forcibly overrides Docker's embedded DNS server (`127.0.0.11`). This blinds the container to Docker-internal service discovery.
 
 Let Docker natively inject its `127.0.0.11` resolver.
 
-### Rule 4: Never Use Magic IPs
+### Rule 3: Never Use Magic IPs
 
 Never use internal Docker IPs (e.g. `172.19.x.x`) in configuration, verification, or benchmarking. Use hostnames (`main_solo`) or route through the proxy (`localhost:4000`).
 
-### Rule 5: Read the Actual Error Before Hypothesizing
-
-Do not invent networking hypotheses from symptoms. Find the actual error message in the logs first. `LLM request failed: network connection error` does NOT mean the network is broken — the process might simply not be listening.
-
-### Rule 6: Consult Core Specifications Before Generalizing
+### Rule 4: Consult Core Specifications Before Generalizing
 
 When making configuration changes to core infrastructure components (like OpenAI API completions, OpenClaw properties, or LiteLLM mappings), do not apply generalized LLM heuristics. Always consult the official specification (e.g., OpenAI API docs or the specific backend documentation) to understand default behaviors. For example, omitting `max_tokens` in an `openai-completions` API request strictly defaults to 16 tokens per the OpenAI spec, which will silently truncate long reasoning contexts.
 
-## Diagnostic Playbook
-
-When a container can't reach another container, run these steps **in order**:
-
-### Step 1: Is the target process alive?
-
-```bash
-docker exec <target> tail -n 20 /tmp/sparkrun_serve.log
-docker exec <target> ss -tlnp
-```
-
-If the process crashed or isn't listening → this is NOT a networking problem.
-
-### Step 2: Are both containers on a shared network?
-
-```bash
-docker inspect <source> --format '{{json .NetworkSettings.Networks}}' | python3 -m json.tool
-docker inspect <target> --format '{{json .NetworkSettings.Networks}}' | python3 -m json.tool
-```
-
-If they share a network → use the container name directly.
-
-### Step 3: Can the source resolve the target?
-
-```bash
-docker exec <source> getent hosts <target_name>
-```
-
-### Step 4: Can the source reach the target?
-
-```bash
-docker exec <source> python3 -c "import urllib.request; print(urllib.request.urlopen('http://<target_name>:<port>/v1/models').read())"
-```
-
-### Step 5: Check hairpin NAT (if using host.docker.internal)
-
-```bash
-docker exec <source> python3 -c "import socket; print(socket.getaddrinfo('host.docker.internal', None))"
-docker exec <source> python3 -c "import urllib.request; print(urllib.request.urlopen('http://host.docker.internal:<port>/v1/models').read())"
-```
-
-If this fails with `ConnectionResetError [Errno 104]` → hairpin NAT issue. Switch to direct container name routing.
-
-## Incident Log
-
-> [!NOTE]
-> Append new entries below using the template. Most recent entries go last.
-> **Tip:** You should use the helper script `uv run python skills/stack-knowledge/manager/append_incident.py` to interactively append your log accurately without mangling previous entries.
-> Every entry must include: date, scenario, hypothesis, action taken, result, and learnings.
-
-### Template
-
-```markdown
-## YYYY-MM-DDTHH:MM — <Short Title>
-
-- **Scenario**: What was observed
-- **Hypothesis**: What was suspected
-- **Action**: What was done
-- **Result**: What actually happened (include whether the hypothesis was correct or wrong)
-
-**Learnings:**
-
-- Bullet-pointed takeaways that future agents should know
-```
-
-### 2026-04-10T12:38 — Changed litellm backend URLs to host.docker.internal
-
-- **Scenario**: OpenClaw agent sessions were failing. The litellm couldn't reach sparkrun model backends.
-- **Hypothesis**: sparkrun launches containers on host network, making them unreachable via Docker-internal DNS from the bridge-networked gateway. Using `host.docker.internal` would route through the host's port bindings.
-- **Action**: Changed `build_stack.py` to generate litellm config with `host.docker.internal:PORT` instead of container hostnames.
-- **Result**: Appeared to work initially. Chat completions returned 200 OK from the host. **Hypothesis was wrong** — the containers were actually on `proxy-tier` bridge, not host network.
-
-**Learnings:**
-
-- Did NOT verify connectivity from inside litellm container — only tested from host
-- Did NOT check what network mode sparkrun actually put the containers on
-- Assumed sparkrun uses host network based on previous session context, never verified
-
-### 2026-04-10T13:25 — Changed openclaw sandbox workspaceAccess to "rw"
-
-- **Scenario**: OpenClaw gateway logs showed `[tools] write failed: Sandbox path is read-only`
-- **Hypothesis**: `workspaceAccess: "none"` in openclaw.json was preventing sandbox containers from writing files
-- **Action**: Changed `workspaceAccess` from `"none"` to `"rw"`, restarted gateway, killed old sandbox containers
-- **Result**: New sandbox containers now mount `/workspace` with `RW: true`. **This was a real fix** but unrelated to the agent timeout.
-
-**Learnings:**
-
-- Sandbox containers (`openclaw-sbx-*`) use `networkMode: none` — completely isolated, no networking
-- The workspace access fix was correct but did not address the actual agent timeout issue
-
-### 2026-04-10T13:40 — Changed tools.exec.timeoutSec from 30 to 300
-
-- **Scenario**: Agent still stuck in `processing` state after sandbox fix
-- **Hypothesis**: The 30s exec timeout was killing tool calls mid-stream, which caused the LLM loop to break
-- **Action**: Bumped `tools.exec.timeoutSec` to 300 in openclaw.json
-- **Result**: **Wrong diagnosis.** The actual error in the logs was `LLM request failed: network connection error. rawError=Connection error.` — the gateway literally cannot reach the LLM backend. Shell timeouts are irrelevant.
-
-**Learnings:**
-
-- Read the actual error message before hypothesizing
-- `tools.exec.timeoutSec` controls sandbox shell command duration, not LLM request timeouts
-- The agent timeout was caused by the LLM backend being unreachable, not by tool execution limits
-
-### 2026-04-10T13:43 — Diagnosed actual connectivity failure
-
-- **Scenario**: litellm returns `InternalServerError: Connection error` when proxying to backends
-- **Hypothesis**: `host.docker.internal:8001` from inside litellm can't reach the sparkrun model container
-- **Action**: Systematic testing from inside litellm:
-  1. `host.docker.internal` resolves to `172.17.0.1` (docker0 bridge) — confirmed
-  1. `urllib.request.urlopen('http://host.docker.internal:8001/...')` → **ConnectionResetError [Errno 104]**
-  1. `urllib.request.urlopen('http://main_solo:8001/...')` → **ConnectionRefused [Errno 111]**
-  1. From host: `curl localhost:8001/v1/models` → **200 OK** (works through Docker port publishing)
-  1. Both `litellm` and `main_solo` are on `proxy-tier` network
-- **Result**: Docker hairpin NAT causes `ConnectionResetError`. Direct container name fails because vllm process inside `main_solo` crashed silently (`ValueError: KV cache too small`).
-
-**Learnings:**
-
-- `host.docker.internal` routing is fragile — it depends on Docker's hairpin NAT which can fail
-- When containers share a network (proxy-tier), use direct container names for routing
-- The vllm process crashed silently — the container stayed "running" because `sleep infinity` was the entrypoint, masking the actual failure
-- Always check `ss -tlnp` or equivalent inside the target container to verify the process is actually listening
-- The `update_services` script may have restarted containers with parameters that exceed available GPU memory
-
-### 2026-04-10 Retrospective — None of this was a networking problem
-
-- **Scenario**: Full retrospective of the debugging session
-- **Hypothesis**: N/A — retrospective analysis
-- **Action**: Reviewed entire debugging timeline
-- **Result**: The OpenClaw agent was timing out because **the vllm backend process crashed** (KV cache OOM). The container stayed "running" because sparkrun's entrypoint is `sleep infinity` with vllm as a background child process.
-
-**Learnings:**
-
-Every networking change made during this session was chasing a phantom:
-
-1. Changing backend URLs to `host.docker.internal` — unnecessary, containers share `proxy-tier`
-1. Changing sandbox `workspaceAccess` — real fix, but unrelated to the agent timeout
-1. Changing `tools.exec.timeoutSec` — wrong diagnosis entirely
-1. Investigating hairpin NAT — real phenomenon but not the cause; vllm wasn't listening
-
-**The diagnostic that should have been run first:**
-
-```bash
-docker exec main_solo tail -n 20 /tmp/sparkrun_serve.log
-```
-
-This would have immediately shown the crash. Instead, 45+ minutes were spent on networking hypotheses.
-
-## DONE — Correct Architecture (Fixed 2026-04-24)
-
-`build_stack.py` now generates **direct container names on proxy-tier** for `litellm-config.yaml`:
-
-```yaml
-# build_stack.py now generates:
-api_base: http://main_solo:8001/v1
-api_base: http://embedding_solo:8002/v1
-```
-
-This eliminates the Docker hairpin NAT issue entirely. Both containers are on proxy-tier and can reach each other directly.
-
-### 2026-04-12T13:50 — Integration Test Hard-Freeze on host.docker.internal
-
-- **Scenario**: The `pytest tests/e2e/` end-to-end integration test completely froze for 3 hours at "Loading host.docker.internal... 0%".
-- **Hypothesis**: The underlying `vllm` backend processes had crashed out of memory or failed to load tensor parallel blocks.
-- **Action**: Interrogated the native container loop using `docker exec main_solo tail -n 20 /tmp/sparkrun_serve.log` and revealed full health and hundreds of HTTP 200 polls over 3 hours. Then audited the `tests/e2e/utils.py` polling routine `get_active_services` to see why it could not read the 100% telemetry status.
-- **Result**: `get_active_services` scrapes `litellm-config.yaml` to derive container names via the URL. Because the stack uses `host.docker.internal` as the cross-platform proxy bypass, the integration tester literally passed the string `"host.docker.internal"` to the progress-manager dictionary lookup. The daemon obviously indexes targets by their exact container name (`main_solo`), locking the polling script into tracking a non-existent container forever. I hard-excluded `host.docker.internal` from being parsed as a fallback container string.
-
-**Learnings:**
-
-- Just because a downstream monitor says 0% readiness does not guarantee the upstream target is dead. Integration proxies parse keys strictly. The daemon correctly indexed `main_solo`, but tests queried `host.docker.internal`.
-- Always verify container health directly with `ps aux` and `tail` before assuming a workload fault.
-
-### 2026-04-15T18:30 — OpenClaw Sandbox Freeze vs DooD Path Crash
-
-- **Scenario**: Agents kept losing read/write access to their sandboxes. When `workspaceAccess` was manually hardcoded to `"rw"`, the agents suddenly crashed and timed out when evaluating tools.
-- **Hypothesis**: `setup.sh` defaults to generating `"workspaceAccess": "none"`. If restored to `"rw"`, the Gateway executes a Docker-out-of-Docker (DooD) mount explicitly. However, because `setup.sh` generates container-local path topologies (`/home/node/...`), the Host-side Docker daemon evaluates that path literally, finds it missing on the Host, and mounts empty, root-owned substitute directories. The Sandbox cannot see the Gateway's heartbeat files, causing silent session timeouts.
-- **Action**: Injected dual logic inside `update_openclaw.py`: (1) Explicitly lock `workspaceAccess: rw`; and (2) Recursively sweep the schema to rewrite `/home/node/` back to identical Host-absolute strings.
-- **Result**: The sandboxes launch flawlessly. The identical mappings successfully traverse the DooD boundary, delivering functional RW access to the agents.
-
-**Learnings:**
-
-- Any Docker-out-of-Docker implementation demands exact Host namespace consistency. Inner-container paths passed to a Docker socket will break catastrophically but silently on the other side.
-- Be careful with orchestrator default setups (like `setup.sh`). Do not fight them continually on every build; decouple them. For example, `update_openclaw.py` delegates `setup.sh` strictly to a manual `--run-setup [sandbox|standard]` mode, and surfaces the generated compose fragments to the repo root to prevent configuration overwrite loops.
-
-### 2026-04-16T08:50 — OpenClaw Sandbox Containers Lacking Internet Access
-
-- **Scenario**: OpenClaw sandbox containers were isolated from the internet by default, preventing agents from making external network requests or downloading tools.
-- **Hypothesis**: The default sandbox configuration inside `openclaw.json` (often injected by `setup.sh`) applies `"network": "none"` for maximum isolation. Switching it to `"bridge"` restores default Docker NAT routing to the internet.
-- **Action**: Modified `update_openclaw.py` to securely enforce `docker_conf["network"] = "bridge"` on deployment. After pushing the config, killed the old `openclaw-sbx-*` containers so OpenClaw reconstructs them from scratch.
-- **Result**: Agent sandboxes successfully attach to the `bridge` network upon recreation, instantly enabling persistent egress internet access natively.
-
-**Learnings:**
-
-- OpenClaw sandbox containers default to zero egress (`network: none`).
-- To adjust sandbox baseline properties persistently, map those properties firmly inside the `update_openclaw.py` injection process; direct host edits to `openclaw.json` are fragile because any explicit run of `setup.sh` (e.g., via `--run-setup`) will violently overwrite sandbox and network default settings.
-- Stale agent sandbox containers must be purged explicitly and completely (`docker rm -f`) so the gateway regenerates them with new network or volume policies upon next invocation.
-
-### 2026-04-17T17:50 — OpenClaw Split-Brain Session Persistence
-
-- **Scenario**: `openclaw doctor` continuously reported: "Multiple state directories detected. This can split session history. ~/.openclaw vs Active state dir: /path/to/host/.openclaw".
-- **Hypothesis**: Because the internal `openclaw-gateway` container executes natively as `node`, its fallback string for `~/.openclaw` implicitly targets `/home/node/.openclaw`. While major sandbox/log paths were successfully rewritten as Host-absolute to obey identical volume maps, implicit undocumented engine fallbacks (like `.cache` or `.db`) continue slipping into `/home/node/` which is not mapped externally.
-- **Action**: Modified `docker-compose.override.yml` to explicitly pass `OPENCLAW_STATE_DIR=${OPENCLAW_CONFIG_DIR}` into the gateway's environment payload, forcing the engine's hidden fallbacks onto the bound volume.
-- **Result**: Injecting `OPENCLAW_STATE_DIR` correctly silences the `openclaw doctor` warning and homogenizes all internal container write streams directly onto the explicit identically-bound Docker volume, preventing stateless deletion upon container rebuilds.
-
-**Learnings:**
-
-- Do not ignore split-brain directory diagnostics if one of the targets happens to fall completely outside persistent `volume:` block mount definitions.
-- For Dockerized OpenClaw instances running under the `node` user runtime, you should rely on explicitly bounding hidden engine fallbacks via `OPENCLAW_STATE_DIR`, rather than relying on `openclaw.json` property overrides alone.
-
-### 2026-04-18T03:35 — LiteLLM 500 Loop vs Host Process Collision
-
-- **Scenario**: LiteLLM proxy (litellm) was returning 500 Internal Server Error for `POST /model/new` and `POST /model/delete`. Logged error: `No DB Connected`. Simultaneously, OpenClaw gateway failed to inspect sandbox images due to missing Docker socket access.
-- **Hypothesis**: (1) Orphaned `litellm` and `autodiscover` processes on the host were attempting to register models with the containerized LiteLLM. Since the container lacks the virtual-keys database, it failed. (2) The gateway container lacked `/var/run/docker.sock` mount required for DooD sandbox management.
-- **Action**: (1) Terminated orphaned host processes using `pkill -f litellm` and `pkill -f autodiscover`. (2) Modified `openclaw/docker-compose.yml` to mount `/var/run/docker.sock:/var/run/docker.sock`. (3) Verified gateway was on `proxy-tier` and binding to `lan`.
-- **Result**: LiteLLM 500 loop stopped immediately. Gateway successfully regained control over sandbox image inspection. Connectivity restored end-to-end via Cloudflare.
-
-**Learnings:**
-
-- Host-side "ghost" processes (orphaned litellm/autodiscover) can collide with containerized model management APIs. Always check `ps aux | rg litellm` on the host if model registration fails with 500 errors.
-- Docker-out-of-Docker (DooD) configurations MUST have `/var/run/docker.sock` mounted if the containerized service (like OpenClaw Gateway) needs to inspect or create other containers on the host.
-- Verification receipts injected into Docker logs are a reliable "proof of life" for restoration tasks.
-
-### 2026-04-18T03:15 — DooD Paradox: Permission Denied Writing to Workspace
-
-- **Scenario**: Agents received "Permission denied writing to workspace" after switching to full tool profile. Investigation revealed the sandbox mounted an empty, root-owned directory at /workspace.
-- **Hypothesis**: The Gateway passed container-local paths (/home/node/...) to the host Docker daemon via the socket. The host daemon evaluated these against the host FS where they did not exist, leading to dummy mounts.
-- **Action**:
-  1. Updated `manager/update_openclaw.py` to robustly rewrite all internal `/home/node` and `~` paths in `openclaw.json` to identical host-absolute paths.
-  1. Verified the gateway has an Identical Volume Map for the state directory.
-  1. Purged stale `openclaw-sbx-*` containers to force recreation with correct binds.
-- **Result**: **Correct.** New sandboxes correctly mount the host workspace directory with RW permissions. Agents can now persist state.
-
-**Learnings**:
-
-- Even if a container image defaults to `/home/node`, the configuration *passed to Docker* for volume mounts must be Host-absolute to survive the DooD boundary.
-- Always purge old sandbox containers when changing volume or network policy; the gateway does not auto-update existing container HostConfigs.
-
-### 2026-04-18T03:30 — Zombie Tasks and Stuck Sessions
-
-- **Scenario**: Telegram agent stopped responding. Logs showed "stuck sessions" in `state=processing` and `status --deep` reported 5 active tasks, but `tasks list` showed no active work.
-- **Hypothesis**: The gateway crashed or was forcefully restarted, leaving "running" state markers in the SQLite task database (`/home/node/.openclaw/tasks/runs.sqlite`). These zombie markers blocked new requests in those sessions.
-- **Action**:
-  1. Restarted the gateway container to clear in-memory locks.
-  1. Manually updated the SQLite database from the host: `UPDATE task_runs SET status = 'failed', error = 'Zombie task detected...' WHERE status = 'running'`.
-  1. Verified `status --deep` now shows 0 active tasks.
-- **Result**: **Correct.** The agent immediately resumed processing Telegram messages.
-
-**Learnings**:
-
-- `status --deep` reads from the task database, which can contain stale "running" entries if the gateway did not shut down gracefully.
-- If an agent is not responding and logs mention "stuck sessions", check the task database for zombie runs.
-
-### 2026-04-18T13:20 — Dockerfile Optimizatons: Layer Bloat, Permissions, & Security
-
-- **Scenario**: The `Dockerfile.sandbox-custom` image build was suffering from slow duplicate apt-updates, `curl | bash` security risks, and permission denied errors for unprivileged users trying to run native `uv` tools.
-- **Hypothesis**: The Dockerfile had layered operations organically but inefficiently: (1) Multiple `apt-get update` blocks, (2) Global `ENV` variable hijacking for `uv`, and (3) Blind binary installations.
-- **Action**:
-  1. Consolidated all external Apt keyrings (GitHub, Docker, Google Cloud) into a small top layer, and crushed all subsequent packages into a **single** `apt-get update && apt-get install` command.
-  1. Changed `ENV UV_TOOL_DIR=/opt...` to an inline prefix `RUN UV_TOOL_DIR=/opt... uv tool install`.
-  1. Replaced `npm install -g bun` with `COPY --from=oven/bun:1 /usr/local/bin/bun /usr/local/bin/bun`.
-  1. Gutted `curl | bash` for Opencode and replaced it with an explicit Github Release asset extraction via `tar`.
-- **Result**: **Successful.** The container build time dropped drastically due to single apt cache layers. The `sandbox` user regained standard `$HOME/.local/` pathing for personal `uv` operations without triggering root permission denied errors, and two unverified web scripts were removed from root execution.
-
-**Learnings**:
-
-- **Apt-get Layering**: Never chain multiple `apt-get install` blocks separated by lines of config. Run a prerequisites layer (curl, gnupg), fetch your keys, and then execute a single unified `apt-get update && apt-get install` to optimize caching and shrink image bloat.
-- **Environment Hijacking**: Never globally export `ENV` paths intended only for a one-time build step. Polluting `ENV` persists to unprivileged users; inject those variables locally to the `RUN` command instead.
-- **Multi-Stage Trumps Package Managers**: Always use `COPY --from=image:tag` to inject binaries (like Node, Go, or Bun) rather than executing `npm install -g` or `apt-get`. It avoids enormous wrapper bloat and registry delays.
-- **No Blind Piped Execution**: Never use `curl https://... | bash` in a Dockerfile. Find the exact asset URL (e.g., `tar.gz`) from the GitHub release API and extract the binary securely.
-
-### 2026-04-18T18:25 — LLM request failed: network connection error (ConnectionResetError via Litellm)
-
-- **Scenario**: Agents failed to run models via the Litellm proxy. OpenClaw logged `LLM request failed: network connection error. rawError=500 litellm.InternalServerError: InternalServerError: OpenAIException - Connection error..`.
-- **Hypothesis**: The litellm gateway (litellm) was sending requests to the `sparkrun` proxy containers (`main_solo` and `embedding_solo`) using `http://host.docker.internal:PORT`, violating the container-direct communication rule and invoking Docker's hairpin NAT. This led to intermittent ConnectionResetErrors.
-- **Action**: Modified `litellm-config.yaml` to point `api_base` to the direct container network hostnames (`http://main_solo:8001/v1` and `http://embedding_solo:8002/v1`). Restarted `litellm` and `openclaw-gateway-1`.
-- **Result**: **Successful.** The hairpin NAT traversal was eliminated, and all OpenClaw requests now safely land on the model endpoints across the shared `proxy-tier` network.
-
-**Learnings**:
-
-- When setting up downstream configuration files (like `litellm-config.yaml`), NEVER use `host.docker.internal` if the target containers share a Docker network (e.g., `proxy-tier`).
-- Direct container names ensure robust, DNS-native service discovery and bypass the host network stack, eliminating the risk of unexplainable 500 reset errors.
-
-### 2026-04-18T19:44 — Lost Agent Write Access via Pydantic Validator Removal
-
-- **Scenario**: Agents received "Permission denied writing to workspace" errors in their sandboxes.
-- **Hypothesis**: The removal of Pydantic schema validation inside `update_openclaw.py` unintentionally removed the logic that consistently rewrites internal `/home/node/` and `~` paths to absolute Host-paths before deploying `.openclaw/openclaw.json`. Without that active rewriting logic, the configuration naturally preserved the string `~/.openclaw/workspaces/...`. Because the sandbox lifecycle executes inside the gateway container (which runs as user `node`), this resolved to `/home/node/...` natively. Upon passing this path through the Docker socket (DooD) for the sandbox mount, the host daemon found no `/home/node/` workspace and silently substituted an empty, root-owned directory, stripping agent write permissions.
-- **Action**: Performed a manual surgical text rewrite inside `~/.openclaw/openclaw.json` to hardcode absolute Host paths (replacing `"workspace": "~/.openclaw/..."` with `"workspace": "/absolute/path/to/host/.openclaw/..."`).
-- **Result**: **Successful**. Absolute host-side paths correctly bind against the host filesystem, restoring read/write privileges.
-
-**Learnings**:
-
-- Bypassing heavy validations allows surgical JSON edits but removes structural safety nets that might implicitly rewrite Docker volume paths into Host-absolute context.
-- When decoupling deployments from orchestrators, you MUST ensure that sandbox workspace binds inside `openclaw.json` strictly specify absolute host-side paths.
-- Avoid `~` syntax inside Docker bind configs because runtime evaluation ownership (`node` vs host user) will skew the expected execution path during Docker-out-of-Docker evaluation.
-
-### 2026-04-19T11:20 — Telegram 400 Error vs Qwen Protocol Mismatch
-
-- **Scenario**: Telegram agent returned "Something went wrong" for all requests. Logs showed 400 Bad Request from vLLM backend.
-- **Hypothesis**: The stack builder was hardcoding `thinkingFormat: qwen-chat-template` for all reasoning models. vLLM (running Gemma 4) rejected the Qwen-specific `chat_template_kwargs` parameter.
-- **Action**:
-  1. Updated `core/builders/litellm.py` to support explicit `thinking_format` overrides from recipes.
-  1. Modified Gemma and Nemotron recipes to explicitly set `thinking_format: openai`.
-  1. Implemented the "Zombie Protocol" in `update_services.py` to clear stuck tasks causing session locks.
-- **Result**: **Successful**. Gemma 4 now uses standard OpenAI protocols, and Telegram sessions are no longer blocked by zombie task markers.
-
-**Learnings**:
-
-- Protocol mismatches (sending Qwen params to Gemma) result in immediate 400 errors that block the entire session.
-- Always use explicit `thinking_format` in recipes for reasoning-enabled models to avoid builder-side guessing.
-- Session locks in messaging channels are often caused by "running" state markers in the SQLite task database surviving gateway crashes.
-
-### 2026-04-19T19:55 — Cloudflare Tunnel Crash vs Missing Environment
-
-- **Scenario**: The `cloudflared` container was stuck in a `Restarting (255)` loop. Logs reported: `"cloudflared tunnel run" requires the ID or name of the tunnel to run as the last command line argument or in the configuration file.`
-- **Hypothesis**: The container was started without the `CLOUDFLARE_TUNNEL_TOKEN` environment variable, likely due to running `docker compose` in the `services/cloudflare/` directory without specifying the root `.env` file where the token is defined.
-- **Action**: Restarted the container using the helper script `services/cloudflare/tunnel.sh up -d --force-recreate`, which explicitly passes the parent `.env` file to the docker compose command.
-- **Result**: **Successful.** The container successfully received the token, authenticated with Cloudflare, and established the tunnel connections.
-
-**Learnings:**
-
-- Always use the provided helper scripts (like `tunnel.sh`) when they exist, as they often handle complex environment or path mappings required for the stack.
-- Verify container environment variables using `docker inspect <container> --format '{{range .Config.Env}}{{println .}}{{end}}'` to confirm that secrets and tokens are actually being injected.
-- A `Restarting (255)` loop with usage errors in the logs is a strong indicator of missing configuration or credentials.
-
-### 2026-04-20T03:50 — Traces Broken via Tempo Localhost Bind
-
-- **Scenario**: Traces were not appearing in Grafana. OpenClaw logs showed OTel was enabled, but Tempo reported 0 spans received.
-- **Hypothesis**: Tempo's OTLP receivers were binding to `localhost` inside the container, making them unreachable from the `openclaw-gateway` container even though they shared the `proxy-tier` network.
-- **Action**: Modified `services/monitoring/tempo.yaml` to explicitly bind OTLP HTTP and gRPC receivers to `0.0.0.0`.
-- **Result**: **Successful**. Connectivity verified via `curl` from the gateway, and `spans_received_total` metrics began incrementing. Traces are now visible in Grafana.
-
-**Learnings:**
-
-- "Default" bindings in observability tools often target `localhost` for security, which is a "dead end" in multi-container Docker bridge networking.
-- Always verify connectivity using a tool inside the *source* container (e.g., `docker exec gateway curl ...`) rather than assuming shared network membership is sufficient.
-- Check `tempo_distributor_spans_received_total` in Tempo's `/metrics` endpoint to confirm if the issue is ingestion (network/bind) or storage/query.
-
-### 2026-04-20T04:15 — Tempo Trace Disappearance via 1h Retention
-
-- **Scenario**: Traces were visible in Tempo initially but disappeared within an hour, making it difficult to debug intermittent agent failures.
-- **Hypothesis**: The default `block_retention` in `services/monitoring/tempo.yaml` was set to `1h`, which is too aggressive for human debugging workflows.
-- **Action**: Increased `block_retention` to `24h` in `services/monitoring/tempo.yaml`.
-- **Result**: **Successful**. Traces now persist for a full day, allowing for retrospective analysis of agent behavior.
-
-**Learnings:**
-
-- Observability storage parameters must balance disk usage against the expected investigation window. A 1h window is only suitable for real-time dashboards, not retrospective debugging.
-- Always check the `compactor` section in Tempo config for retention policies.
-
-______________________________________________________________________
-
-### 2026-04-19T23:41 — Restarted litellm without VLLM_PORT context
-
-- **Scenario**: Restarting litellm after enabling OTEL tracing via \`docker compose up\` resulted in the gateway binding to a random port instead of 4000.
-- **Hypothesis**: The VLLM_PORT environment variable was missing because \`docker compose\` in the spark-stack-registry/stacks/... directory does not natively traverse upwards to find the repository root \`.env\` file.
-- **Action**: Recreated container using \`docker compose --env-file ../../.env up -d gateway\`, adhering to the standard \`launch.sh\` behavior.
-- **Result**: Gateway properly inherited the mapping to host port 4000.
-
-**Learnings:**
-
-- Always run \`docker compose\` with \`--env-file ../../.env\` when operating manually inside the active \`spark-stack-registry/stacks/current\` directory to guarantee port bindings map correctly.
-
-### 2026-04-24T07:10 — Dashboard Telemetry Freeze vs Ephemeral Metrics
-
-- **Scenario**: The "SparkRun Cluster Provisioning" Grafana panel was stuck at 66.7% permanently, and other panels exhibited text clipping.
-- **Hypothesis**: The dashboard queried `vllm_vllm_sparkrun_deploy_progress`, which is an ephemeral metric emitted via StatsD by the `sparkrun` CLI only during the provisioning phase. Once the CLI exits, the metric goes stale but Prometheus retains the last value. Additionally, `stat` panels with `graphMode: area` and small heights (`h=3`) clip the text.
-- **Action**:
-  1. Updated dashboard JSONs to use `avg(vllm_model_load_progress) or max(vllm_vllm_sparkrun_deploy_progress)` so it prioritizes the live metric.
-  1. Increased panel heights to `h=4` and disabled sparklines (`graphMode: "none"`) for deployment progress panels.
-- **Result**: **Successful.** Dashboards now correctly show 100% when models are fully loaded, and no text is clipped.
-
-**Learnings:**
-
-- **Monitoring:** Do not rely on ephemeral CLI-emitted metrics for long-lived dashboard status panels without providing a fallback to a persistent metric. *(Update: Fixed by setting `flush_period_secs: 60` in the Vector `prometheus_exporter` sink so that stale CLI metrics time out automatically, adhering to the original design proposal.)*
-- **Grafana Layouts:** `stat` panels displaying percentages require `h >= 4` to prevent clipping, and should avoid `graphMode: area` (sparklines) if historical tracking is not relevant to the displayed value.
-
-### 2026-04-24T07:33 — Hairpin NAT Resolution via Container Names
-
-- **Scenario**: The LiteLLM gateway (`litellm`) was failing to route traffic to the vLLM backends, resulting in `ConnectionResetError`s.
-- **Hypothesis**: `manager/build_stack.py` was generating `api_base: http://host.docker.internal:8001/v1` for the LiteLLM config, triggering Docker's hairpin NAT limitations on Linux.
-- **Action**: Modified `build_stack.py` to use direct container names (`http://main_solo:8001/v1`) since both containers share the `proxy-tier` Docker network.
-- **Result**: **Successful.** Gateway reliably routes to the backends with no connection resets.
-
-**Learnings:**
-
-- **Routing:** Always use direct container hostnames when orchestrating services that reside on the same custom Docker network (e.g., `proxy-tier`). *(Update: Added CI test in `test_proxy_integrity.py` to explicitly assert that generated configs never fall back to `host.docker.internal`.)*
-- **Code Gen:** Configuration generators (`build_stack.py`) must respect the network topology and not default to `host.docker.internal` for internal-only traffic.
-
-### 2026-04-24T08:15 — Tool Parser Whitelist Conflict (nemotron_json vs qwen3_coder)
-
-- **Scenario**: E2E verification failed on tool calling tests because the vLLM engine rejected the `nemotron_json` parser.
-- **Hypothesis**: vLLM has a strict, hardcoded whitelist in `validate_api_server_args` for valid tool parsers. `nemotron_json` was not supported in the active vLLM version.
-- **Action**: Updated `nemotron-3-super-nvfp4-vllm.yaml` recipe to use `qwen3_coder` parser instead.
-- **Result**: **Successful.** Tool calling tests passed flawlessly.
-
-**Learnings:**
-
-- **Validation:** Tool parser configurations in registry recipes must align with the target vLLM container's specific whitelist. *(Update: Implemented static whitelist validation feature directly in `build_stack.py` to prevent orchestrating containers with invalid parsers.)*
-- **Tooling:** Future iterations of `sparkrun` or the stack builder should statically validate the parser argument against the container's known whitelist before attempting deployment.
-
-### 2026-04-26T08:30 — OpenClaw "Incomplete Turn" vs Reasoning Parsers
-
-- **Scenario**: Agents consistently failed with "⚠️ Agent couldn't generate a response" and OpenClaw logs reported "incomplete turn detected: ... payloads=0".
-- **Hypothesis**: Reasoning-enabled models (like Cascade2/Nemotron) put 100% of their output into the `reasoning_content` field, leaving the OpenAI `content` field empty. OpenClaw's safety layer rejects zero-payload (empty content) turns as failures.
-- **Action**:
-  1. Disabled reasoning in `openclaw.json` as a temporary stability fix.
-  1. Research revealed that vLLM's native `nemotron_v3` parser isolates thinking from the answer.
-  1. Switched the Cascade2 recipe to use the custom `super_v3_reasoning_parser.py` plugin which moves reasoning to content if the answer is empty.
-  1. Enabled `force_nonempty_content: true` in LiteLLM/vLLM overrides.
-- **Result**: **Successful**. The agent now provides a valid text payload (containing the thought process) that satisfies OpenClaw's validation, preventing the crash while preserving model intelligence.
-
-**Learnings:**
-
-- **OpenClaw Safety**: OpenClaw requires at least one payload (text/tool) in the `content` bucket. Pure reasoning responses are treated as "incomplete."
-- **Hybrid Parsers**: Use the `super_v3` parser for Nemotron/Cascade2 models to ensure the reasoning trace is duplicated or moved into the content field when the model hasn't produced a final answer yet.
-- **Configuration Precedence**: Model-specific `reasoning: true/false` in `openclaw.json` must match the backend's parser capabilities to avoid schema-driven recovery loops.
-
-### 2026-04-26T09:35 — Tool Call Leakage and qwen3_xml Parser Transition
-
-- **Scenario**: XML-style function calls (`<function=exec>...</function>`) were leaking into the chat output instead of being intercepted. Additionally, the `litellm` was crash-looping with `Is a directory: '/app/config.yaml'`, causing sporadic 500 network connection errors in OpenClaw.
-- **Hypothesis**: The `qwen3_coder` tool parser and the legacy `super_v3` parser do not correctly intercept `<function>` tags generated by Cascade-2-30B. Furthermore, the gateway volume mount was mapped to a directory rather than the generated `litellm-config.yaml`.
-- **Action**:
-  1. Updated `cascade2-30b-nvfp4-vllm.yaml` to use `--tool-call-parser qwen3_xml` and `--reasoning-parser nemotron_v3`.
-  1. Whitelisted `qwen3_xml` in `manager/build_stack.py`.
-  1. Corrected `compose-litellm.yaml` volume mount from `litellm-settings.yaml` to `litellm-config.yaml`.
-- **Result**: **Successful**. The `qwen3_xml` parser correctly intercepts the XML tool calls and converts them to OpenAI tool formats. The gateway configuration is fixed, and E2E tool calling tests pass successfully.
-
-**Learnings:**
-
-- **Parser Matching**: You must match the tool call parser to the exact format the model outputs. For models generating `<function>` XML tags, `qwen3_xml` is the correct parser.
-- **Gateway Hygiene**: Ensure `docker-compose` volume mounts point to explicit files, not directories, when replacing configuration files, to prevent `Is a directory` errors.
-
-### 2026-04-26T10:05 — OpenClaw payloads=0 vs Reasoning Content Split
-
-- **Scenario**: OpenClaw agents consistently failed with "⚠️ Agent couldn't generate a response" and logs showed `incomplete turn detected... stopReason=stop payloads=0`. Direct LiteLLM API calls returned `content: null` with all output in `reasoning_content`.
-- **Hypothesis**: When `reasoning: true` is set in `openclaw.json`, OpenClaw sends requests in reasoning mode. The vLLM backend (Cascade-2 with `nemotron_v3` reasoning parser) separates thinking from the answer into `reasoning_content` and `content` fields. When the model's internal reasoning consumes all tokens or the model finishes reasoning without producing a final answer, `content` remains `null`. OpenClaw's payload validator requires at least one non-empty text payload and rejects the response.
-- **Action**:
-  1. Added `merge_reasoning_content_in_choices: true` to `services/litellm/litellm-settings.yaml` so LiteLLM merges reasoning into content as a fallback.
-  1. Patched `~/.openclaw/openclaw.json` to set `reasoning: false` and remove `thinkingFormat` for the main model.
-  1. Updated `manager/build_stack.py` to **never** set `model_info["reasoning"] = True` for the OpenClaw model config, even when a reasoning parser is detected. `supports_reasoning` is still set in the LiteLLM model_info.
-- **Result**: **Successful**. The model now returns non-empty `content` in all responses. Tool calling test passes. Consumer readiness test returns content (no more payloads=0).
-
-**Learnings:**
-
-- **OpenClaw reasoning flag**: `reasoning: true` in `openclaw.json` tells OpenClaw to *request* reasoning mode from the LLM, which causes the response to split into `reasoning_content` + `content`. OpenClaw then validates that `content` is non-empty. If the model doesn't produce a final answer (only thinking), `content` stays null and OpenClaw crashes with `payloads=0`.
-- **Separation of concerns**: The `supports_reasoning` flag in LiteLLM model_info tells LiteLLM the model *can* reason. The `reasoning` flag in OpenClaw model config tells OpenClaw to *use* reasoning mode. These are independent — you can have a reasoning-capable model without requesting reasoning mode.
-- **merge_reasoning_content_in_choices**: This LiteLLM setting ensures that when `content` is empty, reasoning output gets merged into the content field as a safety net. Always enable it for reasoning-capable models.
-- **Build system invariant**: The build system must NEVER auto-set `reasoning: true` for OpenClaw model configs based on parser detection. This was the root cause of the regression loop.
-
-### 2026-04-28T17:35 — Restored Native Reasoning Content Passthrough
-
-- **Scenario**: We previously enabled `merge_reasoning_content_in_choices: true` in LiteLLM to polyfill reasoning output into standard content, suppressing OpenClaw's `reasoning: true` capability to avoid `payloads=0` errors.
-- **Hypothesis**: Since all downstream clients (including OpenClaw) explicitly support parsing the native `reasoning_content` field from OpenAI-compatible streams, the polyfill is redundant and masks the native model capabilities from the clients.
-- **Action**:
-  1. Removed `merge_reasoning_content_in_choices: true` from LiteLLM configurations globally and from individual model recipes.
-  1. Reverted `manager/build_stack.py` to correctly map `reasoning: true` (for non-embedding models) so OpenClaw explicitly expects and handles the `reasoning_content` stream.
-  1. Synced configurations and restarted LiteLLM and OpenClaw Gateway.
-- **Result**: **Successful**. OpenClaw now natively parses the `reasoning_content` stream directly from the vLLM backend, rather than relying on LiteLLM to merge it into the text block.
-
-**Learnings:**
-
-- **Client Capabilities**: If downstream clients universally support `reasoning_content`, avoid using `merge_reasoning_content_in_choices` in LiteLLM. It is better to let clients parse the reasoning tokens natively.
-- **OpenClaw Support**: OpenClaw handles empty `content` payloads correctly as long as it is explicitly configured with `reasoning: true` and receives a valid `reasoning_content` delta stream.
-
-### 2026-04-29T11:45 — OpenClaw "stopReason=length payloads=0" on Reasoning Models
-
-- **Scenario**: End-to-end tests for long conversations were consistently failing at message 16 with "Agent couldn't generate a response." The `openclaw-gateway` logs showed `incomplete turn detected: runId=... stopReason=length payloads=0 — surfacing error to user`.
-- **Hypothesis**: The `nemotron-super` reasoning model hit the `maxTokens` limit configured in `openclaw.json` (16,384) while outputting extensive reasoning traces, before it could generate a final text payload. OpenClaw aborted the generation with `stopReason=length` and discarded the empty output.
-- **Action**: Used `openclaw config unset models.providers.spark.models[0].maxTokens` to completely remove the artificial token cap. Restarted the `openclaw-gateway` to allow it to inherit dynamic token limits entirely from LiteLLM and vLLM without pre-emptive truncation.
-- **Result**: **Successful**. OpenClaw now permits reasoning models to stream massive contexts indefinitely until they legitimately finish thinking, rather than terminating early with `stopReason=length`.
-
-**Learnings:**
-
-- **Reasoning Overhead:** Reasoning models generate tens of thousands of hidden tokens before producing `content`. Setting a static `maxTokens` ceiling in OpenClaw guarantees that these models will hit artificial cut-offs on long chats.
-- **Default behavior:** Omitting `maxTokens` in `openclaw.json` forces the gateway to defer to the underlying hardware context-window caps negotiated by LiteLLM/vLLM, allowing uninterrupted "thinking".
-
-______________________________________________________________________
-
-### 2026-04-29T14:19 — OpenClaw Gateway 16-Token Default Fallback
-
-- **Scenario**: The NVFP4 model randomly truncated reasoning blocks mid-thought, causing `payloads=0` and `stopReason=stop` errors in the E2E tests.
-- **Hypothesis**: Deleting `maxTokens` from the `openclaw.json` model configuration removes artificial constraints, allowing reasoning models to utilize their full context window.
-- **Action**: Completely removed static `maxTokens` configurations in `sync_registry.py` and `apigateway.py` based on an incorrect assumption.
-- **Result**: Removing `maxTokens` caused LiteLLM to fall back to the OpenAI default limit of 16 tokens. This choked reasoning and led to blank payloads being returned to OpenClaw.
-
-**Learnings:**
-
-- Never completely delete `maxTokens` configuration for OpenAI-completions APIs in OpenClaw/LiteLLM. Doing so defaults to a 16-token completion limit, causing silent truncation.
-- Instead of deleting it, dynamically calculate and explicitly set `maxTokens` to the model boundary (e.g., 16384 for a 262k context window).
-
-### 2026-04-29T14:55 — Orchestrator Startup Race Condition
-
-- **Scenario**: The `vllm-progress-manager` failed to start in time, causing `manager/update_services.py` to hit 15 RequestError exceptions and abort the entire deployment.
-- **Hypothesis**: The orchestrator's `MonitoringService` completed immediately after executing `docker compose up -d`, allowing downstream sequential steps to begin pinging the progress manager before its Python runtime was fully listening on port 8126.
-- **Action**: Wired up a `ServiceHealthManager("vllm-progress-manager")` with an `HttpProbe` for `http://localhost:8126/status` to explicitly block orchestration until the telemetry stack reports healthy.
-- **Result**: Orchestrator now correctly waits for monitoring to boot before proceeding.
-
-**Learnings:**
-
-- Never assume a container is ready just because `docker compose up -d` returned successfully. Always use explicit health probes (`ServiceHealthManager`) to block orchestration steps that depend on the service being alive.
-
-### 2026-04-29T14:57 — Orchestrator Suicide via pkill
-
-- **Scenario**: The orchestrator used aggressive host-based commands (`pkill -9 -f "VLLM|sparkrun|vllm"`) to implement a "Zombie Protocol" for cleaning up stuck models.
-- **Hypothesis**: Running host-based `pkill` commands with broad regexes from an orchestrator script is highly dangerous. If the orchestration repository path or test script contains the keyword "sparkrun", the orchestrator will instantly kill itself.
-- **Action**: Removed the `pkill` command and replaced it with native Docker container lifecycle management (`docker rm -f ...` and `--remove-orphans`).
-- **Result**: Zombie models are cleaned up safely without risking host-process collateral damage.
-
-**Learnings:**
-
-- Never use global host-level process termination (`pkill`) inside orchestration scripts. Rely exclusively on native container namespace management (`docker rm -f`).
-
-### 2026-04-29T14:58 — Gateway Hairpin NAT Crash (host.docker.internal)
-
-- **Scenario**: The API Gateway was configured with `extra_hosts: host.docker.internal:host-gateway` to communicate with backends.
-- **Hypothesis**: Using `host.docker.internal` triggers Docker hairpin NAT, which can cause `ConnectionResetError`s during heavy traffic.
-- **Action**: Removed `extra_hosts: host.docker.internal:host-gateway` from `core/handlers/gateway.py` so the gateway relies strictly on internal Docker DNS (`proxy-tier` network).
-- **Result**: Inter-container communication is normalized and robust.
-
-**Learnings:**
-
-- When containers share a network (e.g., `proxy-tier`), always route traffic using direct container names. Remove any configuration that injects or relies on `host.docker.internal`.
-
-### 2026-04-29T15:25 — Agent-Level models.json Drift Causing payloads=0
-
-- **Scenario**: `test_tool_calling` consistently failed with `incomplete turn detected: stopReason=stop payloads=0`. Direct LiteLLM API calls (`curl`) returned valid `content` + `reasoning_content`, proving the model was healthy.
-- **Hypothesis**: The verifier agent's response was empty because OpenClaw was sending requests without `maxTokens`, triggering the 16-token OpenAI default fallback documented in the `2026-04-29T14:19` incident.
-- **Action**:
-  1. Discovered that OpenClaw maintains per-agent `models.json` files at `~/.openclaw/agents/<name>/agent/models.json` that override the global `openclaw.json` config.
-  1. The verifier's local `models.json` had a spark/main model definition **without `maxTokens`**, while the global config (managed by `sync_registry.py`) correctly set `maxTokens: 32768`.
-  1. Deleted all agent-level `models.json` files so agents inherit from the global config.
-  1. Confirmed OpenClaw auto-regenerates these files on gateway restart — so deletion alone is not a durable fix.
-- **Result**: **Successful.** Test passes once the agent inherits the global `maxTokens` value. However, OpenClaw will regenerate agent-level configs on restart, re-introducing drift if `sync_registry.py` doesn't also update them.
-
-**Learnings:**
-
-- **Agent-level config drift**: OpenClaw auto-generates `~/.openclaw/agents/<name>/agent/models.json` files that override global `openclaw.json` model definitions. `sync_registry.py` only writes to the global config and never touches these files, creating a silent drift vector.
-- **The 16-token fallback is contagious**: Even if the global config correctly sets `maxTokens`, any agent-level override missing the field will revert to the 16-token default for that specific agent.
-- **Durable fix required**: `sync_registry.py` must be extended to also sync `maxTokens` (and other critical fields) into all agent-level `models.json` files, or the agent configs must be managed to not override model provider definitions.
-- **Always check agent-level configs**: When debugging `payloads=0` for a specific agent, check `~/.openclaw/agents/<agent>/agent/models.json` first — the global config may be correct while the agent override is stale.
-
-### 2026-05-01T10:05 — vLLM V1 Engine OOM Killed due to max_model_len Override
-
-- **Scenario**: The `main_solo` container (`NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4`) was silently crashing immediately upon startup, returning `OOMKilled: true` via Docker, despite having plenty of VRAM capacity.
-- **Hypothesis**: The host Linux kernel was executing an OOM Kill against the Ray worker. The vLLM V1 Engine (which relies on compiled Ray DAGs) was allocating massive shared memory (`/dev/shm`) and CPU swap space because the orchestrator injected an aggressive `max_model_len: '262144'` override.
-- **Action**:
-  1. Restored `VLLM_V1: '1'` to ensure we correctly use the V1 engine for CUTLASS/NVFP4 optimizations.
-  1. Deleted the `max_model_len: '262144'` override in `stack.yaml`, allowing it to fall back to the recipe's default of `131072` (128K context length).
-- **Result**: **Successful**. The Ray DAG successfully compiled the routing matrix without blowing past the 120GB system RAM limit, and the container loaded weights seamlessly.
-
-**Learnings:**
-
-- **vLLM V1 Ray DAGs**: The V1 architecture is exceptionally memory-hungry on the CPU side during DAG compilation. Context window sizes (`max_model_len`) exponentially scale system RAM requirements due to chunked prefill buffers and DAG node allocations.
-- **VRAM vs System RAM**: OOM kills during the `Resolving architecture` phase are almost always caused by physical Host RAM exhaustion, not GPU VRAM. Ensure `max_model_len` aligns with available system memory when using vLLM V1.
-
-### Rule 7: Sync All Configuration Layers
+### Rule 5: Sync All Configuration Layers
 
 > **When updating model configuration, sync ALL layers — not just the global config.**
 
 OpenClaw resolves model settings with agent-level overrides taking precedence over global defaults. If `sync_registry.py` updates `openclaw.json` but leaves agent-level `models.json` files stale, agents will silently use outdated settings. This is especially dangerous for `maxTokens`, where a missing value triggers a 16-token default that truncates reasoning models.
+
+## Common Gotchas & Silent Failures
+
+This is a distilled list of commonly encountered issues and silent failures extracted from the incident log. Keep these in mind when debugging or modifying the Spark Stack infrastructure:
+
+### 1. Networking & Connectivity
+- **Avoid `host.docker.internal` on Shared Networks:** If containers share a Docker network (e.g., `proxy-tier`), ALWAYS route traffic using direct container hostnames (e.g., `main_solo:8001`). Using `host.docker.internal` forces traffic through Docker's hairpin NAT, which frequently fails with `ConnectionResetError`s.
+- **Verify the Process Before the Network:** A container showing as "running" does not mean the service inside is alive. If `vllm` crashes but the container entrypoint is `sleep infinity`, the container stays up. Always run `docker exec <container> ss -tlnp` and check logs (`tail /tmp/sparkrun_serve.log`) before assuming a network issue.
+- **Never Bind-Mount `/etc/resolv.conf`:** Mounting the host's `resolv.conf` into a container overwrites Docker's embedded DNS server (`127.0.0.11`), blinding the container to internal service discovery.
+
+### 2. Docker-Out-Of-Docker (DooD) Paths
+- **Identical Volume Maps are Required:** When OpenClaw or an orchestrator container mounts `/var/run/docker.sock` to manage other containers (sandboxes), it passes path bindings to the host Docker daemon. If you pass container-local paths (like `/home/node/...`), the host daemon won't find them and will silently mount empty, root-owned directories. **Always rewrite internal configurations to use absolute Host paths.**
+- **Purge Stale Sandboxes:** If you change volume or network policies, you must explicitly purge old sandbox containers (`docker rm -f openclaw-sbx-*`). The gateway does not automatically update existing container `HostConfigs`.
+- **Sandbox Secret Resolution (Embedded Agent Crashing):** When you configure a skill to use an `env` SecretRef (e.g., `{"source": "env", "id": "GOPLACES_API_KEY"}`), the OpenClaw Secret Manager will attempt to resolve it from the local environment. Because the agent executes inside an isolated *sandbox container*, not the main gateway, an `unresolved SecretRef "env:default:GOPLACES_API_KEY"` error means the environment variable is missing *from the sandbox's environment*. You must explicitly inject these keys into `agents.defaults.sandbox.docker.env` within `openclaw.json` so the sandboxed agent's Secret Manager can successfully resolve the reference.
+
+### 3. Configuration Drift & Agent State
+- **Sync All Configuration Layers:** OpenClaw maintains agent-specific `models.json` overrides (e.g., `~/.openclaw/agents/<name>/agent/models.json`) which take precedence over the global `openclaw.json`. Modifying the global config without updating the agent overrides leads to silent configuration drift.
+- **The 16-Token Fallback Trap:** **Never completely delete `maxTokens`** for OpenAI-compatible completions. Omitting it causes LiteLLM to fall back to the default OpenAI limit of 16 tokens, which silently truncates responses (especially for reasoning models). Always explicitly calculate and set `maxTokens`.
+
+### 4. Reasoning Models & `payloads=0` Errors
+- **OpenClaw Requires Text Payloads:** OpenClaw's safety layer rejects turns with zero text payload (`payloads=0`). If a reasoning model spends all its context on "thinking" (`reasoning_content`) and outputs an empty `content` field, OpenClaw will crash the turn with `stopReason=stop payloads=0` or `stopReason=length payloads=0`.
+- **Match Reasoning Configurations:** Do not arbitrarily set `reasoning: true` in `openclaw.json` unless the backend's tool parser and model are specifically configured to stream `reasoning_content` natively.
+- **Don't Constrain Context:** Give reasoning models massive context windows (`maxTokens`). Setting a low ceiling guarantees they will hit artificial cutoffs during extensive reasoning traces.
+
+### 5. Memory & vLLM Resource Exhaustion
+- **System RAM vs. VRAM OOMs:** OOM kills during the "Resolving architecture" phase with the vLLM V1 engine are usually caused by **Host system RAM** exhaustion, not GPU VRAM. The V1 Ray DAG compilation requires massive CPU memory. 
+- **Watch `max_model_len`:** Context window sizes exponentially scale system RAM requirements. Never assume remote registry recipes have safe default limits for your hardware. If a recipe defaults to `262144`, and you only have 120GB of system RAM, you must explicitly override `max_model_len` (e.g., `131072`) in your `stack.yaml`.
+
+### 6. Zombie Tasks & Locked Sessions
+- **SQLite Task Database Locks:** If an agent completely stops responding to messages, check for "zombie" tasks. If the gateway crashes hard, it can leave `running` state markers in the SQLite task database (`/home/node/.openclaw/tasks/runs.sqlite`), which permanently blocks future requests for that session.
+- **Orphaned Host Processes:** If you encounter 500 errors regarding model APIs, check the host machine for orphaned `litellm` processes (`ps aux | rg litellm`) that might be colliding with containerized routing tables.
+
+## Incident Log
+
+The incident log has grown too large and has been moved to a separate file. Please see [INCIDENT_LOG.md](./INCIDENT_LOG.md) for all historical incidents, and continue to append new entries there.

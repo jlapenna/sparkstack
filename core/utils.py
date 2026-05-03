@@ -59,7 +59,11 @@ class CommandResult:
 
 
 def parse_cli_json(stdout: str) -> dict[str, Any] | list[Any]:
-    """Robustly extract and parse a JSON object or array from CLI stdout (ignoring preambles/warnings)."""
+    """Robustly extract and parse a JSON object or array from CLI stdout (ignoring preambles/warnings).
+
+    When multiple JSON objects are present the envelope (containing a ``status``
+    key) is preferred over trailing diagnostic blobs.
+    """
     decoder = json.JSONDecoder()
 
     start_idx = -1
@@ -71,26 +75,37 @@ def parse_cli_json(stdout: str) -> dict[str, Any] | list[Any]:
     if start_idx == -1:
         raise ValueError("Could not find a JSON object or array in the command output.")
 
-    last_error = None
-    while start_idx != -1:
+    all_parsed: list[dict[str, Any] | list[Any]] = []
+    scan_idx = start_idx
+    while scan_idx != -1:
         try:
-            parsed, parsed_len = decoder.raw_decode(stdout[start_idx:])
-
-            if stdout[:start_idx].strip() or stdout[start_idx + parsed_len:].strip():
-                logger.warning(
-                    "parse_cli_json encountered non-JSON text in output where only JSON was expected."
-                )
-            return parsed
-        except json.JSONDecodeError as e:
-            last_error = e
-            next_idx = -1
-            for i, char in enumerate(stdout[start_idx + 1:], start=start_idx + 1):
+            parsed, parsed_len = decoder.raw_decode(stdout[scan_idx:])
+            all_parsed.append(parsed)
+            # Advance past parsed content to look for more JSON objects
+            next_start = -1
+            remainder = stdout[scan_idx + parsed_len :]
+            for i, char in enumerate(remainder):
                 if char in ("{", "["):
-                    next_idx = i
+                    next_start = scan_idx + parsed_len + i
                     break
-            start_idx = next_idx
+            scan_idx = next_start
+        except json.JSONDecodeError:
+            next_start = -1
+            for i, char in enumerate(stdout[scan_idx + 1 :], start=scan_idx + 1):
+                if char in ("{", "["):
+                    next_start = i
+                    break
+            scan_idx = next_start
 
-    raise ValueError(f"Found JSON-like structure but failed to parse: {last_error}")
+    if not all_parsed:
+        raise ValueError("Found JSON-like structure but failed to parse any valid objects.")
+
+    # Prefer the envelope (dict with 'status' key) over diagnostic blobs.
+    for obj in all_parsed:
+        if isinstance(obj, dict) and "status" in obj:
+            return obj
+
+    return all_parsed[0]
 
 
 async def async_run_command(
@@ -333,7 +348,9 @@ class ServiceHealthManager:
         if probes is None:
             self.probes = [
                 DockerProbe(container_name),
-                SparkrunLogProbe(container_name) if "sparkrun" in container_name else LogProbe(container_name)
+                SparkrunLogProbe(container_name)
+                if "sparkrun" in container_name
+                else LogProbe(container_name),
             ]
         else:
             self.probes = probes
@@ -394,3 +411,31 @@ class ServiceHealthManager:
         except Exception as e:
             logger.error(f"Health check for {self.container} crashed unexpectedly: {e}")
             return False
+
+
+DEFAULT_CONTEXT_WINDOW = 32768
+DEFAULT_MAX_TOKENS = 32768
+
+
+def calculate_model_context_limits(
+    hardware_ctx: int, max_tokens_override: int | None, is_reasoning: bool
+) -> tuple[int, int]:
+    """
+    Calculate and enforce the safety margins for the model's max_tokens
+    and context_window, handling scaling for reasoning models.
+    Returns:
+        tuple[int, int]: (safe_frontend_ctx, calc_max)
+    """
+    safe_frontend_ctx = int(hardware_ctx * 0.85) if is_reasoning else hardware_ctx
+
+    # Prefer the value from configuration if it's already a sensible override
+    if max_tokens_override and max_tokens_override > 8192:
+        calc_max = max_tokens_override
+    else:
+        # Allocate 25% of context window for generation, bounded between 2k and 16k tokens
+        calc_max = min(16384, max(2048, hardware_ctx // 4))
+
+    # Sanity cap: maxTokens must never exceed the (possibly scaled) contextWindow.
+    calc_max = min(calc_max, safe_frontend_ctx)
+
+    return safe_frontend_ctx, calc_max

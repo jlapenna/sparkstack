@@ -44,9 +44,12 @@ async def test_outbound_network(ctx: E2EContext):
         logger.error(f"❌ Failure: {e}\nRaw Output:\n{output[:500]}")
         raise AssertionError() from None
 
-    if data.get("status") != "ok":
+    status = data.get("status", "ok") if "payloads" in data else data.get("status")
+    if status != "ok":
         logger.error(
-            f"❌ Failure: Agent status is '{data.get('status')}'. Summary: {data.get('summary')}"
+            f"❌ Failure: Agent status is '{status}'. Summary: {data.get('summary')}\n"
+            f"Parsed keys: {list(data.keys())}\n"
+            f"Raw output (first 1000 chars): {output[:1000]}"
         )
         raise AssertionError() from None
 

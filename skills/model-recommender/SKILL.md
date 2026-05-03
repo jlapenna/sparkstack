@@ -83,6 +83,7 @@ Even if a model is amazing on the internet, it still needs to run on the worksta
 ### 1. Mandatory Availability Check
 
 - **Rule**: You MUST explicitly verify that the model's physical weights are published and publicly downloadable (e.g., legitimately accessible on the HuggingFace Hub) before recommending it. Ensure you locate a valid `repo_id`. API-only models, closed-source stealth models, or vaporware must be disqualified immediately. You do not need to download the weights ahead of time during the recommendation phase, but you MUST establish that the files actually exist and are available for local invocation.
+- **Official & Popularity Preference**: When multiple repositories exist for the same model and quantization, you MUST default to the official repository (e.g., `nvidia/`, `google/`, `Qwen/`). If no official version exists, prioritize the repository with higher community trust and higher download counts, as reported by the `verify_hf_model.py` script.
 
 ### 2. Mandatory VRAM Profiling (STRICT)
 

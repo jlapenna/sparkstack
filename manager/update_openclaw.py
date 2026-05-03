@@ -181,7 +181,9 @@ class OpenClawUpdater:
             await asyncio.to_thread(shutil.rmtree, build_skills_dir)
 
         if SPARK_STACK_OPENCLAW_SKILLS_DIR.exists():
-            await asyncio.to_thread(shutil.copytree, SPARK_STACK_OPENCLAW_SKILLS_DIR, build_skills_dir)
+            await asyncio.to_thread(
+                shutil.copytree, SPARK_STACK_OPENCLAW_SKILLS_DIR, build_skills_dir
+            )
         else:
             await asyncio.to_thread(build_skills_dir.mkdir, parents=True, exist_ok=True)
 
@@ -202,6 +204,25 @@ class OpenClawUpdater:
 
     async def build_gateway_image(self) -> None:
         """Rebuild the customized gateway image with embedded ACP tools."""
+        # We MUST build openclaw:local first. The upstream docker-compose.yml
+        # defines `build: .` for the openclaw-gateway service. If we don't build this base
+        # image explicitly, our custom Dockerfile (which uses FROM openclaw:local) will
+        # fail to pull the latest source code updates.
+        logger.info("Building base OpenClaw image (openclaw:local)...")
+        await async_run_command(
+            [
+                "docker",
+                "build",
+                "-t",
+                "openclaw:local",
+                "-f",
+                "Dockerfile",
+                ".",
+            ],
+            cwd=self.settings.openclaw_dir,
+            stream_output=self.verbose,
+        )
+
         logger.info("Building custom OpenClaw Gateway image (openclaw-gateway-custom)...")
         await async_run_command(
             [
@@ -247,7 +268,12 @@ class OpenClawUpdater:
             if (self.settings.openclaw_dir / "docker-compose.sandbox.yml").exists():
                 cmd.extend(["-f", str(self.settings.openclaw_dir / "docker-compose.sandbox.yml")])
 
-        cmd.extend(["up", "-d", "--build", "--force-recreate", "openclaw-gateway"])
+        # DO NOT use the `--build` flag here!
+        # Because docker-compose.override.yml explicitly sets `image: openclaw-gateway-custom:latest`
+        # and the base docker-compose.yml sets `build: .`, passing `--build` will cause Compose to
+        # build the base directory (.) and erroneously tag it as our custom image name, completely
+        # overwriting the custom image we just built in `build_gateway_image()`.
+        cmd.extend(["up", "-d", "--force-recreate", "openclaw-gateway"])
 
         await async_run_command(
             cmd, cwd=self.settings.openclaw_dir, env=env, stream_output=self.verbose
@@ -380,6 +406,47 @@ class OpenClawUpdater:
         except Exception:
             logger.exception("Error during model verification")
 
+    async def run_doctor(self) -> None:
+        """Run 'openclaw doctor --fix' to auto-repair agent-level config drift.
+
+        This catches stale agent-level models.json files, split-brain state
+        directories, and other misconfigurations that accumulate between
+        deployments.  Without this, agent-level overrides silently go stale
+        and can trigger the 16-token maxTokens fallback.
+        """
+        logger.info("Running OpenClaw doctor --fix --non-interactive...")
+        try:
+            result = await async_run_command(
+                [
+                    "docker",
+                    "compose",
+                    "exec",
+                    "-T",
+                    "openclaw-gateway",
+                    "node",
+                    "dist/index.js",
+                    "doctor",
+                    "--fix",
+                    "--non-interactive",
+                ],
+                cwd=self.settings.openclaw_dir,
+                env=self._get_compose_env(),
+                check=False,
+            )
+            if result.returncode == 0:
+                logger.info("✅ OpenClaw doctor completed successfully.")
+            else:
+                logger.warning(
+                    f"OpenClaw doctor returned non-zero exit code {result.returncode}"
+                )
+                if result.stderr:
+                    logger.debug(f"Doctor stderr: {result.stderr}")
+            if result.stdout:
+                for line in result.stdout.strip().splitlines():
+                    logger.info(f"  doctor: {line}")
+        except Exception:
+            logger.exception("OpenClaw doctor failed")
+
     async def sync_local_skills(self) -> None:
         """Synchronize new or updated skills from upstream to the local skills directory."""
 
@@ -427,8 +494,11 @@ class OpenClawUpdater:
             yield ("Deploying", 80)
             await self.run_compose_up()
 
-            yield ("Verifying deployment", 95)
+            yield ("Verifying deployment", 90)
             await self.verify_deployment()
+
+            yield ("Running doctor", 95)
+            await self.run_doctor()
 
             logger.info("OpenClaw update completed successfully.")
             yield ("Complete", 100)
@@ -460,6 +530,7 @@ if __name__ == "__main__":
     updater = OpenClawUpdater(
         pull_latest=args.pull_latest, run_setup=args.run_setup, verbose=args.verbose
     )
+
     async def _cli_run():
         async for _ in updater.run_events():
             pass

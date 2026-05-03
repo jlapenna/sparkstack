@@ -8,6 +8,8 @@ from typing import Annotated, Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
+from core.utils import DEFAULT_CONTEXT_WINDOW, DEFAULT_MAX_TOKENS
+
 
 class ServiceStatus(Enum):
     WAITING = "waiting"
@@ -40,8 +42,8 @@ class OpenClawModelCompat(BaseSchema):
 class OpenClawModel(BaseSchema):
     id: str
     name: str
-    context_window: int = 32768
-    max_tokens: int = 32768
+    context_window: int = DEFAULT_CONTEXT_WINDOW
+    max_tokens: int = DEFAULT_MAX_TOKENS
     input: list[Literal["text", "image"]] = Field(default_factory=lambda: ["text"])
     reasoning: bool | None = None
     api: str = "openai-completions"

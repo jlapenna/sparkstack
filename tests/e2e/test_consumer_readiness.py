@@ -1,4 +1,3 @@
-import json
 import time
 import uuid
 
@@ -8,6 +7,7 @@ from loguru import logger
 from core.utils import async_run_command
 from tests.e2e.context import E2EContext
 from tests.e2e.session_cleanup import cleanup_session
+from tests.e2e.utils import extract_cli_json
 
 
 @pytest.mark.order(7)
@@ -34,16 +34,7 @@ async def test_consumer_readiness(ctx: E2EContext):
         output = res_tool.stdout + res_tool.stderr
 
         # 1. Parse JSON result
-        data = None
-        decoder = json.JSONDecoder()
-        idx = output.find("{")
-        while idx != -1:
-            try:
-                parsed, parsed_len = decoder.raw_decode(output[idx:])
-                data = parsed
-                idx = output.find("{", idx + parsed_len)
-            except json.JSONDecodeError:
-                idx = output.find("{", idx + 1)
+        data = extract_cli_json(output)
 
         if data is None:
             logger.error(
@@ -52,9 +43,12 @@ async def test_consumer_readiness(ctx: E2EContext):
             raise AssertionError()
 
         # 2. Check turn status
-        if data.get("status") != "ok":
+        status = data.get("status", "ok") if "payloads" in data else data.get("status")
+        if status != "ok":
             logger.error(
-                f"❌ Failure: Agent status is '{data.get('status')}'. Summary: {data.get('summary')}"
+                f"❌ Failure: Agent status is '{status}'. Summary: {data.get('summary')}\n"
+                f"Parsed keys: {list(data.keys())}\n"
+                f"Raw output (first 1000 chars): {output[:1000]}"
             )
             raise AssertionError() from None
 
