@@ -20,6 +20,7 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 
+from sparkstack.core.ipc_server import IPCServer, StateUpdateEvent
 from tests.e2e.utils import get_active_services
 
 
@@ -98,7 +99,7 @@ class BackendProbe:
 
 
 async def wait_for_backends_to_load(
-    stack_dir: Path, timeout: int = 1800, fail_fast: bool = True
+    stack_dir: Path, timeout: int = 1800, fail_fast: bool = True, ipc_server: IPCServer | None = None
 ) -> bool:
     services = await get_active_services(stack_dir)
     if not services:
@@ -106,12 +107,14 @@ async def wait_for_backends_to_load(
         return False
 
     expected_containers = set()
+    container_to_name = {}
     for svc in services:
         # Skip proxy gateway from progress monitoring
         if "gateway" in svc["name"] or "litellm" in svc["name"]:
             continue
         target = svc.get("container") or svc["name"]
         expected_containers.add(target)
+        container_to_name[target] = svc["name"]
 
     if not expected_containers:
         logger.info("✅ Pass: No backends require loading")
@@ -132,13 +135,27 @@ async def wait_for_backends_to_load(
     ) as progress:
         tasks = {}
         for c in expected_containers:
+            display_name = container_to_name.get(c, c)
             tasks[c] = progress.add_task(
-                f"Loading [cyan]{c}[/]", total=100, phase="[dim]Initializing...[/dim]"
+                f"Loading [cyan]{display_name}[/]", total=100, phase="[dim]Initializing...[/dim]"
             )
+            if ipc_server:
+                ipc_server.update_state(
+                    StateUpdateEvent(
+                        service=display_name, status="Loading", progress=0.0, note="Initializing..."
+                    )
+                )
 
         async def poll_ui():
             async for update in probe.poll():
+                display_name = container_to_name.get(update.container, update.container)
                 if update.is_crash:
+                    if ipc_server:
+                        ipc_server.update_state(
+                            StateUpdateEvent(
+                                service=display_name, status="Failed", progress=0.0, note="Crash"
+                            )
+                        )
                     if fail_fast:
                         print(f"\n❌ Failure: Fatal crash detected in backend {update.container}")
                         progress.update(
@@ -168,6 +185,12 @@ async def wait_for_backends_to_load(
                     f"[blue]{update.phase}[/blue]" if update.phase else "[dim]Waiting...[/dim]"
                 )
                 progress.update(tasks[update.container], completed=update.pct, phase=phase_fmt)
+                if ipc_server:
+                    ipc_server.update_state(
+                        StateUpdateEvent(
+                            service=display_name, status="Loading", progress=float(update.pct), note=update.phase or "Waiting..."
+                        )
+                    )
             return True
 
         result = False
@@ -180,6 +203,14 @@ async def wait_for_backends_to_load(
 
     if result:
         logger.info("✅ Pass: Backend Readiness (All models loaded)")
+        if ipc_server:
+            for c in expected_containers:
+                display_name = container_to_name.get(c, c)
+                ipc_server.update_state(
+                    StateUpdateEvent(
+                        service=display_name, status="Complete", progress=100.0, note="Loaded"
+                    )
+                )
         logger.info("Running post-load smoke tests...")
 
         # Post-Load Smoke Test

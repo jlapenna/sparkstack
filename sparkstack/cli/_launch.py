@@ -12,9 +12,10 @@ from ._common import json_option, resolve_stack_dir, run_async, setup_command_lo
 
 @main.command("launch")
 @click.argument("stack_name", default="current")
+@click.option("--rebuild", is_flag=True, default=False, help="Force rebuild of backend container images.")
 @json_option()
 @click.pass_context
-def launch(ctx: click.Context, stack_name: str, output_json: bool) -> None:
+def launch(ctx: click.Context, stack_name: str, rebuild: bool, output_json: bool) -> None:
     """Launch services for a stack.
 
     STACK_NAME defaults to "current" (the active symlink).
@@ -28,8 +29,8 @@ def launch(ctx: click.Context, stack_name: str, output_json: bool) -> None:
 
     setup_command_logging(output_json, ctx.obj.get("verbose", 0))
 
-    run_async(_launch_async(stack_dir))
+    run_async(_launch_async(stack_dir, rebuild_images=rebuild))
 
 
-async def _launch_async(stack_dir) -> None:
-    await launch_stack(stack_dir)
+async def _launch_async(stack_dir, *, rebuild_images: bool = False) -> None:
+    await launch_stack(stack_dir, rebuild_images=rebuild_images)

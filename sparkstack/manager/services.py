@@ -1,10 +1,12 @@
 import asyncio
+import os
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
 
 from loguru import logger
 
+from sparkstack.core.builders.monitoring import MonitoringBuilder
 from sparkstack.core.builders.stack import StackBuilder
 from sparkstack.core.ipc_server import StateUpdateEvent
 from sparkstack.core.progress import StackProgress
@@ -218,7 +220,7 @@ class VllmService(Service):
         self.state.set_task("Restarting stack", 60)
 
         if stack_yaml.exists():
-            await launch_stack(vllm_current)
+            await launch_stack(vllm_current, rebuild_images=self.settings.pull_latest)
         else:
             compose_yaml = vllm_current / "docker-compose.yaml"
             if compose_yaml.exists():
@@ -249,6 +251,14 @@ class VllmService(Service):
 class MonitoringService(Service):
     async def update(self) -> None:
         mon_dir = self.settings.project_root / "services" / "monitoring"
+        stack_dir = self.settings.project_root / "current"
+
+        # Ensure config files exist before starting to avoid docker directory creation
+        stack_dir.mkdir(parents=True, exist_ok=True)
+        MonitoringBuilder(stack_dir).write()
+
+        # Inject SPARKSTACK_STACK_DIR for compose
+        os.environ["SPARKSTACK_STACK_DIR"] = str(stack_dir.resolve())
 
         self.progress.begin_phases(3 if self.settings.pull_latest else 2)
         phase_num = 1

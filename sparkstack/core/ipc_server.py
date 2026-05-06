@@ -63,6 +63,7 @@ def deserialize_event(line: bytes) -> Any:
 class IPCServer:
     def __init__(self):
         self._clients: set[asyncio.StreamWriter] = set()
+        self._client_tasks: set[asyncio.Task] = set()
         self.queue: asyncio.Queue = asyncio.Queue()
         self._states: dict[str, StateUpdateEvent] = {}
         self.local_callback: Callable[[dict[str, Any]], None] | None = None
@@ -108,6 +109,9 @@ class IPCServer:
     async def _handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         """Handles a new client connection, sending full sync immediately."""
         self._clients.add(writer)
+        task = asyncio.current_task()
+        if task:
+            self._client_tasks.add(task)
         try:
             # Send full sync on connect
             sync_event = FullSyncEvent(states=self._states)
@@ -123,6 +127,9 @@ class IPCServer:
             pass
         finally:
             self._clients.discard(writer)
+            task = asyncio.current_task()
+            if task:
+                self._client_tasks.discard(task)
             with suppress(Exception):
                 writer.close()
 
@@ -145,6 +152,15 @@ class IPCServer:
             broadcaster.cancel()
             with suppress(asyncio.CancelledError):
                 await broadcaster
+
+            # Forcefully close all connected clients so _handle_client
+            # tasks unblock from reader.read() and can exit cleanly.
+            for writer in list(server_instance._clients):
+                with suppress(Exception):
+                    writer.close()
+            
+            for task in list(server_instance._client_tasks):
+                task.cancel()
 
             server.close()
             await server.wait_closed()

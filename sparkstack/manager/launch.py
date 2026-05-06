@@ -8,7 +8,7 @@ from loguru import logger
 from sparkstack.core.utils import async_run_command, async_run_compose
 
 
-async def launch_stack(stack_dir: Path) -> None:
+async def launch_stack(stack_dir: Path, *, rebuild_images: bool = False) -> None:
     repo_root = Path(__file__).parent.parent.parent.resolve()
     stack_yaml_path = stack_dir / "stack.yaml"
 
@@ -61,6 +61,9 @@ async def launch_stack(stack_dir: Path) -> None:
             "-o",
             f"network={global_network}",
         ]
+
+        if rebuild_images:
+            cmd.append("--rebuild")
 
         if "memory_limit" in backend:
             cmd.extend(["--memory-limit", backend["memory_limit"]])

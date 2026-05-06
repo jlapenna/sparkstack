@@ -64,7 +64,7 @@ class MonitoringBuilder:
 
         # Generate config.alloy from template
         alloy_template_path = (
-            self.stack_dir.parent.parent / "services" / "monitoring" / "config.alloy.template"
+            Path(__file__).parent.parent.parent.parent / "services" / "monitoring" / "config.alloy.template"
         )
         if alloy_template_path.exists():
             with open(alloy_template_path) as f:

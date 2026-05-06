@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 from contextlib import suppress
+from datetime import datetime
 
 import click
 from textual import work
@@ -105,12 +106,36 @@ class DeploymentMonitorApp(App):
         table.add_column("Service", key="Service")
         table.add_column("Status", key="Status")
         table.add_column("Progress", key="Progress")
+        table.add_column("Updated", key="Updated")
         table.add_column("Note", key="Note")
         if self.local_mode:
             self.query_one("#conn-status", ConnectionStatus).update_status(True, "Local Mode")
         else:
             self.query_one("#conn-status", ConnectionStatus).update_status(False, "Connecting...")
             self._connect_ipc()
+
+    def on_resize(self, event) -> None:
+        self.call_after_refresh(self._resize_note_column)
+
+    def _resize_note_column(self) -> None:
+        try:
+            table = self.query_one("#dashboard", DataTable)
+            if "Note" not in table.columns:
+                return
+
+            other_width = 0
+            for key, col in table.columns.items():
+                if key != "Note":
+                    other_width += col.get_render_width(table)
+
+            # subtract from table's inner size width
+            available = table.size.width - other_width - 2
+            if available > 0:
+                table.columns["Note"].width = available  # type: ignore
+                table.columns["Note"].auto_width = False  # type: ignore
+                table.refresh()
+        except Exception:
+            pass
 
     def feed_event(self, event_dict: dict) -> None:
         """Feed a dictionary event directly into the app (used for local mode)."""
@@ -141,6 +166,14 @@ class DeploymentMonitorApp(App):
         progress = event.get("progress", 0.0)
         note = event.get("note", "")
 
+        timestamp_raw = event.get("timestamp", "")
+        if timestamp_raw and len(timestamp_raw) > 19:
+            updated_time = timestamp_raw[11:19]
+        elif timestamp_raw:
+            updated_time = timestamp_raw
+        else:
+            updated_time = datetime.now().strftime("%H:%M:%S")
+
         status_style = {
             "waiting": "dim",
             "running": "cyan",
@@ -150,40 +183,74 @@ class DeploymentMonitorApp(App):
 
         formatted_status = f"[{status_style}]{status}[/]"
         progress_bar = f"{progress:.1f}%"
+        updated_formatted = f"[dim]{updated_time}[/]"
 
         try:
-            table.update_cell(service, "Status", formatted_status)
-            table.update_cell(service, "Progress", progress_bar)
+            table.update_cell(service, "Status", formatted_status, update_width=True)
+            table.update_cell(service, "Progress", progress_bar, update_width=True)
+            table.update_cell(service, "Updated", updated_formatted, update_width=True)
             table.update_cell(service, "Note", str(note))
+            self._resize_note_column()
         except Exception:
             with suppress(Exception):
-                table.add_row(service, formatted_status, progress_bar, str(note), key=service)
+                table.add_row(service, formatted_status, progress_bar, updated_formatted, str(note), key=service)
+                self._resize_note_column()
 
     @work(exclusive=True)
     async def _connect_ipc(self) -> None:
-        """Connect to UDS and listen for events."""
+        """Connect to UDS and listen for events, auto-reconnecting on drops."""
+        was_connected = False
         while self.is_running:
             try:
-                reader, _ = await asyncio.open_unix_connection(SOCKET_PATH)
-                self.query_one("#conn-status", ConnectionStatus).update_status(True)
+                reader, writer = await asyncio.open_unix_connection(SOCKET_PATH)
+                conn_status = self.query_one("#conn-status", ConnectionStatus)
+                if was_connected:
+                    conn_status.update_status(True, "Reconnected")
+                    log = self.query_one("#log-panel", RichLog)
+                    log.write(
+                        "[bold cyan]↻ Reconnected to orchestrator[/]"
+                    )
+                else:
+                    conn_status.update_status(True)
+                was_connected = True
 
-                while self.is_running:
-                    line = await reader.readline()
-                    if not line:
-                        break
+                try:
+                    while self.is_running:
+                        line = await reader.readline()
+                        if not line:
+                            # EOF — orchestrator closed the connection
+                            break
 
-                    try:
-                        event = json.loads(line.decode().strip())
-                        self.feed_event(event)
-                    except json.JSONDecodeError:
-                        continue
+                        try:
+                            event = json.loads(line.decode().strip())
+                            self.feed_event(event)
+                        except json.JSONDecodeError:
+                            continue
+                finally:
+                    writer.close()
+                    with suppress(Exception):
+                        await writer.wait_closed()
+
+                # Connection dropped cleanly (EOF) — signal and retry
+                self.query_one("#conn-status", ConnectionStatus).update_status(
+                    False, "Orchestrator disconnected — waiting for reconnect…"
+                )
+                self.query_one("#log-panel", RichLog).write(
+                    "[yellow]⚠ Connection to orchestrator lost. Waiting to reconnect…[/]"
+                )
+                # Clear stale dashboard rows so the next full_sync repopulates cleanly
+                with suppress(Exception):
+                    self.query_one("#dashboard", DataTable).clear()
+                await asyncio.sleep(2)
 
             except (FileNotFoundError, ConnectionRefusedError):
-                self.query_one("#conn-status", ConnectionStatus).update_status(False, "Retrying...")
-                await asyncio.sleep(1)
+                self.query_one("#conn-status", ConnectionStatus).update_status(
+                    False, "Waiting for orchestrator…"
+                )
+                await asyncio.sleep(2)
             except Exception as e:
                 self.query_one("#conn-status", ConnectionStatus).update_status(False, f"Error: {e}")
-                await asyncio.sleep(1)
+                await asyncio.sleep(2)
 
     def _handle_log(self, event: dict, log: RichLog) -> None:
         level = event.get("level", "INFO")

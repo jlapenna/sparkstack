@@ -27,7 +27,7 @@ class SparkrunServiceHandler:
     @staticmethod
     def _parse_memory_gb(mem_str: str) -> float:
         """Parse a Docker memory string like '100G' or '512M' into GB."""
-        match = re.match(r"([\d\.]+)([GgMm])", str(mem_str))
+        match = re.match(r"([\d\.]+)([GgMm])", mem_str)
         if not match:
             return 32.0
         val, unit = match.groups()
@@ -103,11 +103,10 @@ class SparkrunServiceHandler:
                 self.recipe_dict["container"] = tag
                 vllm_cfg["container"] = tag
 
-        max_len = int(
-            vllm_cfg.get(
-                "max_model_len", self.overrides.get("max_model_len", DEFAULT_KV_CACHE_CEILING)
-            )
+        max_len_val = vllm_cfg.get(
+            "max_model_len", self.overrides.get("max_model_len", DEFAULT_KV_CACHE_CEILING)
         )
+        max_len = int(max_len_val) if max_len_val is not None else DEFAULT_KV_CACHE_CEILING
         vllm_cfg["max_model_len"] = str(max_len)
 
         if (
@@ -134,8 +133,10 @@ class SparkrunServiceHandler:
         if mem_limit:
             backend["memory_limit"] = mem_limit
 
+        _ALLOWED_OVERRIDES = {"gpu_memory_utilization"}
         for k, v in self.overrides.items():
-            backend["overrides"][k] = v
+            if k in _ALLOWED_OVERRIDES:
+                backend["overrides"][k] = v
 
         for k, v in self.recipe_dict.get("env", {}).items():
             backend["env"][k] = v
@@ -144,27 +145,33 @@ class SparkrunServiceHandler:
             if k not in self.recipe_dict.get("env", {}):
                 backend["env"][k] = v
 
-        if "OTEL_SERVICE_NAME" not in self.recipe_dict.get("env", {}):
-            backend["env"]["OTEL_SERVICE_NAME"] = f"vllm-{self.target_role}"
+        # Architectural Defaults for Tracing
+        # We only inject these if the recipe explicitly enables tracing.
+        # This keeps recipes clean while ensuring consistent infrastructure routing.
+        tracing_enabled = (
+            str(backend["env"].get("VLLM_OTEL_TRACING_ENABLED", "0")) == "1"
+            or str(self.recipe_dict.get("env", {}).get("VLLM_OTEL_TRACING_ENABLED", "0")) == "1"
+        )
+        
+        if tracing_enabled:
+            if "OTEL_SERVICE_NAME" not in self.recipe_dict.get("env", {}):
+                backend["env"]["OTEL_SERVICE_NAME"] = f"vllm-{self.target_role}"
 
-        backend["env"]["OTEL_TRACES_EXPORTER"] = "otlp"
-        backend["env"]["OTEL_EXPORTER_OTLP_PROTOCOL"] = "http/protobuf"
-        backend["env"]["OTEL_EXPORTER_OTLP_TRACES_PROTOCOL"] = "http/protobuf"
+            backend["env"]["OTEL_TRACES_EXPORTER"] = "otlp"
+            backend["env"]["OTEL_EXPORTER_OTLP_ENDPOINT"] = "http://alloy:4318"
+            backend["env"]["OTEL_EXPORTER_OTLP_PROTOCOL"] = "http/protobuf"
+            backend["env"]["OTEL_EXPORTER_OTLP_TRACES_PROTOCOL"] = "http/protobuf"
+            backend["env"]["OTEL_ATTRIBUTE_VALUE_LENGTH_LIMIT"] = "131072"
 
-        if "otlp_traces_endpoint" not in self.recipe_dict.get("defaults", {}):
-            backend["overrides"]["otlp_traces_endpoint"] = "http://alloy:4318/v1/traces"
+            if "otlp_traces_endpoint" not in self.recipe_dict.get("defaults", {}):
+                backend["overrides"]["otlp_traces_endpoint"] = "http://alloy:4318/v1/traces"
 
-        if "tensor_parallel_size" not in vllm_cfg and "tensor_parallel" not in vllm_cfg:
-            backend["overrides"]["tensor_parallel"] = "1"
-
+        # Only promote explicitly allowed keys from vllm_cfg into overrides.
+        # Recipe defaults should stay in the recipe — sparkrun reads them directly.
+        # This prevents stale overrides in stack.yaml when recipes are updated.
+        _ALLOWED_VLLM_OVERRIDES = {"gpu_memory_utilization"}
         for k, v in vllm_cfg.items():
-            if k not in [
-                "port",
-                "served_model_name",
-                "network",
-                "tensor_parallel",
-                "tensor_parallel_size",
-            ]:
+            if k in _ALLOWED_VLLM_OVERRIDES:
                 backend["overrides"][k] = v
 
         if self.recipe_dict.get("runtime") == "sglang":
@@ -183,27 +190,27 @@ class SparkrunServiceHandler:
             self.recipe_dict.get("name", self.model_config.identity.replace(".yaml", "").title()),
         )
 
-        model_info = {
+        model_info: dict[str, Any] = {
             "input": ["text"],
             "mode": "chat",
         }
         if "reasoning_parser" in vllm_cfg or "--reasoning-parser" in command_str:
-            model_info["supports_reasoning"] = True
-            model_info["reasoning"] = True
+            model_info["supports_reasoning"] = "true"
+            model_info["reasoning"] = "true"
         if "--tool-call-parser" in command_str:
-            model_info["supports_function_calling"] = True
+            model_info["supports_function_calling"] = "true"
 
         litellm_overrides = self.recipe_dict.get("litellm_overrides", {})
         thinking_format = litellm_overrides.pop("thinking_format", None)
         if "supports_function_calling" in litellm_overrides:
-            model_info["supports_function_calling"] = litellm_overrides.pop(
+            model_info["supports_function_calling"] = str(litellm_overrides.pop(
                 "supports_function_calling"
-            )
+            )).lower()
         if "supports_reasoning" in litellm_overrides:
-            model_info["supports_reasoning"] = litellm_overrides.pop("supports_reasoning")
+            model_info["supports_reasoning"] = str(litellm_overrides.pop("supports_reasoning")).lower()
             model_info["reasoning"] = model_info["supports_reasoning"]
         if "reasoning" in litellm_overrides:
-            model_info["reasoning"] = litellm_overrides.pop("reasoning")
+            model_info["reasoning"] = str(litellm_overrides.pop("reasoning")).lower()
 
         for rid in self.context["routing_ids"]:
             gateway_builder.add_model(
@@ -211,7 +218,7 @@ class SparkrunServiceHandler:
                 backend_model=self.target_role,
                 backend_url=f"http://{self.container_hostname}:{self.port}/v1",
                 context_window=max_len,
-                human_name=human_name,
+                human_name=str(human_name) if human_name else "",
                 thinking_format=thinking_format,
                 model_info=model_info,
                 recipe_name=self.recipe_name,

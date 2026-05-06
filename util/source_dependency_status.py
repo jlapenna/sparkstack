@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
+import shlex
 import subprocess
 
 
@@ -9,8 +10,12 @@ def run_cmd(cmd, cwd=None):
         env = os.environ.copy()
         env["GH_PAGER"] = ""
         env["GH_PROMPT_DISABLED"] = "1"
+
+        if isinstance(cmd, str):
+            cmd = shlex.split(cmd)
+
         result = subprocess.run(
-            cmd, cwd=cwd, shell=True, check=True, capture_output=True, text=True, env=env
+            cmd, cwd=cwd, shell=False, check=True, capture_output=True, text=True, env=env
         )
         return result.stdout.strip()
     except subprocess.CalledProcessError:
@@ -21,7 +26,19 @@ def get_pr_status(source_dependency_dir, repo_name):
     if not os.path.isdir(source_dependency_dir):
         return []
 
-    cmd = f"gh pr list --repo {repo_name} --author '@me' --state open --json number,title,url,headRefName,reviews,commits,latestReviews,comments,updatedAt"
+    cmd = [
+        "gh",
+        "pr",
+        "list",
+        "--repo",
+        repo_name,
+        "--author",
+        "@me",
+        "--state",
+        "open",
+        "--json",
+        "number,title,url,headRefName,reviews,commits,latestReviews,comments,updatedAt",
+    ]
     output = run_cmd(cmd, cwd=source_dependency_dir)
     if not output:
         return []

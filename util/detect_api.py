@@ -5,9 +5,10 @@ import re
 from pathlib import Path
 
 import yaml
-from core.discovery import get_container_name_by_port
-from core.utils import async_run_command
 from loguru import logger
+
+from sparkstack.core.discovery import get_container_name_by_port
+from sparkstack.core.utils import async_run_command
 
 
 async def _run_in_container(cmd: list[str], container: str) -> tuple[str, str]:

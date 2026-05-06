@@ -34,11 +34,8 @@ class StackBuilder:
         """Re-run the full config generation pipeline from an existing stack.yaml.
 
         Always regenerates litellm-config.yaml, models.json, prometheus.yml,
-        and docker-compose.yaml. Called by update_services to ensure builder
-        code changes take effect without requiring a manual rebuild.
-
-        The stack.yaml is the source of truth and is never modified by this
-        method — _generate_launcher_script() is skipped during rebuilds.
+        docker-compose.yaml, and stack.yaml. Called by update_services to ensure
+        builder code changes take effect and to sanitize configurations.
         """
         stack_yaml_path = stack_dir / "stack.yaml"
         if not stack_yaml_path.exists():
@@ -51,11 +48,18 @@ class StackBuilder:
         # preserving memory_limit, env overrides, and other fields that
         # handlers need for accurate resource accounting.
         requests = []
+        _ALLOWED_OVERRIDES = {"gpu_memory_utilization"}
+
         for backend in stack.get("backends", []):
             overrides = dict(backend.get("overrides", {}))
+            
             # Promote backend-level fields into overrides so handlers see them.
             if "memory_limit" in backend:
                 overrides["memory_limit"] = backend["memory_limit"]
+
+            # Sanitize overrides to prevent redefining recipe properties
+            overrides = {k: v for k, v in overrides.items() if k in _ALLOWED_OVERRIDES or k == "memory_limit"}
+
             requests.append(
                 ModelRequest(
                     role=backend["name"],
@@ -118,7 +122,8 @@ class StackBuilder:
                 f"Reduce backend memory_limit values or lower SYSTEM_RESERVED_MEMORY_GB."
             )
 
-        if self.total_vram > MAX_VRAM_UTILIZATION:
+        # Small tolerance for IEEE-754 accumulation (e.g. 0.90+0.05 → 0.9500…01).
+        if self.total_vram > MAX_VRAM_UTILIZATION + 1e-3:
             raise ValueError(
                 f"Total VRAM utilization ({vram_pct:.1f}%) exceeds "
                 f"ceiling ({MAX_VRAM_UTILIZATION * 100:.0f}%)."
@@ -175,8 +180,7 @@ class StackBuilder:
         self.gateway_builder.write()
         self.monitoring_builder.write()
         self._validate_configs()
-        if not self._rebuilding:
-            self._generate_launcher_script()
+        self._generate_launcher_script()
         logger.info(
             f"🚀 Stack '{self.stack_name}' built successfully in spark-stack-registry/stacks/{self.stack_name}"
         )

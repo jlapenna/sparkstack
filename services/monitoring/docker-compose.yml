@@ -12,8 +12,8 @@ services:
     extra_hosts:
     - host.docker.internal:host-gateway
     volumes:
-    - ../../current/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    - ../../current/targets.json:/etc/prometheus/targets.json:ro
+    - ${SPARKSTACK_STACK_DIR}/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    - ${SPARKSTACK_STACK_DIR}/targets.json:/etc/prometheus/targets.json:ro
     - prometheus_data:/prometheus
     - /var/run/docker.sock:/var/run/docker.sock:ro
     command:
@@ -43,7 +43,7 @@ services:
     - --server.http.listen-addr=0.0.0.0:12345
     - /etc/alloy/config.alloy
     volumes:
-    - ../../current/config.alloy:/etc/alloy/config.alloy:ro
+    - ${SPARKSTACK_STACK_DIR}/config.alloy:/etc/alloy/config.alloy:ro
     - /proc:/host/proc:ro
     - /sys:/host/sys:ro
     - /:/rootfs:ro

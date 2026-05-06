@@ -62,14 +62,21 @@ class ModelRegistry:
             )
             if vram_result.returncode == 0:
                 vram_data = json.loads(vram_result.stdout)
-                vram_gb = vram_data.get("usable_gpu_memory_gb") or vram_data.get(
-                    "total_per_gpu_gb", 0.0
-                )
+                # Use gpu_memory_utilization directly — it's already the
+                # fractional VRAM claim (0-1) that the runtime will
+                # pre-allocate.  Fall back to computing the fraction from
+                # the estimated model footprint (total_per_gpu_gb).
+                gpu_util = vram_data.get("gpu_memory_utilization")
+                if gpu_util is not None and gpu_util > 0:
+                    vram_est = float(gpu_util)
+                else:
+                    vram_gb = vram_data.get("total_per_gpu_gb", 0.0)
+                    vram_est = vram_gb / USABLE_SPARK_MEMORY_GB
             else:
                 logger.warning(f"VRAM estimation failed for {model_name}, using 0.0")
-                vram_gb = 0.0
+                vram_est = 0.0
 
-            return recipe_data, vram_gb / USABLE_SPARK_MEMORY_GB
+            return recipe_data, vram_est
         except Exception as e:
             logger.debug(f"Failed to get recipe info for {model_name}: {e}")
             return None

@@ -105,25 +105,30 @@ class OpenClawUpdater:
         except Exception as e:
             logger.debug(f"Branch check failed: {e}")
 
-        # 2. Get the latest stable release tag using gh
+        # 2. Get the latest stable release tag using git ls-remote
         try:
             result = await async_run_command(
                 [
-                    "gh",
-                    "release",
-                    "view",
-                    "--repo",
+                    "git",
+                    "ls-remote",
+                    "--tags",
+                    "--refs",
+                    "--sort=v:refname",
                     OPENCLAW_REPO,
-                    "--json",
-                    "tagName",
-                    "--jq",
-                    ".tagName",
                 ],
                 cwd=self.settings.project_root,
             )
-            latest_tag = result.stdout.strip()
-            if not latest_tag:
-                raise ValueError("Failed to retrieve a valid tag from GitHub.")
+            tags = []
+            for line in result.stdout.strip().splitlines():
+                parts = line.split("refs/tags/")
+                if len(parts) == 2:
+                    tag = parts[1]
+                    if "beta" not in tag:
+                        tags.append(tag)
+            
+            if not tags:
+                raise ValueError("Failed to retrieve a valid tag from git.")
+            latest_tag = tags[-1]
             logger.info(f"Latest stable release for {OPENCLAW_REPO} is {latest_tag}")
         except Exception:
             logger.exception("Could not determine latest stable release")

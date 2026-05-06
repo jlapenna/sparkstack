@@ -128,16 +128,6 @@ class Orchestrator:
             except Exception:
                 pass
 
-            # Broadcast exit event and clean up IPC sink
-            if self._ipc is not None:
-                success = not any(s.state.status == ServiceStatus.FAILED for s in self.services)
-                self._ipc.broadcast_event(
-                    ExitEvent(
-                        success=success,
-                        message="All services processed" if success else "Some services failed",
-                    )
-                )
-
         runner_task = asyncio.create_task(orchestration_runner())
 
         # Await the orchestration completion headlessly
@@ -148,9 +138,30 @@ class Orchestrator:
             logger.error("Orchestration failed due to service errors:")
             for svc in failed_services:
                 logger.error(f"  • {svc.name}: {svc.state.error or svc.state.note}")
+            
+            if self._ipc is not None:
+                self._ipc.broadcast_event(
+                    ExitEvent(
+                        success=False,
+                        message="Some services failed",
+                    )
+                )
             sys.exit(1)
 
         logger.info("All services processed.")
+
+        stack_dir = self.settings.project_root / "current"
+        if stack_dir.exists():
+            logger.info("Waiting for updated backends to initialize and load models...")
+            await wait_for_backends_to_load(stack_dir, ipc_server=self._ipc)
+            
+        if self._ipc is not None:
+            self._ipc.broadcast_event(
+                ExitEvent(
+                    success=True,
+                    message="All services processed and models loaded",
+                )
+            )
 
 
 async def main():
@@ -167,44 +178,46 @@ async def main():
     # Add a fallback stderr sink so we don't run totally blind without UI
     logger.add(sys.stderr, level="INFO", format="{time:HH:mm:ss} | {level} | {message}")
 
-    async with IPCServer.serve(SOCKET_PATH) as ipc:
-        # IPC logging sink
-        def _ipc_log_sink(message):
-            record = message.record
-            service = record["extra"].get("service") or current_service.get() or None
-            phase = record["extra"].get("phase")
-            ipc.broadcast_event(
-                LogEvent(
-                    level=record["level"].name,
-                    message=str(record["message"]),
-                    timestamp=record["time"].isoformat(),
-                    service=service,
-                    phase=phase,
+    try:
+        async with IPCServer.serve(SOCKET_PATH) as ipc:
+            # IPC logging sink
+            def _ipc_log_sink(message):
+                record = message.record
+                service = record["extra"].get("service") or current_service.get() or None
+                phase = record["extra"].get("phase")
+                ipc.broadcast_event(
+                    LogEvent(
+                        level=record["level"].name,
+                        message=str(record["message"]),
+                        timestamp=record["time"].isoformat(),
+                        service=service,
+                        phase=phase,
+                    )
                 )
-            )
 
-        logger.add(_ipc_log_sink, level="INFO", format="{message}")
+            logger.add(_ipc_log_sink, level="INFO", format="{message}")
 
-        # Now we can safely run early checks and they will be broadcast
-        await pre_flight_checks(settings)
-        await cleanup_zombies(settings)
+            # Now we can safely run early checks and they will be broadcast
+            await pre_flight_checks(settings)
+            await cleanup_zombies(settings)
 
-        orchestrator = Orchestrator(settings, ipc=ipc)
+            orchestrator = Orchestrator(settings, ipc=ipc)
 
-        def ui_sink(msg):
-            svc_name = current_service.get()
-            if svc_name and hasattr(orchestrator, "states") and svc_name in orchestrator.states:
-                text = msg.record["message"].split("\n")[0]
-                orchestrator.states[svc_name].note = text
+            def ui_sink(msg):
+                svc_name = current_service.get()
+                if svc_name and hasattr(orchestrator, "states") and svc_name in orchestrator.states:
+                    text = msg.record["message"].split("\n")[0]
+                    prefix = f"[{svc_name}] "
+                    if text.startswith(prefix):
+                        text = text[len(prefix):]
+                    orchestrator.states[svc_name].note = text
 
-        logger.add(ui_sink, level="INFO")
+            logger.add(ui_sink, level="INFO")
 
-        await orchestrator.run()
+            await orchestrator.run()
+    finally:
+        await statsd.close()
 
-    stack_dir = settings.project_root / "current"
-    if stack_dir.exists():
-        logger.info("Waiting for updated backends to initialize and load models...")
-        await wait_for_backends_to_load(stack_dir)
 
 
 if __name__ == "__main__":

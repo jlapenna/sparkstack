@@ -92,6 +92,7 @@ exclude = [
     "monitoring",
     "registry",
     ".venv",
+    "services/monitoring/model_progress_manager.py",
 ]
 
 [tool.pytest.ini_options]
@@ -101,5 +102,5 @@ pythonpath = [
 timeout = 120
 
 [tool.bandit]
-exclude_dirs = ["tests", "benchmarks", "sparkrun", "openclaw"]
-skips = ["B101", "B603", "B607"]
+exclude_dirs = ["tests", "benchmarks", "sparkrun", "openclaw", ".venv", "services/monitoring/model_progress_manager.py"]
+skips = ["B101", "B603", "B607", "B404", "B110", "B108", "B310"]

@@ -78,3 +78,15 @@ class StatsdClient:
                         with contextlib.suppress(Exception):
                             self._tcp_writer.close()
                         self._tcp_writer = None
+
+    async def close(self) -> None:
+        async with self._lock:
+            if self._udp_sock is not None:
+                with contextlib.suppress(Exception):
+                    self._udp_sock.close()
+                self._udp_sock = None
+            if self._tcp_writer is not None:
+                with contextlib.suppress(Exception):
+                    self._tcp_writer.close()
+                    await self._tcp_writer.wait_closed()
+                self._tcp_writer = None

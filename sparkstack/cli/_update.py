@@ -16,7 +16,6 @@ from sparkstack.manager.update_services import (
     Settings,
     current_service,
 )
-from sparkstack.manager.wait_for_backends import wait_for_backends_to_load
 
 from . import main
 from ._common import json_option, run_async, with_process_lock
@@ -102,9 +101,3 @@ async def _update_async(*, pull_latest: bool, output_json: bool) -> None:
         logger.add(_ui_note_sink, level="INFO")
 
         await orchestrator.run()
-
-    # Post-orchestration: wait for backends
-    stack_dir = settings.project_root / "current"
-    if stack_dir.exists():
-        logger.info("Waiting for updated backends to initialize and load models...")
-        await wait_for_backends_to_load(stack_dir)

@@ -88,7 +88,7 @@ class HttpProbe(HealthProbe):
 CRASH_PATTERNS: list[str] = [
     r"Traceback \(most recent call last\):",
     r"FATAL:",
-    r"ERROR:.*failed",
+    r"ERROR:.{0,100}failed",
     r"RuntimeError:",
     r"NotImplementedError:",
     r"AssertionError:",
