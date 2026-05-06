@@ -1,7 +1,7 @@
 import pytest
 from loguru import logger
 
-from core.utils import async_run_command
+from sparkstack.core.utils import async_run_command
 from tests.e2e.context import E2EContext
 
 

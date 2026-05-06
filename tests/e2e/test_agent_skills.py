@@ -1,10 +1,8 @@
-
-
 import pytest
 from loguru import logger
 
-from core.env import OPENCLAW_CONFIG_DIR
-from core.utils import async_run_command, parse_cli_json
+from sparkstack.core.env import OPENCLAW_CONFIG_DIR
+from sparkstack.core.utils import async_run_command, parse_cli_json
 from tests.e2e.context import E2EContext
 
 
@@ -26,9 +24,9 @@ async def test_agent_skills(ctx: E2EContext):
     try:
         data = parse_cli_json(result.stdout)
         assert isinstance(data, dict)
-    except (ValueError, AssertionError):
+    except (ValueError, AssertionError) as err:
         logger.error("❌ Could not find JSON in 'openclaw skills list' output")
-        raise AssertionError()
+        raise AssertionError() from err
     skills = data.get("skills", [])
     skill_names = {s["name"] for s in skills if s.get("eligible")}
 

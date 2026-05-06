@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-PROJECT_ROOT = Path(__file__).parent.parent
+PROJECT_ROOT = Path(__file__).parent.parent.parent
 EXCLUDE_DIRS = {
     ".git",
     ".venv",
@@ -15,6 +15,7 @@ EXCLUDE_DIRS = {
     ".worktrees",
     "sparkrun",
     "openclaw",
+    "scratch",
 }
 
 

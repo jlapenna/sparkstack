@@ -3,9 +3,9 @@ import json
 import pytest
 import yaml
 
-from core.builders.apigateway import ApiGatewayBuilder
-from core.builders.docker import DockerComposeFileBuilder
-from core.builders.monitoring import MonitoringBuilder
+from sparkstack.core.builders.docker import DockerComposeFileBuilder
+from sparkstack.core.builders.litellm import LiteLLMBuilder
+from sparkstack.core.builders.monitoring import MonitoringBuilder
 
 
 @pytest.fixture
@@ -32,7 +32,7 @@ def test_compose_builder(temp_stack_dir):
 
 def test_litellm_builder(temp_stack_dir):
     base_config = {"model_list": [], "litellm_settings": {}}
-    builder = ApiGatewayBuilder(temp_stack_dir, base_config)
+    builder = LiteLLMBuilder(temp_stack_dir, base_config)
 
     builder.add_model(
         role_id="main",
@@ -56,6 +56,53 @@ def test_litellm_builder(temp_stack_dir):
     assert model_cfg["litellm_params"]["model"] == "openai/hosted_vllm/qwen"
     assert model_cfg["litellm_params"]["api_base"] == "http://localhost:8000/v1"
     assert model_cfg["model_info"]["context_window"] == 8192
+    # role_map should NOT be injected — global litellm_setting handles it
+    assert "role_map" not in model_cfg["litellm_params"]
+    # input should NOT be in model_info — it's an OpenClaw-only field
+    assert "input" not in model_cfg["model_info"]
+
+    # Verify OpenClaw models.json: max_tokens defaults to context_window
+    models_file = temp_stack_dir / "models.json"
+    assert models_file.exists()
+    with models_file.open("r") as f:
+        models_config = json.load(f)
+    spark_model = models_config["spark"]["models"][0]
+    assert spark_model["maxTokens"] == 8192  # defaults to context_window
+    assert spark_model["contextWindow"] == 8192
+
+
+def test_litellm_builder_openai_responses_api(temp_stack_dir):
+    base_config = {"model_list": [], "litellm_settings": {}}
+    builder = LiteLLMBuilder(temp_stack_dir, base_config)
+
+    builder.add_model(
+        role_id="main",
+        backend_model="hosted_vllm/qwen",
+        backend_url="http://localhost:8000/v1",
+        context_window=8192,
+        human_name="Qwen 1.5",
+        model_info={
+            "input": ["text"],
+            "api": "openai-responses",
+            "supports_prompt_cache_key": True,
+            "supports_store": True,
+        },
+    )
+
+    builder.write()
+    models_file = temp_stack_dir / "models.json"
+    assert models_file.exists()
+
+    with models_file.open("r") as f:
+        config = json.load(f)
+
+    spark_models = config["spark"]["models"]
+    assert len(spark_models) == 1
+    model_cfg = spark_models[0]
+
+    assert model_cfg["api"] == "openai-responses"
+    assert model_cfg["compat"]["supportsPromptCacheKey"] is True
+    assert model_cfg["compat"]["supportsStore"] is True
 
 
 def test_prometheus_builder(temp_stack_dir):

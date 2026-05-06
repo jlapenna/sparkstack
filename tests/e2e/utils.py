@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 
 import yaml
 
-from core.discovery import get_container_name_by_port
+from sparkstack.core.discovery import get_container_name_by_port
 
 
 def extract_cli_json(output: str) -> dict | None:

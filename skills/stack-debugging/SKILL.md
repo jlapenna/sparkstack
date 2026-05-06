@@ -19,13 +19,13 @@ Distributed tracing (OpenTelemetry) provides an end-to-end visualization of the 
 
 1. **Systematic Debugging:** Always prioritize fixing issues starting from base principles.
    1. **Verify the Process Before the Network:** A container showing as "running" does not mean the service inside is alive (especially if it uses `sleep infinity` as an entrypoint). Always check logs and use `docker exec <container> ss -tlnp` before assuming a network issue.
-   2. **Read the Actual Error Before Hypothesizing:** Do not invent hypotheses from vague symptoms. "Network connection error" might just mean the backend process crashed and isn't listening. Find the explicit error message first.
-   3. **Understand the context:** Identify all involved services and their roles.
-   4. **Isolate the problem:** Query each component systematically (e.g., query vLLM, then LiteLLM, then OpenClaw) to pinpoint where the failure originates.
-   5. **Analyze the failure:** Check logs, schemas, and configurations at the point of failure.
-   6. **Communicate Findings:** *Explicitly and comprehensively share your findings, logs, and hypothesis with the user before implementing a fix. Provide them with the exact reason why the problem is occurring.*
-   7. **Formulate a fix:** Propose a solution based on root-cause analysis, not just applying a band-aid.
-   8. **Verify the fix:** Run end-to-end tests or queries to confirm the resolution. **CRITICAL: You MUST run the `tests/e2e/` suite and it MUST pass successfully before considering any debugging fix complete.**
+   1. **Read the Actual Error Before Hypothesizing:** Do not invent hypotheses from vague symptoms. "Network connection error" might just mean the backend process crashed and isn't listening. Find the explicit error message first.
+   1. **Understand the context:** Identify all involved services and their roles.
+   1. **Isolate the problem:** Query each component systematically (e.g., query vLLM, then LiteLLM, then OpenClaw) to pinpoint where the failure originates.
+   1. **Analyze the failure:** Check logs, schemas, and configurations at the point of failure.
+   1. **Communicate Findings:** *Explicitly and comprehensively share your findings, logs, and hypothesis with the user before implementing a fix. Provide them with the exact reason why the problem is occurring.*
+   1. **Formulate a fix:** Propose a solution based on root-cause analysis, not just applying a band-aid.
+   1. **Verify the fix:** Run end-to-end tests or queries to confirm the resolution. **CRITICAL: You MUST run the `tests/e2e/` suite and it MUST pass successfully before considering any debugging fix complete.**
 
 ## 1. Tempo Architecture Overview
 
@@ -117,22 +117,27 @@ When distributed tracing (Tempo) does not provide enough information or if a ser
 
 **Viewing OpenClaw Logs:**
 OpenClaw runs as the gateway container. View its logs to debug embedded agent crashes, configuration/secret resolution errors (e.g., unresolved `SecretRef`), and prompt construction issues:
+
 ```bash
 docker logs --tail 200 openclaw-openclaw-gateway-1
 ```
+
 *(If the container name varies, use `docker ps` to find it).*
 
 **Viewing LiteLLM Logs:**
 LiteLLM handles proxying LLM requests to the vLLM backends. To debug routing issues, upstream model errors, or token limit rejections:
+
 ```bash
 docker logs --tail 200 litellm
 ```
 
 **Viewing General Docker Logs:**
 For any other service in the `spark-stack` deployment:
+
 ```bash
 docker logs --tail 200 <container-name>
 ```
+
 *(Tip: Add the `-f` flag to follow logs live).*
 
 ## 6. Diagnostic Playbook (Networking)
@@ -142,11 +147,12 @@ When a container can't reach another container, run these steps **in order**:
 ### Step 1: Is the target process alive?
 
 ```bash
-docker exec <target> tail -n 20 /tmp/sparkrun_serve.log
+docker exec <target> tail -n 50 /tmp/sparkrun_serve.log
 docker exec <target> ss -tlnp
 ```
 
 If the process crashed or isn't listening → this is NOT a networking problem.
+**CRITICAL NOTE**: Containers in this stack often use `sleep infinity` as their entrypoint. This means the container will appear "running" (and `docker ps` will look healthy) even if the underlying vLLM or backend process has fatally crashed. Always check the application logs directly rather than relying on container state!
 
 ### Step 2: Are both containers on a shared network?
 

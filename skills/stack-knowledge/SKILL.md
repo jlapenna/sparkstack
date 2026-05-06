@@ -123,12 +123,12 @@ When interacting with OpenClaw, it is critical to distinguish between its immuta
 | `openclaw-openclaw-gateway-1` | `openclaw_default`      | openclaw_default, proxy-tier                    |
 | `prometheus`                  | `monitoring_monitoring` | monitoring_monitoring, proxy-tier, vllm-network |
 | `alloy`                       | `monitoring_monitoring` | monitoring_monitoring, proxy-tier               |
-| `dcgm-exporter`               | `monitoring_monitoring` | monitoring_monitoring                           |
+| `nv-monitor`                  | `monitoring_monitoring` | monitoring_monitoring                           |
 | `grafana`                     | `monitoring_monitoring` | monitoring_monitoring, proxy-tier               |
 | `vllm-progress-manager`       | `monitoring_monitoring` | monitoring_monitoring, proxy-tier               |
-| `blackbox-exporter`           | `monitoring_monitoring` | monitoring_monitoring                           |
-| `tempo`                       | `monitoring_monitoring` | monitoring_monitoring, proxy-tier               |
-| `cloudflared`                 | `proxy-tier`            | proxy-tier                                      |
+
+| `tempo` | `monitoring_monitoring` | monitoring_monitoring, proxy-tier |
+| `cloudflared` | `proxy-tier` | proxy-tier |
 
 ### Key Routing Paths
 
@@ -180,44 +180,57 @@ Never use internal Docker IPs (e.g. `172.19.x.x`) in configuration, verification
 
 ### Rule 4: Consult Core Specifications Before Generalizing
 
-When making configuration changes to core infrastructure components (like OpenAI API completions, OpenClaw properties, or LiteLLM mappings), do not apply generalized LLM heuristics. Always consult the official specification (e.g., OpenAI API docs or the specific backend documentation) to understand default behaviors. For example, omitting `max_tokens` in an `openai-completions` API request strictly defaults to 16 tokens per the OpenAI spec, which will silently truncate long reasoning contexts.
+When making configuration changes to core infrastructure components (like OpenAI API endpoints, OpenClaw properties, or LiteLLM mappings), do not apply generalized LLM heuristics. Always consult the official specification (e.g., OpenAI API docs or the specific backend documentation) to understand default behaviors. For example, the Responses API uses `max_output_tokens` (not `max_tokens`), and its default behavior differs from Chat Completions — omitting it defaults to the model's full context window rather than a fixed limit. Always verify parameter names and defaults against the actual API you are targeting.
 
 ### Rule 5: Sync All Configuration Layers
 
 > **When updating model configuration, sync ALL layers — not just the global config.**
 
-OpenClaw resolves model settings with agent-level overrides taking precedence over global defaults. If `sync_registry.py` updates `openclaw.json` but leaves agent-level `models.json` files stale, agents will silently use outdated settings. This is especially dangerous for `maxTokens`, where a missing value triggers a 16-token default that truncates reasoning models.
+OpenClaw resolves model settings with agent-level overrides taking precedence over global defaults. If `sync_registry.py` updates `openclaw.json` but leaves agent-level `models.json` files stale, agents will silently use outdated settings (e.g., wrong `maxTokens`, stale API type, or missing capabilities).
 
 ## Common Gotchas & Silent Failures
 
 This is a distilled list of commonly encountered issues and silent failures extracted from the incident log. Keep these in mind when debugging or modifying the Spark Stack infrastructure:
 
 ### 1. Networking & Connectivity
+
 - **Avoid `host.docker.internal` on Shared Networks:** If containers share a Docker network (e.g., `proxy-tier`), ALWAYS route traffic using direct container hostnames (e.g., `main_solo:8001`). Using `host.docker.internal` forces traffic through Docker's hairpin NAT, which frequently fails with `ConnectionResetError`s.
 - **Verify the Process Before the Network:** A container showing as "running" does not mean the service inside is alive. If `vllm` crashes but the container entrypoint is `sleep infinity`, the container stays up. Always run `docker exec <container> ss -tlnp` and check logs (`tail /tmp/sparkrun_serve.log`) before assuming a network issue.
 - **Never Bind-Mount `/etc/resolv.conf`:** Mounting the host's `resolv.conf` into a container overwrites Docker's embedded DNS server (`127.0.0.11`), blinding the container to internal service discovery.
 
 ### 2. Docker-Out-Of-Docker (DooD) Paths
+
 - **Identical Volume Maps are Required:** When OpenClaw or an orchestrator container mounts `/var/run/docker.sock` to manage other containers (sandboxes), it passes path bindings to the host Docker daemon. If you pass container-local paths (like `/home/node/...`), the host daemon won't find them and will silently mount empty, root-owned directories. **Always rewrite internal configurations to use absolute Host paths.**
 - **Purge Stale Sandboxes:** If you change volume or network policies, you must explicitly purge old sandbox containers (`docker rm -f openclaw-sbx-*`). The gateway does not automatically update existing container `HostConfigs`.
 - **Sandbox Secret Resolution (Embedded Agent Crashing):** When you configure a skill to use an `env` SecretRef (e.g., `{"source": "env", "id": "GOPLACES_API_KEY"}`), the OpenClaw Secret Manager will attempt to resolve it from the local environment. Because the agent executes inside an isolated *sandbox container*, not the main gateway, an `unresolved SecretRef "env:default:GOPLACES_API_KEY"` error means the environment variable is missing *from the sandbox's environment*. You must explicitly inject these keys into `agents.defaults.sandbox.docker.env` within `openclaw.json` so the sandboxed agent's Secret Manager can successfully resolve the reference.
 
 ### 3. Configuration Drift & Agent State
+
 - **Sync All Configuration Layers:** OpenClaw maintains agent-specific `models.json` overrides (e.g., `~/.openclaw/agents/<name>/agent/models.json`) which take precedence over the global `openclaw.json`. Modifying the global config without updating the agent overrides leads to silent configuration drift.
-- **The 16-Token Fallback Trap:** **Never completely delete `maxTokens`** for OpenAI-compatible completions. Omitting it causes LiteLLM to fall back to the default OpenAI limit of 16 tokens, which silently truncates responses (especially for reasoning models). Always explicitly calculate and set `maxTokens`.
+- **Stale Agent Config Drift:** Agent-level `models.json` overrides (`~/.openclaw/agents/<name>/agent/models.json`) take precedence over the global `openclaw.json`. If these go stale after a registry sync, agents silently use outdated `maxTokens`, API type, or capability flags. Run `openclaw doctor --fix` or purge agent overrides after any model configuration change.
 
 ### 4. Reasoning Models & `payloads=0` Errors
+
 - **OpenClaw Requires Text Payloads:** OpenClaw's safety layer rejects turns with zero text payload (`payloads=0`). If a reasoning model spends all its context on "thinking" (`reasoning_content`) and outputs an empty `content` field, OpenClaw will crash the turn with `stopReason=stop payloads=0` or `stopReason=length payloads=0`.
 - **Match Reasoning Configurations:** Do not arbitrarily set `reasoning: true` in `openclaw.json` unless the backend's tool parser and model are specifically configured to stream `reasoning_content` natively.
 - **Don't Constrain Context:** Give reasoning models massive context windows (`maxTokens`). Setting a low ceiling guarantees they will hit artificial cutoffs during extensive reasoning traces.
 
 ### 5. Memory & vLLM Resource Exhaustion
-- **System RAM vs. VRAM OOMs:** OOM kills during the "Resolving architecture" phase with the vLLM V1 engine are usually caused by **Host system RAM** exhaustion, not GPU VRAM. The V1 Ray DAG compilation requires massive CPU memory. 
+
+- **System RAM vs. VRAM OOMs:** OOM kills during the "Resolving architecture" phase with the vLLM V1 engine are usually caused by **Host system RAM** exhaustion, not GPU VRAM. The V1 Ray DAG compilation requires massive CPU memory.
 - **Watch `max_model_len`:** Context window sizes exponentially scale system RAM requirements. Never assume remote registry recipes have safe default limits for your hardware. If a recipe defaults to `262144`, and you only have 120GB of system RAM, you must explicitly override `max_model_len` (e.g., `131072`) in your `stack.yaml`.
 
 ### 6. Zombie Tasks & Locked Sessions
+
 - **SQLite Task Database Locks:** If an agent completely stops responding to messages, check for "zombie" tasks. If the gateway crashes hard, it can leave `running` state markers in the SQLite task database (`/home/node/.openclaw/tasks/runs.sqlite`), which permanently blocks future requests for that session.
 - **Orphaned Host Processes:** If you encounter 500 errors regarding model APIs, check the host machine for orphaned `litellm` processes (`ps aux | rg litellm`) that might be colliding with containerized routing tables.
+
+### 7. Context Overflow & Event Loop Starvation
+
+- **Gateway Single-Threaded Sensitivity:** The OpenClaw gateway is a single-threaded Node.js event loop. Any synchronous hot loop (like repeated context compaction attempts) will starve ALL other operations — Telegram hooks, WebSocket handlers, health probes, and other agent sessions all freeze.
+- **Irreducible Context Overflow:** If an agent's system prompt alone (skills, plugins, injected context) exceeds the model's context window, compaction cannot help — it only removes session *history* messages. Without the `irreducible_overflow` circuit breaker (added in `local-dev`), each message to the agent triggers 3 compaction cycles × ~20s each, then a session reset, then the cycle repeats on the next message — effectively DoS-ing the entire gateway.
+- **Diagnosis:** Look for `[context-overflow-precheck] route=compact_only` log lines repeating in rapid succession. If `estimatedPromptTokens` consistently exceeds `promptBudgetBeforeReserve` even with 0 history messages, the overflow is irreducible.
+- **Fix:** Reduce the number of active skills/plugins for the agent, or switch to a larger-context model.
 
 ## Incident Log
 

@@ -5,10 +5,9 @@ import re
 from pathlib import Path
 
 import yaml
-from loguru import logger
-
 from core.discovery import get_container_name_by_port
 from core.utils import async_run_command
+from loguru import logger
 
 
 async def _run_in_container(cmd: list[str], container: str) -> tuple[str, str]:
@@ -34,7 +33,7 @@ async def detect_api():
     logger.info("Probing NVIDIA Spark Stack...")
 
     # 1. Discover Main Container
-    stack_dir = Path(__file__).parent.parent / "current"
+    stack_dir = (Path(__file__).parent.parent / "current").resolve()
     litellm_file = stack_dir / "litellm-config.yaml"
     main_container = None
 

@@ -8,6 +8,10 @@ services:
     command: tunnel run
     networks:
       - proxy-tier
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
 networks:
   proxy-tier:

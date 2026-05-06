@@ -24,7 +24,7 @@ ______________________________________________________________________
 
 - Debugging "no data" issues in Grafana or Prometheus
 - Adding, reviewing, or modifying Grafana dashboards
-- Upgrading or configuring monitoring containers (cAdvisor, Prometheus, Vector, DCGM Exporter, Node Exporter)
+- Upgrading or configuring monitoring containers (cAdvisor, Prometheus, Vector, nv-monitor, Node Exporter)
 - Troubleshooting the `vllm-progress-manager`
 - Writing or adjusting Prometheus metrics and scrape intervals
 
@@ -37,7 +37,7 @@ The monitoring stack is defined in `services/monitoring/docker-compose.yml` and 
 - **Grafana** (3001): Visualization. Dashboards are auto-provisioned from `services/monitoring/grafana/provisioning/dashboards/`.
 - **cAdvisor** (8080): Container metrics.
 - **Node Exporter** (9100): Host OS metrics.
-- **DCGM Exporter** (9400): NVIDIA GPU metrics.
+- **nv-monitor** (9101): NVIDIA GPU metrics.
 - **Vector** (8125, 9102): Log and metric pipeline. Parses Docker logs and receives StatsD metrics.
 - **vllm-progress-manager**: Custom Python daemon that polls model health/loading progress and pushes to Vector via StatsD.
 
@@ -96,7 +96,7 @@ Because of this, our top-level LLM dashboards (`overview.json`, `vllm-query-stat
 
 Scan the provisioning directory (e.g. `services/monitoring/grafana/provisioning/dashboards/`) and categorize the JSON files into:
 
-- **Standard Infrastructure** (Safe to Overwrite): Examples include Node Exporter, NVIDIA DCGM Exporter, cAdvisor.
+- **Standard Infrastructure** (Safe to Overwrite): Examples include Node Exporter, nv-monitor, cAdvisor.
 - **Composite AI Dashboards** (Surgical Update Required): Examples include `overview`, `vllm-query-statistics`, `sglang-dashboard`, `openclaw-gateway`.
 
 ### 2. Force-Update Infrastructure Dashboards

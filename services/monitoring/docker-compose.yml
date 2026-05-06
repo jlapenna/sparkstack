@@ -43,7 +43,7 @@ services:
     - --server.http.listen-addr=0.0.0.0:12345
     - /etc/alloy/config.alloy
     volumes:
-    - ./config.alloy:/etc/alloy/config.alloy:ro
+    - ../../current/config.alloy:/etc/alloy/config.alloy:ro
     - /proc:/host/proc:ro
     - /sys:/host/sys:ro
     - /:/rootfs:ro
@@ -52,32 +52,39 @@ services:
     - /var/lib/docker/:/var/lib/docker:ro
     - /dev/disk/:/dev/disk:ro
     networks:
-    - monitoring
-    - proxy-tier
+      monitoring:
+        aliases:
+        - otel-collector
+      proxy-tier:
+        aliases:
+        - otel-collector
     restart: unless-stopped
     deploy:
       resources:
         limits:
           memory: 512M
-  dcgm-exporter:
-    image: nvcr.io/nvidia/k8s/dcgm-exporter:4.5.2-4.8.1-ubuntu22.04
-    container_name: dcgm-exporter
+  nv-monitor:
+    build:
+      context: ./nv-monitor
+    container_name: nv-monitor
     restart: unless-stopped
-    privileged: true
-    cap_add:
-    - SYS_ADMIN
-    environment:
-    - DCGM_EXPORTER_INTERVAL=5000
+    ports:
+      - 9101:9101
+    pid: "host"
+    volumes:
+      - /proc:/proc:ro
+      - /sys:/sys:ro
     deploy:
       resources:
         reservations:
           devices:
-          - driver: nvidia
-            count: all
-            capabilities:
-            - gpu
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+        limits:
+          memory: 32M
     networks:
-    - monitoring
+      - monitoring
 
   grafana:
     image: grafana/grafana:13.0.1
@@ -134,22 +141,17 @@ services:
     - monitoring
     - proxy-tier
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
     depends_on:
     - alloy
     environment:
     - SPARKRUN_STATSD_HOST=alloy
-  blackbox-exporter:
-    image: quay.io/prometheus/blackbox-exporter:v0.28.0
-    container_name: blackbox-exporter
-    restart: unless-stopped
-    ports:
-    - 9115:9115
-    command:
-    - --config.file=/etc/blackbox_exporter/config.yml
-    networks:
-    - monitoring
+
   tempo:
-    image: grafana/tempo:2.10.2
+    image: grafana/tempo:2.10.5
     container_name: tempo
     user: root
     command: [ "-config.file=/etc/tempo.yaml" ]
@@ -162,6 +164,10 @@ services:
       - monitoring
       - proxy-tier
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
 
 networks:
   monitoring:

@@ -1,9 +1,7 @@
-
-
 import pytest
 from loguru import logger
 
-from core.utils import async_run_command, parse_cli_json
+from sparkstack.core.utils import async_run_command, parse_cli_json
 from tests.e2e.context import E2EContext
 
 
@@ -14,9 +12,9 @@ async def test_openclaw_diagnosis(ctx: E2EContext):
     try:
         data = parse_cli_json(result.stdout)
         assert isinstance(data, dict)
-    except (ValueError, AssertionError):
+    except (ValueError, AssertionError) as err:
         logger.error("❌ Could not find JSON in 'openclaw models list' output")
-        raise AssertionError()
+        raise AssertionError() from err
     models = data.get("models", [])
     spark_models = [m["key"] for m in models if m.get("key", "").startswith("spark/")]
     logger.info(f"Configured Spark models: {', '.join(spark_models)}")

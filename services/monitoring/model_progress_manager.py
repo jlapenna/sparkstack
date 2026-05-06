@@ -9,9 +9,8 @@ from typing import Any
 
 import aiohttp
 from aiohttp import web
-from loguru import logger
-
 from core.statsd import StatsdClient
+from loguru import logger
 
 # Configuration
 STATSD_HOST = os.environ.get("SPARKRUN_STATSD_HOST", "alloy")
@@ -24,6 +23,8 @@ API_PORT = 8126
 FATAL_REGEX = re.compile(
     r"(?i)(?:AssertionError|RuntimeError|ValueError|error: argument|Exception:|Traceback|killed|Segmentation fault|Bus error|defunct|initialization failed|startup is less than desired)"
 )
+# Lines from the running API server's request error handler are NOT crashes.
+API_SERVER_PREFIX_REGEX = re.compile(r"^\(\w+ pid=\d+\)")
 PROGRESS_REGEX_PCT = re.compile(r"(?i)(?:load|fetch|download).*?(\d{1,3})%")
 PROGRESS_REGEX_FRACT = re.compile(r"(?i)(?:load|fetch).*?(?P<cur>\d+)\s*/\s*(?P<tot>\d+)")
 CUDA_GRAPH_REGEX = re.compile(r"(?i)Capturing CUDA graphs.*?(\d{1,3})%")
@@ -66,6 +67,7 @@ class DockerHostMonitor:
         self.last_known_phase: dict[str, str] = {}
         self.container_info_cache: dict[str, dict[str, Any]] = {}
         self.container_phases: dict[str, dict[str, int]] = {}
+        self.container_started_at: dict[str, str] = {}
         self.running = False
         self.discovery_task: asyncio.Task | None = None
         self.push_task: asyncio.Task | None = None
@@ -141,7 +143,7 @@ class DockerHostMonitor:
                 await push_to_statsd(
                     "vllm_model_status", status_val, container_name, model_id, self.host_id
                 )
-            await asyncio.sleep(10.0)
+            await asyncio.sleep(5.0)
 
     async def fetch_container_info(self, container_name: str) -> dict[str, Any]:
         port = 8000
@@ -194,6 +196,7 @@ class DockerHostMonitor:
         return {"port": port, "model_id": model_id, "enforce_eager": enforce_eager}
 
     async def read_docker_stream(self, resp: aiohttp.ClientResponse) -> AsyncGenerator[str]:
+        buffer = ""
         while True:
             try:
                 header = await resp.content.readexactly(8)
@@ -201,11 +204,18 @@ class DockerHostMonitor:
                 if payload_len == 0:
                     continue
                 payload = await resp.content.readexactly(payload_len)
-                yield payload.decode("utf-8", "ignore")
+                buffer += payload.decode("utf-8", "ignore")
+                while "\n" in buffer:
+                    line, buffer = buffer.split("\n", 1)
+                    yield line + "\n"
             except asyncio.IncompleteReadError:
+                if buffer:
+                    yield buffer
                 break
             except Exception as e:
                 logger.debug(f"[{self.host_id}] Stream read error: {e}")
+                if buffer:
+                    yield buffer
                 break
 
     async def log_tailer_task(self, container_name: str, info: dict) -> None:
@@ -224,8 +234,20 @@ class DockerHostMonitor:
                             "AttachStdout": True,
                         },
                     )
-                    if status == 201:
-                        use_internal_log = True
+                    if status == 201 and self.session is not None:
+                        exec_id = data["Id"]
+                        # Start the exec to actually run the test command
+                        async with self.session.post(
+                            f"{self.base_url}/exec/{exec_id}/start",
+                            json={"Detach": False},
+                            timeout=timeout,
+                        ) as resp:
+                            await resp.read()
+
+                        # Check the exit code
+                        st2, d2 = await self.docker_api_get(f"/exec/{exec_id}/json")
+                        if st2 == 200 and d2.get("ExitCode") == 0:
+                            use_internal_log = True
                 except Exception:
                     pass
 
@@ -281,7 +303,9 @@ class DockerHostMonitor:
             if not line.strip():
                 continue
 
-            if FATAL_REGEX.search(line):
+            if FATAL_REGEX.search(line) and not API_SERVER_PREFIX_REGEX.match(line.strip()):
+                # Skip request-level errors from the running API server — these
+                # are HTTP 4xx/5xx tracebacks, not process-level crashes.
                 logger.error(f"[{self.host_id}] Crash in {container_name}: {line.strip()}")
                 self.last_known_pct[container_name] = 0
                 self.last_known_phase[container_name] = "Crash"
@@ -371,49 +395,48 @@ class DockerHostMonitor:
                 except Exception as e:
                     logger.debug(f"[{self.host_id}] Poller error for {container_name}: {e}")
 
-                if self.last_known_pct.get(container_name, 0) != 0:
-                    # Exec into the container to curl its own port (avoiding external routing issues)
-                    is_responsive = False
-                    try:
-                        status, data = await self.docker_api_post(
-                            f"/containers/{container_name}/exec",
-                            json_data={
-                                "Cmd": [
-                                    "curl",
-                                    "-s",
-                                    "-o",
-                                    "/dev/null",
-                                    "-w",
-                                    "%{http_code}",
-                                    f"http://127.0.0.1:{info['port']}/v1/models",
-                                ],
-                                "AttachStdout": True,
-                            },
-                        )
-                        if status == 201 and self.session is not None:
-                            exec_id = data["Id"]
-                            async with self.session.post(
-                                f"{self.base_url}/exec/{exec_id}/start", json={}
-                            ) as resp:
-                                output = await resp.text()
-                                if "200" in output:
-                                    is_responsive = True
-                    except Exception:
-                        pass
+                # Always probe health — even when pct==0 (e.g. after a false
+                # crash detection).  If the container is still responding, the
+                # readiness poller must be able to restore the Ready state.
+                is_responsive = False
+                try:
+                    status, data = await self.docker_api_post(
+                        f"/containers/{container_name}/exec",
+                        json_data={
+                            "Cmd": [
+                                "curl",
+                                "-s",
+                                "-o",
+                                "/dev/null",
+                                "-w",
+                                "%{http_code}",
+                                f"http://127.0.0.1:{info['port']}/health",
+                            ],
+                            "AttachStdout": True,
+                        },
+                    )
+                    if status == 201 and self.session is not None:
+                        exec_id = data["Id"]
+                        async with self.session.post(
+                            f"{self.base_url}/exec/{exec_id}/start", json={}
+                        ) as resp:
+                            output = await resp.text()
+                            if "200" in output:
+                                is_responsive = True
+                except Exception:
+                    pass
 
-                    if is_responsive:
-                        self.last_known_pct[container_name] = 100
-                        self.last_known_phase[container_name] = "Ready"
-                        if not ready:
-                            logger.success(
-                                f"[{self.host_id}] {container_name} readiness confirmed."
-                            )
-                            ready = True
-                    elif ready:
-                        logger.warning(f"[{self.host_id}] {container_name} became unresponsive.")
-                        ready = False
-                        self.last_known_pct[container_name] = 0
-                        self.last_known_phase[container_name] = "Unresponsive"
+                if is_responsive:
+                    self.last_known_pct[container_name] = 100
+                    self.last_known_phase[container_name] = "Ready"
+                    if not ready:
+                        logger.success(f"[{self.host_id}] {container_name} readiness confirmed.")
+                        ready = True
+                elif ready:
+                    logger.warning(f"[{self.host_id}] {container_name} became unresponsive.")
+                    ready = False
+                    self.last_known_pct[container_name] = 0
+                    self.last_known_phase[container_name] = "Unresponsive"
 
                 await asyncio.sleep(15.0 if ready else 5.0)
         except asyncio.CancelledError:
@@ -463,6 +486,32 @@ class DockerHostMonitor:
                     containers = []
 
                 for name in containers:
+                    # Detect container restarts by comparing StartedAt timestamps
+                    restart_detected = False
+                    try:
+                        st, cdata = await self.docker_api_get(f"/containers/{name}/json")
+                        if st == 200 and cdata:
+                            started_at = cdata.get("State", {}).get("StartedAt", "")
+                            prev_started_at = self.container_started_at.get(name)
+                            if prev_started_at and started_at != prev_started_at:
+                                logger.warning(
+                                    f"[{self.host_id}] Restart detected for {name} "
+                                    f"(was {prev_started_at}, now {started_at})"
+                                )
+                                restart_detected = True
+                            self.container_started_at[name] = started_at
+                    except Exception:
+                        pass
+
+                    if restart_detected:
+                        # Cancel existing monitor and reset state
+                        if name in self.active_monitors and not self.active_monitors[name].done():
+                            self.active_monitors[name].cancel()
+                        self.last_known_pct[name] = 0
+                        self.last_known_phase[name] = "Restarting"
+                        self.container_phases.pop(name, None)
+                        self.container_info_cache.pop(name, None)
+
                     if name not in self.active_monitors or self.active_monitors[name].done():
                         self.active_monitors[name] = asyncio.create_task(
                             self.monitor_container(name)
@@ -473,10 +522,11 @@ class DockerHostMonitor:
                         if not self.active_monitors[name].done():
                             self.active_monitors[name].cancel()
                         del self.active_monitors[name]
-                        if name in self.last_known_pct:
-                            del self.last_known_pct[name]
-                        if name in self.last_known_phase:
-                            del self.last_known_phase[name]
+                        self.last_known_pct.pop(name, None)
+                        self.last_known_phase.pop(name, None)
+                        self.container_started_at.pop(name, None)
+                        self.container_phases.pop(name, None)
+                        self.container_info_cache.pop(name, None)
 
             except Exception as e:
                 logger.error(f"[{self.host_id}] Discovery error: {e}")
@@ -531,7 +581,7 @@ class FleetMultiplexer:
                 res[host_id][c] = {
                     "pct": pct,
                     "phase": phase if pct >= 0 else "Failed",
-                    "is_crash": phase in ("Crash", "Offline", "Unresponsive")
+                    "is_crash": phase in ("Crash", "Offline", "Unresponsive"),
                 }
         return web.json_response(res)
 

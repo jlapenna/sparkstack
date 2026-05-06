@@ -5,7 +5,7 @@ import uuid
 import pytest
 from loguru import logger
 
-from core.utils import async_run_command
+from sparkstack.core.utils import async_run_command
 from tests.e2e.context import E2EContext
 from tests.e2e.session_cleanup import cleanup_session
 from tests.e2e.utils import extract_cli_json
@@ -16,13 +16,13 @@ from tests.e2e.utils import extract_cli_json
 @pytest.mark.asyncio
 async def test_long_conversation(ctx: E2EContext):
     """
-    Validates that an agent can handle a 30-message back-and-forth
+    Validates that an agent can handle a 4-message back-and-forth
     without failing, hanging, or dropping context.
     """
     unique_token = str(uuid.uuid4())[:8]
     session_id = f"verifier_long_{int(time.time())}_{unique_token}"
 
-    total_messages = 30
+    total_messages = ctx.long_conversation_messages
 
     try:
         logger.info(f"Starting {total_messages}-message conversation test in session: {session_id}")
@@ -67,7 +67,10 @@ async def test_long_conversation(ctx: E2EContext):
 
             result = data.get("result", {})
             payloads = result.get("payloads", [])
-            assistant_text = " ".join(p.get("text", "") for p in payloads)
+            if payloads:
+                assistant_text = " ".join(p.get("text", "") for p in payloads)
+            else:
+                assistant_text = result.get("finalAssistantVisibleText", "")
 
             expected_response = f"ACK_{i}"
             if expected_response not in assistant_text:

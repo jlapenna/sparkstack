@@ -115,42 +115,54 @@ When returning to an active PR to address upstream feedback, fix CI, or perform 
 
 ### 3. Synchronizing the `local-dev` Branch
 
-To ensure your local environment doesn't drift too far from upstream, or if you need to start fresh, update the `local-dev` branch:
+To ensure your local environment doesn't drift too far from upstream, or if you need to start fresh, update the `local-dev` branch. The strategy differs significantly between repositories to balance between history preservation and stability.
 
-> [!TIP]
-> **Automated Sync (Recommended for sparkrun)**
-> Because `sparkrun` is managed by the orchestrator, its upstream syncing process is fully automated. Simply run:
->
-> ```bash
-> uv run manager/update_sparkrun.py --pull-latest
-> ```
->
-> *Note: This requires the `upstream` remote to be configured in your `sparkrun` directory: `git remote add upstream https://github.com/spark-arena/sparkrun.git`. The script will fetch upstream and seamlessly rebase your `local-dev` patches on top of upstream's main branch.*
+#### A. SparkRun (Automated Rebase)
 
-**Manual Sync (If needed):**
+`sparkrun` uses a **rebase** strategy to keep local patches on top of upstream changes. This is the preferred method because it automatically preserves all local commits and PRs already integrated into `local-dev`.
 
-> [!IMPORTANT]
-> **Base Branch Differentiation**
->
-> - **For `sparkrun`**: `local-dev` should track the tip of the development branch (`upstream/main` or `upstream/develop`).
-> - **For `openclaw`**: `local-dev` should track the latest stable production tag (bypassing betas).
-> - **For `spark-stack-registry`**: Tracks the canonical `origin/main` branch (does not use `local-dev` integrations).
+- **Command:** `uv run manager/update_sparkrun.py --pull-latest`
+- **Effect:** Fetches `upstream/main`, then rebases your local `local-dev` branch onto it. Your local-only patches will remain at the top of the commit history.
+
+#### B. OpenClaw (Hard Reset)
+
+`openclaw` uses a **hard-reset** strategy to maintain alignment with official stable releases and avoid complex merge/rebase noise from its extremely active upstream.
+
+- **Command:** `git reset --hard $(git tag -l 'v*' | grep -v beta | sort -V | tail -n 1)`
+- **Warning:** This **WIPES** all local-dev patches. You MUST follow the restoration protocol in Section 4 immediately after.
+
+#### C. Manual Sync Fallback (General)
+
+If automated scripts are unavailable, use these manual primitives:
 
 ```bash
 git fetch --tags upstream
 
-# To update your existing local-dev onto upstream (e.g. for sparkrun):
-git rebase upstream/main
+# For sparkrun (Preserves patches)
+git checkout local-dev && git rebase upstream/main
+
+# For openclaw (Stable alignment, clears patches)
+git checkout local-dev && git reset --hard <latest-tag>
 ```
 
-> [!WARNING]
-> **For openclaw:** Do NOT rebase. To sync `local-dev`, hard-reset it directly to the newest stable tag to avoid generating thousands of unmerged commits from upstream history drift:
->
-> ```bash
-> git reset --hard $(git tag -l 'v*' | grep -v beta | sort -V | tail -n 1)
-> ```
+### 4. Restoring Local-Dev Integrations (After Sync)
 
-### 4. Verify Clean Source Dependency State
+If a hard-reset (required for `openclaw`) or a manual reset clears your `local-dev` patches, you must restore them.
+
+1. **Identify Lost Commits**: Use `git reflog local-dev` to find the SHAs of the commits that were present before the reset.
+   ```bash
+   git reflog local-dev | head -n 20
+   ```
+1. **Identify PRs/Branches**: If you don't have the branch names, search for the PRs using keywords from the commit messages:
+   ```bash
+   gh pr list --search "keyword from commit" --limit 5
+   ```
+1. **Re-apply Patches**: Merge the identified feature branches back into `local-dev`. For `sparkrun`, also check for PRs from other contributors that may not have been in your local history:
+   ```bash
+   git merge <branch-name> --no-edit
+   ```
+
+### 5. Verify Clean Source Dependency State
 
 Before closing the process, you MUST verify that the git tree for the primary source dependency is entirely clean. Run `git status` inside the main source dependency directory. There must be **no** uncommitted modifications, **no** staged files, and **no** open indexed commits left unresolved. If any exist, you must either commit or revert them to ensure the source dependency protocol isn't violated.
 

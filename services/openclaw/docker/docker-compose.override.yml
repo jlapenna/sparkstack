@@ -12,9 +12,15 @@ services:
   openclaw-gateway:
     image: openclaw-gateway-custom:latest
 
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+
     environment:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4318
       - OTEL_SERVICE_NAME=openclaw-gateway
+      - OTEL_ATTRIBUTE_VALUE_LENGTH_LIMIT=131072
 
     # Inject secrets (TELEGRAM_BOT_TOKEN, LITELLM_MASTER_KEY, etc.)
     # from the user's state directory, not the repo .env.
@@ -39,6 +45,10 @@ services:
 
   openclaw-cli:
     image: openclaw-gateway-custom:latest
+    deploy:
+      resources:
+        limits:
+          memory: 4G
 
 networks:
   proxy-tier:

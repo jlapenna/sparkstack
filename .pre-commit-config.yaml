@@ -26,18 +26,18 @@ repos:
       - id: pyright
         entry: bash -c 'pyright --pythonpath .venv/bin/python "$@"' --
         verbose: true
-        args: [ core/, manager/, tests/ ]
+        args: [ sparkstack/, tests/ ]
         additional_dependencies:
           - pyright
         stages: [pre-push]
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.30.0
+    rev: v8.30.1
     hooks:
       - id: gitleaks
         args: ["--no-color"]
         stages: [pre-commit, pre-push]
   - repo: https://github.com/PyCQA/bandit
-    rev: 1.8.3
+    rev: 1.9.4
     hooks:
       - id: bandit
         args: ["-c", "pyproject.toml", "-r", "."]

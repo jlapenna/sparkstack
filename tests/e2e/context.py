@@ -10,3 +10,4 @@ class E2EContext:
     gateway_url: str
     telemetry_url: str
     soak_minutes: int
+    long_conversation_messages: int

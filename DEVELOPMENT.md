@@ -22,11 +22,16 @@ Run the following on your new host to completely protect remote connections:
 # 1. Install iptables-persistent (this will also cleanly remove ufw if inactive)
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent
 
-# 2. Inject an explicit bypass rule at the absolute top of the system INPUT chain
-sudo iptables -I INPUT 1 -p tcp --dport 22 -m state --state ESTABLISHED,RELATED -j ACCEPT
+# 2. Inject an explicit bypass rule at the absolute top of the system INPUT chain.
+# IMPORTANT: Replace <YOUR_SSH_PORT> with your actual SSH port (e.g., 222, 8234). 
+# If you use multiple ports, run this command for each port.
+sudo iptables -I INPUT 1 -p tcp --dport <YOUR_SSH_PORT> -m state --state ESTABLISHED,RELATED -j ACCEPT
 
 # 3. Save the live rule permanently so it survives server reboots
 sudo netfilter-persistent save
+
+# 4. Remove ufw
+sudo apt-get purge -y ufw
 ```
 
 This guarantees that VS Code or standard terminal sessions will survive infrastructure teardowns without dropping you.

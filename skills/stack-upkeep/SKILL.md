@@ -54,7 +54,7 @@ The underlying vLLM and LiteLLM containers may have received upstream patches.
 If pulling the latest container image introduces a breaking registry change or stability issue, you must rollback to a known-good configuration immediately:
 
 - **Command:** `uv run python manager/set_current.py spark-stack-registry/stacks/<previous_stable_stack_directory>`
-- **Behavior:** This resets the `current` symlink and rebuilds the active docker-compose configuration using the older, verified images and recipes. Run `cd spark-stack-registry/stacks/current && docker compose up -d --force-recreate` to solidify the restore.
+- **Behavior:** This resets the `current` symlink and rebuilds the active docker-compose configuration using the older, verified images and recipes. Run `cd current && docker compose up -d --force-recreate` to solidify the restore.
 
 ### 4. Manual Version Discovery & Pinning (When Renovate Fails)
 

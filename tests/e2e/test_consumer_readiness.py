@@ -4,7 +4,7 @@ import uuid
 import pytest
 from loguru import logger
 
-from core.utils import async_run_command
+from sparkstack.core.utils import async_run_command
 from tests.e2e.context import E2EContext
 from tests.e2e.session_cleanup import cleanup_session
 from tests.e2e.utils import extract_cli_json
@@ -55,7 +55,10 @@ async def test_consumer_readiness(ctx: E2EContext):
         # 3. Verify response content
         result = data.get("result", {})
         payloads = result.get("payloads", [])
-        assistant_text = " ".join(p.get("text", "") for p in payloads)
+        if payloads:
+            assistant_text = " ".join(p.get("text", "") for p in payloads)
+        else:
+            assistant_text = result.get("finalAssistantVisibleText", "")
 
         # Error string check
         failure_indicators = ["LLM request failed", "network connection error", "Connection error"]

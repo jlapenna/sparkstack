@@ -1,6 +1,6 @@
 import pytest
 
-from manager.wait_for_backends import wait_for_backends_to_load
+from sparkstack.manager.wait_for_backends import wait_for_backends_to_load
 from tests.e2e.context import E2EContext
 
 

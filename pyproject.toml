@@ -1,9 +1,14 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "services"
+name = "sparkstack"
 version = "0.1.0"
 description = "Management codebase for Docker services, including vLLM and OpenClaw."
 requires-python = ">=3.13"
 dependencies = [
+    "click>=8.1.0",
     "aiohttp>=3.9.0",
     "httpx>=0.27.0,<0.28.0",
     "jq>=1.11.0",
@@ -17,10 +22,14 @@ dependencies = [
     "torch>=2.1.0",
     "sparkrun",
     "psutil>=7.2.2",
+    "textual>=8.1.1",
 ]
 
+[project.scripts]
+sparkstack = "sparkstack.cli:main"
+
 [tool.uv]
-package = false
+package = true
 prerelease = "allow"
 link-mode = "symlink"
 compile-bytecode = true
@@ -42,8 +51,11 @@ dev = [
     "pytest-sugar>=1.1.1",
     "pytest-order>=1.3.0",
     "pytest-timeout>=2.3.1",
-    "bandit[toml]>=1.8.0",
+    "bandit[toml]>=1.9.4",
 ]
+
+[tool.setuptools.packages.find]
+include = ["sparkstack*"]
 
 [tool.ruff]
 line-length = 100
@@ -69,7 +81,7 @@ ignore = ["E501", "S101", "S603", "S607", "S104", "S108", "S110", "S310", "ASYNC
 "skills/**/*.py" = ["S603", "S607"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["core", "manager", "services"]
+known-first-party = ["sparkstack"]
 
 [tool.pyright]
 venvPath = "."

@@ -24,7 +24,7 @@ def get_container_name(target: str) -> str:
 
     # 2. Check for sparkrun alias in litellm-config
     try:
-        stack_dir = Path(__file__).parent.parent.parent.parent / "current"
+        stack_dir = (Path(__file__).parent.parent.parent.parent / "current").resolve()
         litellm_file = stack_dir / "litellm-config.yaml"
         if litellm_file.exists():
             with open(litellm_file) as f:

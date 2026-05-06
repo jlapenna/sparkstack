@@ -285,7 +285,7 @@
         {
           "editorMode": "code",
           "exemplar": false,
-          "expr": "100 * (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\",instance=\"$node\",job=\"$job\"}[$__rate_interval])))",
+          "expr": "100 * (1 - avg(rate(nv_cpu_usage_percent{mode=\"idle\",instance=\"$node\",job=\"$job\"}[$__rate_interval])))",
           "instant": true,
           "legendFormat": "",
           "range": false,
@@ -368,7 +368,7 @@
         {
           "editorMode": "code",
           "exemplar": false,
-          "expr": "scalar(node_load1{instance=\"$node\",job=\"$job\"}) * 100 / count(count(node_cpu_seconds_total{instance=\"$node\",job=\"$job\"}) by (cpu))",
+          "expr": "scalar(node_load1{instance=\"$node\",job=\"$job\"}) * 100 / count(count(nv_cpu_usage_percent{instance=\"$node\",job=\"$job\"}) by (cpu))",
           "format": "time_series",
           "instant": true,
           "range": false,
@@ -441,7 +441,7 @@
         {
           "editorMode": "code",
           "exemplar": false,
-          "expr": "clamp_min((1 - (node_memory_MemAvailable_bytes{instance=\"$node\", job=\"$job\"} / node_memory_MemTotal_bytes{instance=\"$node\", job=\"$job\"})) * 100, 0)",
+          "expr": "clamp_min((1 - (nv_memory_available_bytes{instance=\"$node\", job=\"$job\"} / nv_memory_total_bytes{instance=\"$node\", job=\"$job\"})) * 100, 0)",
           "format": "time_series",
           "instant": true,
           "range": false,
@@ -681,7 +681,7 @@
         {
           "editorMode": "code",
           "exemplar": false,
-          "expr": "count(count(node_cpu_seconds_total{instance=\"$node\",job=\"$job\"}) by (cpu))",
+          "expr": "count(count(nv_cpu_usage_percent{instance=\"$node\",job=\"$job\"}) by (cpu))",
           "instant": true,
           "legendFormat": "__auto",
           "range": false,
@@ -760,7 +760,7 @@
         {
           "editorMode": "code",
           "exemplar": false,
-          "expr": "node_memory_MemTotal_bytes{instance=\"$node\",job=\"$job\"}",
+          "expr": "nv_memory_total_bytes{instance=\"$node\",job=\"$job\"}",
           "instant": true,
           "range": false,
           "refId": "A",
@@ -1186,7 +1186,7 @@
         {
           "editorMode": "code",
           "exemplar": false,
-          "expr": "avg(rate(node_cpu_seconds_total{instance=\"$node\",job=\"$job\", mode=\"system\"}[$__rate_interval]))",
+          "expr": "avg(rate(nv_cpu_usage_percent{instance=\"$node\",job=\"$job\", mode=\"system\"}[$__rate_interval]))",
           "format": "time_series",
           "instant": false,
           "legendFormat": "Busy System",
@@ -1196,7 +1196,7 @@
         },
         {
           "editorMode": "code",
-          "expr": "avg(rate(node_cpu_seconds_total{instance=\"$node\",job=\"$job\", mode=\"user\"}[$__rate_interval]))",
+          "expr": "avg(rate(nv_cpu_usage_percent{instance=\"$node\",job=\"$job\", mode=\"user\"}[$__rate_interval]))",
           "format": "time_series",
           "legendFormat": "Busy User",
           "range": true,
@@ -1205,7 +1205,7 @@
         },
         {
           "editorMode": "code",
-          "expr": "avg(rate(node_cpu_seconds_total{instance=\"$node\",job=\"$job\", mode=\"iowait\"}[$__rate_interval]))",
+          "expr": "avg(rate(nv_cpu_usage_percent{instance=\"$node\",job=\"$job\", mode=\"iowait\"}[$__rate_interval]))",
           "format": "time_series",
           "legendFormat": "Busy Iowait",
           "range": true,
@@ -1214,7 +1214,7 @@
         },
         {
           "editorMode": "code",
-          "expr": "avg(sum without(mode) (rate(node_cpu_seconds_total{instance=\"$node\",job=\"$job\", mode=~\".*irq\"}[$__rate_interval])))",
+          "expr": "avg(sum without(mode) (rate(nv_cpu_usage_percent{instance=\"$node\",job=\"$job\", mode=~\".*irq\"}[$__rate_interval])))",
           "format": "time_series",
           "legendFormat": "Busy IRQs",
           "range": true,
@@ -1223,7 +1223,7 @@
         },
         {
           "editorMode": "code",
-          "expr": "avg(sum without (mode) (rate(node_cpu_seconds_total{instance=\"$node\",job=\"$job\",  mode!='idle',mode!='user',mode!='system',mode!='iowait',mode!='irq',mode!='softirq'}[$__rate_interval])))",
+          "expr": "avg(sum without (mode) (rate(nv_cpu_usage_percent{instance=\"$node\",job=\"$job\",  mode!='idle',mode!='user',mode!='system',mode!='iowait',mode!='irq',mode!='softirq'}[$__rate_interval])))",
           "format": "time_series",
           "legendFormat": "Busy Other",
           "range": true,
@@ -1232,7 +1232,7 @@
         },
         {
           "editorMode": "code",
-          "expr": "avg(rate(node_cpu_seconds_total{instance=\"$node\",job=\"$job\", mode=\"idle\"}[$__rate_interval]))",
+          "expr": "avg(rate(nv_cpu_usage_percent{instance=\"$node\",job=\"$job\", mode=\"idle\"}[$__rate_interval]))",
           "format": "time_series",
           "legendFormat": "Idle",
           "range": true,
@@ -1399,7 +1399,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "node_memory_MemTotal_bytes{instance=\"$node\",job=\"$job\"}",
+          "expr": "nv_memory_total_bytes{instance=\"$node\",job=\"$job\"}",
           "format": "time_series",
           "legendFormat": "Total",
           "range": true,
@@ -1408,7 +1408,7 @@
         },
         {
           "editorMode": "code",
-          "expr": "node_memory_MemTotal_bytes{instance=\"$node\",job=\"$job\"} - node_memory_MemFree_bytes{instance=\"$node\",job=\"$job\"} - (node_memory_Cached_bytes{instance=\"$node\",job=\"$job\"} + node_memory_Buffers_bytes{instance=\"$node\",job=\"$job\"} + node_memory_SReclaimable_bytes{instance=\"$node\",job=\"$job\"})",
+          "expr": "nv_memory_total_bytes{instance=\"$node\",job=\"$job\"} - nv_memory_free_bytes{instance=\"$node\",job=\"$job\"} - (nv_memory_cached_bytes{instance=\"$node\",job=\"$job\"} + nv_memory_buffers_bytes{instance=\"$node\",job=\"$job\"} + node_memory_SReclaimable_bytes{instance=\"$node\",job=\"$job\"})",
           "format": "time_series",
           "legendFormat": "Used",
           "range": true,
@@ -1417,7 +1417,7 @@
         },
         {
           "editorMode": "code",
-          "expr": "node_memory_Cached_bytes{instance=\"$node\",job=\"$job\"} + node_memory_Buffers_bytes{instance=\"$node\",job=\"$job\"} + node_memory_SReclaimable_bytes{instance=\"$node\",job=\"$job\"}",
+          "expr": "nv_memory_cached_bytes{instance=\"$node\",job=\"$job\"} + nv_memory_buffers_bytes{instance=\"$node\",job=\"$job\"} + node_memory_SReclaimable_bytes{instance=\"$node\",job=\"$job\"}",
           "format": "time_series",
           "legendFormat": "Cache + Buffer",
           "range": true,
@@ -1426,7 +1426,7 @@
         },
         {
           "editorMode": "code",
-          "expr": "node_memory_MemFree_bytes{instance=\"$node\",job=\"$job\"}",
+          "expr": "nv_memory_free_bytes{instance=\"$node\",job=\"$job\"}",
           "format": "time_series",
           "legendFormat": "Free",
           "range": true,
@@ -1904,7 +1904,7 @@
           "targets": [
             {
               "editorMode": "code",
-              "expr": "sum(rate(node_cpu_seconds_total{mode=\"system\",instance=\"$node\",job=\"$job\"}[$__rate_interval])) / scalar(count(count(node_cpu_seconds_total{instance=\"$node\",job=\"$job\"}) by (cpu)))",
+              "expr": "sum(rate(nv_cpu_usage_percent{mode=\"system\",instance=\"$node\",job=\"$job\"}[$__rate_interval])) / scalar(count(count(nv_cpu_usage_percent{instance=\"$node\",job=\"$job\"}) by (cpu)))",
               "format": "time_series",
               "interval": "",
               "legendFormat": "System - Processes executing in kernel mode",
@@ -1914,7 +1914,7 @@
             },
             {
               "editorMode": "code",
-              "expr": "sum(rate(node_cpu_seconds_total{mode=\"user\",instance=\"$node\",job=\"$job\"}[$__rate_interval])) / scalar(count(count(node_cpu_seconds_total{instance=\"$node\",job=\"$job\"}) by (cpu)))",
+              "expr": "sum(rate(nv_cpu_usage_percent{mode=\"user\",instance=\"$node\",job=\"$job\"}[$__rate_interval])) / scalar(count(count(nv_cpu_usage_percent{instance=\"$node\",job=\"$job\"}) by (cpu)))",
               "format": "time_series",
               "legendFormat": "User - Normal processes executing in user mode",
               "range": true,
@@ -1923,7 +1923,7 @@
             },
             {
               "editorMode": "code",
-              "expr": "sum(rate(node_cpu_seconds_total{mode=\"nice\",instance=\"$node\",job=\"$job\"}[$__rate_interval])) / scalar(count(count(node_cpu_seconds_total{instance=\"$node\",job=\"$job\"}) by (cpu)))",
+              "expr": "sum(rate(nv_cpu_usage_percent{mode=\"nice\",instance=\"$node\",job=\"$job\"}[$__rate_interval])) / scalar(count(count(nv_cpu_usage_percent{instance=\"$node\",job=\"$job\"}) by (cpu)))",
               "format": "time_series",
               "legendFormat": "Nice - Niced processes executing in user mode",
               "range": true,
@@ -1932,7 +1932,7 @@
             },
             {
               "editorMode": "code",
-              "expr": "sum(rate(node_cpu_seconds_total{mode=\"iowait\",instance=\"$node\",job=\"$job\"}[$__rate_interval])) / scalar(count(count(node_cpu_seconds_total{instance=\"$node\",job=\"$job\"}) by (cpu)))",
+              "expr": "sum(rate(nv_cpu_usage_percent{mode=\"iowait\",instance=\"$node\",job=\"$job\"}[$__rate_interval])) / scalar(count(count(nv_cpu_usage_percent{instance=\"$node\",job=\"$job\"}) by (cpu)))",
               "format": "time_series",
               "legendFormat": "Iowait - Waiting for I/O to complete",
               "range": true,
@@ -1941,7 +1941,7 @@
             },
             {
               "editorMode": "code",
-              "expr": "sum(rate(node_cpu_seconds_total{mode=\"irq\",instance=\"$node\",job=\"$job\"}[$__rate_interval])) / scalar(count(count(node_cpu_seconds_total{instance=\"$node\",job=\"$job\"}) by (cpu)))",
+              "expr": "sum(rate(nv_cpu_usage_percent{mode=\"irq\",instance=\"$node\",job=\"$job\"}[$__rate_interval])) / scalar(count(count(nv_cpu_usage_percent{instance=\"$node\",job=\"$job\"}) by (cpu)))",
               "format": "time_series",
               "legendFormat": "Irq - Servicing interrupts",
               "range": true,
@@ -1950,7 +1950,7 @@
             },
             {
               "editorMode": "code",
-              "expr": "sum(rate(node_cpu_seconds_total{mode=\"softirq\",instance=\"$node\",job=\"$job\"}[$__rate_interval])) / scalar(count(count(node_cpu_seconds_total{instance=\"$node\",job=\"$job\"}) by (cpu)))",
+              "expr": "sum(rate(nv_cpu_usage_percent{mode=\"softirq\",instance=\"$node\",job=\"$job\"}[$__rate_interval])) / scalar(count(count(nv_cpu_usage_percent{instance=\"$node\",job=\"$job\"}) by (cpu)))",
               "format": "time_series",
               "legendFormat": "Softirq - Servicing softirqs",
               "range": true,
@@ -1959,7 +1959,7 @@
             },
             {
               "editorMode": "code",
-              "expr": "sum(rate(node_cpu_seconds_total{mode=\"steal\",instance=\"$node\",job=\"$job\"}[$__rate_interval])) / scalar(count(count(node_cpu_seconds_total{instance=\"$node\",job=\"$job\"}) by (cpu)))",
+              "expr": "sum(rate(nv_cpu_usage_percent{mode=\"steal\",instance=\"$node\",job=\"$job\"}[$__rate_interval])) / scalar(count(count(nv_cpu_usage_percent{instance=\"$node\",job=\"$job\"}) by (cpu)))",
               "format": "time_series",
               "legendFormat": "Steal - Time spent in other operating systems when running in a virtualized environment",
               "range": true,
@@ -1968,7 +1968,7 @@
             },
             {
               "editorMode": "code",
-              "expr": "sum(rate(node_cpu_seconds_total{mode=\"idle\",instance=\"$node\",job=\"$job\"}[$__rate_interval])) / scalar(count(count(node_cpu_seconds_total{instance=\"$node\",job=\"$job\"}) by (cpu)))",
+              "expr": "sum(rate(nv_cpu_usage_percent{mode=\"idle\",instance=\"$node\",job=\"$job\"}[$__rate_interval])) / scalar(count(count(nv_cpu_usage_percent{instance=\"$node\",job=\"$job\"}) by (cpu)))",
               "format": "time_series",
               "legendFormat": "Idle - Waiting for something to happen",
               "range": true,
@@ -1977,7 +1977,7 @@
             },
             {
               "editorMode": "code",
-              "expr": "sum by(instance) (rate(node_cpu_guest_seconds_total{instance=\"$node\",job=\"$job\"}[$__rate_interval])) / on(instance) group_left sum by (instance)((rate(node_cpu_seconds_total{instance=\"$node\",job=\"$job\"}[$__rate_interval]))) > 0",
+              "expr": "sum by(instance) (rate(node_cpu_guest_seconds_total{instance=\"$node\",job=\"$job\"}[$__rate_interval])) / on(instance) group_left sum by (instance)((rate(nv_cpu_usage_percent{instance=\"$node\",job=\"$job\"}[$__rate_interval]))) > 0",
               "format": "time_series",
               "legendFormat": "Guest CPU usage",
               "range": true,
@@ -2242,7 +2242,7 @@
           "targets": [
             {
               "editorMode": "code",
-              "expr": "node_memory_MemTotal_bytes{instance=\"$node\",job=\"$job\"} - node_memory_MemFree_bytes{instance=\"$node\",job=\"$job\"} - node_memory_Buffers_bytes{instance=\"$node\",job=\"$job\"} - node_memory_Cached_bytes{instance=\"$node\",job=\"$job\"} - node_memory_Slab_bytes{instance=\"$node\",job=\"$job\"} - node_memory_PageTables_bytes{instance=\"$node\",job=\"$job\"} - node_memory_SwapCached_bytes{instance=\"$node\",job=\"$job\"}",
+              "expr": "nv_memory_total_bytes{instance=\"$node\",job=\"$job\"} - nv_memory_free_bytes{instance=\"$node\",job=\"$job\"} - nv_memory_buffers_bytes{instance=\"$node\",job=\"$job\"} - nv_memory_cached_bytes{instance=\"$node\",job=\"$job\"} - node_memory_Slab_bytes{instance=\"$node\",job=\"$job\"} - node_memory_PageTables_bytes{instance=\"$node\",job=\"$job\"} - node_memory_SwapCached_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
               "legendFormat": "Apps - Memory used by user-space applications",
               "range": true,
@@ -2278,7 +2278,7 @@
             },
             {
               "editorMode": "code",
-              "expr": "node_memory_Cached_bytes{instance=\"$node\",job=\"$job\"}",
+              "expr": "nv_memory_cached_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
               "legendFormat": "Cache - Parked file data (file content) cache",
               "range": true,
@@ -2287,7 +2287,7 @@
             },
             {
               "editorMode": "code",
-              "expr": "node_memory_Buffers_bytes{instance=\"$node\",job=\"$job\"}",
+              "expr": "nv_memory_buffers_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
               "legendFormat": "Buffers - Block device (e.g. harddisk) cache",
               "range": true,
@@ -2296,7 +2296,7 @@
             },
             {
               "editorMode": "code",
-              "expr": "node_memory_MemFree_bytes{instance=\"$node\",job=\"$job\"}",
+              "expr": "nv_memory_free_bytes{instance=\"$node\",job=\"$job\"}",
               "format": "time_series",
               "legendFormat": "Unused - Free memory unassigned",
               "range": true,
@@ -3903,7 +3903,7 @@
           "targets": [
             {
               "editorMode": "code",
-              "expr": "(node_memory_Inactive_bytes{instance=\"$node\",job=\"$job\"}) \n/ \n(node_memory_MemTotal_bytes{instance=\"$node\",job=\"$job\"})",
+              "expr": "(node_memory_Inactive_bytes{instance=\"$node\",job=\"$job\"}) \n/ \n(nv_memory_total_bytes{instance=\"$node\",job=\"$job\"})",
               "format": "time_series",
               "legendFormat": "Inactive \u2013 Less recently used memory, more likely to be reclaimed",
               "range": true,
@@ -3912,7 +3912,7 @@
             },
             {
               "editorMode": "code",
-              "expr": "(node_memory_Active_bytes{instance=\"$node\",job=\"$job\"}) \n/ \n(node_memory_MemTotal_bytes{instance=\"$node\",job=\"$job\"})\n",
+              "expr": "(node_memory_Active_bytes{instance=\"$node\",job=\"$job\"}) \n/ \n(nv_memory_total_bytes{instance=\"$node\",job=\"$job\"})\n",
               "format": "time_series",
               "legendFormat": "Active \u2013 Recently used memory, retained unless under pressure",
               "range": true,
@@ -7092,7 +7092,7 @@
             },
             {
               "editorMode": "code",
-              "expr": "count(count(node_cpu_seconds_total{instance=\"$node\",job=\"$job\"}) by (cpu))",
+              "expr": "count(count(nv_cpu_usage_percent{instance=\"$node\",job=\"$job\"}) by (cpu))",
               "format": "time_series",
               "legendFormat": "CPU Core Count",
               "range": true,

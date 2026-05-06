@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from core.statsd import StatsdClient
+from sparkstack.core.statsd import StatsdClient
 
 
 @pytest.mark.asyncio

@@ -3,8 +3,8 @@
 OpenClaw auto-generates per-agent ``models.json`` files that take precedence
 over the global ``openclaw.json`` config.  ``sync_registry.py`` only writes to
 the global config, so agent-level files can silently drift.  A missing or stale
-``maxTokens`` triggers a 16-token OpenAI default fallback that truncates
-reasoning models — the exact root cause of the 2026-04-29T15:25 incident.
+``maxTokens`` causes parameter mismatches that can truncate reasoning models —
+the exact root cause of the 2026-04-29T15:25 incident.
 
 This test ensures that every agent-level ``models.json`` containing a ``spark``
 provider has model entries whose ``maxTokens`` and ``contextWindow`` match the
@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 from loguru import logger
 
-from core.env import OPENCLAW_CONFIG_DIR, OPENCLAW_CONFIG_PATH
+from sparkstack.core.env import OPENCLAW_CONFIG_DIR, OPENCLAW_CONFIG_PATH
 
 
 def _load_json(path: Path) -> dict:
@@ -37,8 +37,8 @@ def test_agent_models_maxTokens_matches_global():
     """Every agent-level spark model must carry a maxTokens value consistent
     with the global openclaw.json config.
 
-    Drift here silently triggers a 16-token completion limit for the affected
-    agent, causing reasoning truncation and payloads=0 failures.
+    Drift here causes parameter mismatches for the affected agent, potentially
+    causing reasoning truncation and payloads=0 failures.
     """
     if not OPENCLAW_CONFIG_PATH.exists():
         pytest.skip("openclaw.json not found — OpenClaw not configured")
@@ -85,7 +85,7 @@ def test_agent_models_maxTokens_matches_global():
                 drift_errors.append(
                     f"{agent_name}/spark/{model_id}: maxTokens MISSING "
                     f"(global={global_max}). "
-                    f"Will fall back to 16-token OpenAI default."
+                    f"Agent will use stale or default maxTokens."
                 )
             elif global_max is not None and agent_max != global_max:
                 drift_errors.append(

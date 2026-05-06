@@ -1,7 +1,7 @@
 import pytest
 from loguru import logger
 
-from manager.check_memory_law import check_compliance
+from sparkstack.manager.check_memory_law import check_compliance
 from tests.e2e.context import E2EContext
 
 

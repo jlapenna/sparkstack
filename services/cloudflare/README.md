@@ -4,14 +4,16 @@ This directory manages the **Cloudflare Tunnel** (`cloudflared`) used to securel
 
 ## Management
 
-### Tunnel Helper
+### Tunnel Management
 
-Use the `./tunnel.sh` script to manage the tunnel. It automatically loads secrets from the parent `.env` file:
+The tunnel is managed natively by the stack's orchestration scripts (`uv run manager/update_services.py` and `manager/set_current.py`).
+
+You can also manage it manually using native docker compose (ensure you pass the root `.env` file):
 
 ```bash
-./tunnel.sh up -d    # Start the tunnel
-./tunnel.sh logs -f  # View logs
-./tunnel.sh ps       # Check status
+docker compose --env-file ../../.env up -d    # Start the tunnel
+docker compose --env-file ../../.env logs -f  # View logs
+docker compose --env-file ../../.env ps       # Check status
 ```
 
 ### Adding a New Service (e.g. Matrix)

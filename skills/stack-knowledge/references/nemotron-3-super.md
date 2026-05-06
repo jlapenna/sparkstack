@@ -26,6 +26,18 @@
 - **Reasoning Parsers**: vLLM natively supports the Nemotron-3 format. Use `--reasoning-parser nemotron_v3` (Do NOT attempt to use the outdated `super_v3_reasoning_parser.py` plugin).
 - **Tool Calling Parsers**: You must specify `--enable-auto-tool-choice` and `--tool-call-parser qwen3_coder` so vLLM can properly convert the model outputs to OpenAI format.
 
+### OpenClaw Reasoning Mode (DISABLED — Do Not Re-Enable)
+
+> [!CAUTION]
+> **`reasoning: true` in `openclaw.json` is unsafe for Nemotron-3-Super.**
+> This has been disabled and re-enabled multiple times (see incidents `2026-04-26T09:35`, `2026-04-28T17:35`, `2026-05-03T09:20`). Each re-enablement eventually produces the same failure: the model spends all output tokens on `reasoning_content` (thinking) and returns empty `content`, causing OpenClaw to reject the turn with `stopReason=stop payloads=0`.
+>
+> **Why the retry doesn't help:** OpenClaw's `resolveReasoningOnlyRetryInstruction` (2 retries) is gated by `hadPotentialSideEffects`. Any agent that has already executed tool calls (MCP, messaging, exec, etc.) bypasses the retry entirely, making the failure terminal for tool-heavy sessions.
+>
+> **Current config:** `reasoning: false`, no `thinkingFormat`. The model still reasons internally but all output goes to the `content` field.
+>
+> **Do not re-enable** unless OpenClaw's retry guard is changed to allow reasoning-only retries after side-effectful tool calls, or the model is verified to reliably produce non-empty `content` after extended tool-use sequences.
+
 ### Speculative Decoding (vLLM)
 
 > [!WARNING]

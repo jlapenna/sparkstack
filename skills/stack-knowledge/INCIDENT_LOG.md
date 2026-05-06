@@ -269,12 +269,12 @@ This eliminates the Docker hairpin NAT issue entirely. Both containers are on pr
 
 - **Scenario**: The `cloudflared` container was stuck in a `Restarting (255)` loop. Logs reported: `"cloudflared tunnel run" requires the ID or name of the tunnel to run as the last command line argument or in the configuration file.`
 - **Hypothesis**: The container was started without the `CLOUDFLARE_TUNNEL_TOKEN` environment variable, likely due to running `docker compose` in the `services/cloudflare/` directory without specifying the root `.env` file where the token is defined.
-- **Action**: Restarted the container using the helper script `services/cloudflare/tunnel.sh up -d --force-recreate`, which explicitly passes the parent `.env` file to the docker compose command.
+- **Action**: Restarted the container using the helper script `services/cloudflare/tunnel.sh up -d --force-recreate`, which explicitly passed the parent `.env` file to the docker compose command. (Note: `tunnel.sh` was later removed and this logic was migrated to the Python orchestration scripts).
 - **Result**: **Successful.** The container successfully received the token, authenticated with Cloudflare, and established the tunnel connections.
 
 **Learnings:**
 
-- Always use the provided helper scripts (like `tunnel.sh`) when they exist, as they often handle complex environment or path mappings required for the stack.
+- Ensure services have access to the correct environment variables, especially when `.env` files are not in the exact same directory as the `docker-compose.yml` file. (The python orchestration scripts now natively pass `--env-file`).
 - Verify container environment variables using `docker inspect <container> --format '{{range .Config.Env}}{{println .}}{{end}}'` to confirm that secrets and tokens are actually being injected.
 - A `Restarting (255)` loop with usage errors in the logs is a strong indicator of missing configuration or credentials.
 
@@ -308,13 +308,13 @@ ______________________________________________________________________
 ### 2026-04-19T23:41 — Restarted litellm without VLLM_PORT context
 
 - **Scenario**: Restarting litellm after enabling OTEL tracing via \`docker compose up\` resulted in the gateway binding to a random port instead of 4000.
-- **Hypothesis**: The VLLM_PORT environment variable was missing because \`docker compose\` in the spark-stack-registry/stacks/... directory does not natively traverse upwards to find the repository root \`.env\` file.
+- **Hypothesis**: The VLLM_PORT environment variable was missing because \`docker compose\` in the stack directory does not natively traverse upwards to find the repository root \`.env\` file.
 - **Action**: Recreated container using \`docker compose --env-file ../../.env up -d gateway\`, adhering to the standard \`launch.sh\` behavior.
 - **Result**: Gateway properly inherited the mapping to host port 4000.
 
 **Learnings:**
 
-- Always run \`docker compose\` with \`--env-file ../../.env\` when operating manually inside the active \`spark-stack-registry/stacks/current\` directory to guarantee port bindings map correctly.
+- Always run `docker compose` with `--env-file ../../.env` when operating manually inside the active stack directory (pointed to by `./current`) to guarantee port bindings map correctly.
 
 ### 2026-04-24T07:10 — Dashboard Telemetry Freeze vs Ephemeral Metrics
 
@@ -513,10 +513,10 @@ ______________________________________________________________________
 
 - **Scenario**: The `main_solo` container continued to crash with `RayChannelError` / `OOMKilled` despite the previous attempt to remove the `max_model_len` override in `stack.yaml`.
 - **Hypothesis**: The previous session assumed that deleting `max_model_len: '262144'` from `stack.yaml` would make the system fall back to the hardware limit of `131072`. However, the stack was using the remote `@eugr/nemotron-3-super-nvfp4` recipe, which inherently defaults to `max_model_len: 262144`. Thus, deleting the override just caused `sparkrun` to use the bloated remote default, perpetuating the OOM crash.
-- **Action**: 
+- **Action**:
   1. Re-added an explicit `max_model_len: 131072` override back into the `stack.yaml` configuration.
-  2. Updated the global `models.json` to have `contextWindow: 131072` to match the backend limit.
-  3. Ran `manager/sync_registry.py` to purge stale agent-level overrides (like `~/.openclaw/agents/main/agent/models.json`) to prevent configuration drift.
+  1. Updated the global `models.json` to have `contextWindow: 131072` to match the backend limit.
+  1. Ran `manager/sync_registry.py` to purge stale agent-level overrides (like `~/.openclaw/agents/main/agent/models.json`) to prevent configuration drift.
 - **Result**: **Successful**. The explicit override successfully forced the context window to `131072`, bypassing the remote registry's bloated default. The Ray DAG compiled successfully, and E2E tests passed.
 
 **Learnings:**
@@ -530,9 +530,23 @@ ______________________________________________________________________
 - **Hypothesis**: A legacy Telegram session had accumulated 134 messages *before* frontend context limits were fixed. The session prompt grew to 99,073 tokens. The OpenClaw auto-compactor continuously attempted to summarize it, but requested `maxTokens` (32,000) for the summary. 99,073 + 32,000 = 131,073, instantly triggering a 400 Context Overflow against the 131,072 backend limit. Because it failed, it retried infinitely, starring the event loop.
 - **Action**:
   1. Deleted the overgrown "poison pill" session file from `~/.openclaw/agents/` to break the infinite loop.
-  2. Modified `sync_registry.py` to algorithmically enforce a 15% buffer on frontend `contextWindow` values (downscaling 131,072 to 111,411) to safely encapsulate the 13.8% tokenizer expansion rate observed between OpenClaw's generic tokenizer and Nemotron's backend tokenizer.
+  1. Modified `sync_registry.py` to algorithmically enforce a 15% buffer on frontend `contextWindow` values (downscaling 131,072 to 111,411) to safely encapsulate the 13.8% tokenizer expansion rate observed between OpenClaw's generic tokenizer and Nemotron's backend tokenizer.
 - **Result**: **Successful**. The event loop immediately recovered. The mathematical buffer natively protects the auto-compaction boundary against future tokenizer drift without relying on arbitrary configuration guesses.
 
 **Learnings:**
+
 - **The Poison Pill Loop**: If an OpenClaw session grows past the point where `prompt_tokens + maxTokens > contextWindow` on the backend, the auto-compactor will fail and retry infinitely, effectively bricking the gateway.
 - **Tokenizer Drift is Linear**: The Nemotron backend tokenizer expands OpenClaw's generic token count by exactly 13.8% (87,040 -> 99,073). Buffer padding must be multiplicative (e.g., 15% scale down), not additive (e.g., 10,000 tokens), to safely scale alongside context windows.
+
+### 2026-05-03T09:20 — Nemotron-3-Super Reasoning-Only Output After Multi-Step Tool Use (payloads=0)
+
+- **Scenario**: The `home-assistant` agent (and at least one other session) failed with `incomplete turn detected: stopReason=stop payloads=0 — surfacing error to user`. The agent had made 7 MCP tool calls to Home Assistant, then the model produced 575 output tokens entirely as `reasoning_content` (thinking) with zero `content`, before stopping naturally (`stopReason=stop`). Trace data: `request_bytes=137111`, `response_bytes=110008`, `input=16408 tokens`, `output=575 tokens`.
+- **Hypothesis**: Nemotron-3-Super with `reasoning: true` and `thinkingFormat: openai` intermittently produces reasoning-only output (all tokens in `reasoning_content`, empty `content`) especially after multi-step tool use. OpenClaw's built-in `resolveReasoningOnlyRetryInstruction` retry mechanism (2 attempts) should catch this, but it's gated by `shouldSkipPlanningOnlyRetry`, which returns `true` when `replayMetadata.hadPotentialSideEffects` is `true`. Since the agent had already executed MCP tool calls (classified as potentially side-effectful), the retry was skipped entirely. OpenClaw then fell through to the `incompleteTurnText` path and surfaced the error.
+- **Action**: Disabled `reasoning: true` in `openclaw.json` for the `spark/main` model and removed `compat.thinkingFormat: "openai"`. This forces all model output into the `content` field rather than splitting it into `reasoning_content` + `content`, eliminating the empty-content failure mode.
+- **Result**: **Successful**. The model continues to reason internally but no longer segregates its output into separate content blocks that can fail to produce visible text.
+
+**Learnings:**
+
+- **Reasoning mode is unsafe for tool-heavy agents on Nemotron-3-Super**: The model intermittently spends all output tokens on thinking without producing visible content after multi-step tool use. OpenClaw's retry mechanism cannot recover from this when the agent has already executed side-effectful tool calls.
+- **OpenClaw's reasoning retry has a side-effect guard**: `resolveReasoningOnlyRetryInstruction` only fires when `hadPotentialSideEffects` is `false`. Any agent that uses MCP calls, messaging tools, or mutating tools will bypass the retry entirely, making reasoning-mode failures terminal.
+- **This is a recurrence of the 2026-04-26 pattern**: Incident `2026-04-26T09:35` documented the same fundamental issue (reasoning-only output → payloads=0) and was previously fixed by disabling reasoning. The `2026-04-28T17:35` entry re-enabled reasoning under the assumption that OpenClaw could handle `reasoning_content` natively, but this assumption breaks down for tool-heavy sessions where the retry guard prevents recovery.

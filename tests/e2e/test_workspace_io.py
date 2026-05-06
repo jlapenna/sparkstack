@@ -1,11 +1,10 @@
-
 import time
 import uuid
 
 import pytest
 from loguru import logger
 
-from core.utils import async_run_command, parse_cli_json
+from sparkstack.core.utils import async_run_command, parse_cli_json
 from tests.e2e.context import E2EContext
 
 
@@ -79,7 +78,10 @@ async def test_workspace_io(ctx: E2EContext):
 
     result = data.get("result", {})
     payloads = result.get("payloads", [])
-    assistant_text = " ".join(p.get("text", "") for p in payloads)
+    if payloads:
+        assistant_text = " ".join(p.get("text", "") for p in payloads)
+    else:
+        assistant_text = result.get("finalAssistantVisibleText", "")
 
     if unique_token not in assistant_text:
         logger.error(
