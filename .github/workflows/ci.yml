@@ -12,6 +12,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      - name: Checkout sparkrun
+        uses: actions/checkout@v4
+        with:
+          repository: spark-arena/sparkrun
+          path: ../sparkrun
+
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
