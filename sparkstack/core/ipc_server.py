@@ -158,7 +158,7 @@ class IPCServer:
             for writer in list(server_instance._clients):
                 with suppress(Exception):
                     writer.close()
-            
+
             for task in list(server_instance._client_tasks):
                 task.cancel()
 

@@ -125,7 +125,7 @@ class OpenClawUpdater:
                     tag = parts[1]
                     if "beta" not in tag:
                         tags.append(tag)
-            
+
             if not tags:
                 raise ValueError("Failed to retrieve a valid tag from git.")
             latest_tag = tags[-1]

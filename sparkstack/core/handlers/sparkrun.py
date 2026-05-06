@@ -152,7 +152,7 @@ class SparkrunServiceHandler:
             str(backend["env"].get("VLLM_OTEL_TRACING_ENABLED", "0")) == "1"
             or str(self.recipe_dict.get("env", {}).get("VLLM_OTEL_TRACING_ENABLED", "0")) == "1"
         )
-        
+
         if tracing_enabled:
             if "OTEL_SERVICE_NAME" not in self.recipe_dict.get("env", {}):
                 backend["env"]["OTEL_SERVICE_NAME"] = f"vllm-{self.target_role}"
@@ -203,11 +203,13 @@ class SparkrunServiceHandler:
         litellm_overrides = self.recipe_dict.get("litellm_overrides", {})
         thinking_format = litellm_overrides.pop("thinking_format", None)
         if "supports_function_calling" in litellm_overrides:
-            model_info["supports_function_calling"] = str(litellm_overrides.pop(
-                "supports_function_calling"
-            )).lower()
+            model_info["supports_function_calling"] = str(
+                litellm_overrides.pop("supports_function_calling")
+            ).lower()
         if "supports_reasoning" in litellm_overrides:
-            model_info["supports_reasoning"] = str(litellm_overrides.pop("supports_reasoning")).lower()
+            model_info["supports_reasoning"] = str(
+                litellm_overrides.pop("supports_reasoning")
+            ).lower()
             model_info["reasoning"] = model_info["supports_reasoning"]
         if "reasoning" in litellm_overrides:
             model_info["reasoning"] = str(litellm_overrides.pop("reasoning")).lower()

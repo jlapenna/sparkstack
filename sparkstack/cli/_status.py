@@ -193,7 +193,14 @@ class DeploymentMonitorApp(App):
             self._resize_note_column()
         except Exception:
             with suppress(Exception):
-                table.add_row(service, formatted_status, progress_bar, updated_formatted, str(note), key=service)
+                table.add_row(
+                    service,
+                    formatted_status,
+                    progress_bar,
+                    updated_formatted,
+                    str(note),
+                    key=service,
+                )
                 self._resize_note_column()
 
     @work(exclusive=True)
@@ -207,9 +214,7 @@ class DeploymentMonitorApp(App):
                 if was_connected:
                     conn_status.update_status(True, "Reconnected")
                     log = self.query_one("#log-panel", RichLog)
-                    log.write(
-                        "[bold cyan]↻ Reconnected to orchestrator[/]"
-                    )
+                    log.write("[bold cyan]↻ Reconnected to orchestrator[/]")
                 else:
                     conn_status.update_status(True)
                 was_connected = True

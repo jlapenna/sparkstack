@@ -12,7 +12,9 @@ from ._common import json_option, resolve_stack_dir, run_async, setup_command_lo
 
 @main.command("launch")
 @click.argument("stack_name", default="current")
-@click.option("--rebuild", is_flag=True, default=False, help="Force rebuild of backend container images.")
+@click.option(
+    "--rebuild", is_flag=True, default=False, help="Force rebuild of backend container images."
+)
 @json_option()
 @click.pass_context
 def launch(ctx: click.Context, stack_name: str, rebuild: bool, output_json: bool) -> None:

@@ -52,13 +52,15 @@ class StackBuilder:
 
         for backend in stack.get("backends", []):
             overrides = dict(backend.get("overrides", {}))
-            
+
             # Promote backend-level fields into overrides so handlers see them.
             if "memory_limit" in backend:
                 overrides["memory_limit"] = backend["memory_limit"]
 
             # Sanitize overrides to prevent redefining recipe properties
-            overrides = {k: v for k, v in overrides.items() if k in _ALLOWED_OVERRIDES or k == "memory_limit"}
+            overrides = {
+                k: v for k, v in overrides.items() if k in _ALLOWED_OVERRIDES or k == "memory_limit"
+            }
 
             requests.append(
                 ModelRequest(

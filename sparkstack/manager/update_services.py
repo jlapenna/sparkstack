@@ -138,7 +138,7 @@ class Orchestrator:
             logger.error("Orchestration failed due to service errors:")
             for svc in failed_services:
                 logger.error(f"  • {svc.name}: {svc.state.error or svc.state.note}")
-            
+
             if self._ipc is not None:
                 self._ipc.broadcast_event(
                     ExitEvent(
@@ -154,7 +154,7 @@ class Orchestrator:
         if stack_dir.exists():
             logger.info("Waiting for updated backends to initialize and load models...")
             await wait_for_backends_to_load(stack_dir, ipc_server=self._ipc)
-            
+
         if self._ipc is not None:
             self._ipc.broadcast_event(
                 ExitEvent(
@@ -209,7 +209,7 @@ async def main():
                     text = msg.record["message"].split("\n")[0]
                     prefix = f"[{svc_name}] "
                     if text.startswith(prefix):
-                        text = text[len(prefix):]
+                        text = text[len(prefix) :]
                     orchestrator.states[svc_name].note = text
 
             logger.add(ui_sink, level="INFO")
@@ -217,7 +217,6 @@ async def main():
             await orchestrator.run()
     finally:
         await statsd.close()
-
 
 
 if __name__ == "__main__":

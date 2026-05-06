@@ -99,7 +99,10 @@ class BackendProbe:
 
 
 async def wait_for_backends_to_load(
-    stack_dir: Path, timeout: int = 1800, fail_fast: bool = True, ipc_server: IPCServer | None = None
+    stack_dir: Path,
+    timeout: int = 1800,
+    fail_fast: bool = True,
+    ipc_server: IPCServer | None = None,
 ) -> bool:
     services = await get_active_services(stack_dir)
     if not services:
@@ -188,7 +191,10 @@ async def wait_for_backends_to_load(
                 if ipc_server:
                     ipc_server.update_state(
                         StateUpdateEvent(
-                            service=display_name, status="Loading", progress=float(update.pct), note=update.phase or "Waiting..."
+                            service=display_name,
+                            status="Loading",
+                            progress=float(update.pct),
+                            note=update.phase or "Waiting...",
                         )
                     )
             return True
