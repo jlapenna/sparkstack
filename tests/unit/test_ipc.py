@@ -3,6 +3,7 @@ import json
 import os
 
 import pytest
+from pydantic import ValidationError
 
 from sparkstack.core.ipc_server import (
     ExitEvent,
@@ -67,7 +68,9 @@ class TestSerialization:
 
     def test_deserialize_unknown_type_raises(self):
         bad_data = json.dumps({"event_type": "bogus"}).encode()
-        with pytest.raises(ValueError, match="Unknown event type"):
+        with pytest.raises(
+            ValidationError, match="Input tag 'bogus' found using 'event_type' does not match"
+        ):
             deserialize_event(bad_data)
 
     def test_state_update_optional_fields(self):

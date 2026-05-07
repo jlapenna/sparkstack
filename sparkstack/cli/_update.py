@@ -26,7 +26,9 @@ from ._common import json_option, run_async, with_process_lock
 @json_option()
 @with_process_lock("update-services")
 @click.pass_context
-def update(ctx: click.Context, pull_latest: bool, output_json: bool, services: tuple[str, ...]) -> None:
+def update(
+    ctx: click.Context, pull_latest: bool, output_json: bool, services: tuple[str, ...]
+) -> None:
     """Run the full service update orchestration.
 
     Syncs the registry, builds/updates OpenClaw and SparkRun,

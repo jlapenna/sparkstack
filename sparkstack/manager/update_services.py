@@ -199,7 +199,7 @@ async def main():
 
     settings = Settings(
         pull_latest=args.pull_latest,
-        target_services=tuple(args.services) if args.services else None
+        target_services=tuple(args.services) if args.services else None,
     )
 
     # Configure loguru to be less noisy for console, but keep everything in file

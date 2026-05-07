@@ -7,6 +7,7 @@ and renders a live dashboard with service states and streaming logs.
 from __future__ import annotations
 
 import asyncio
+import logging
 from contextlib import suppress
 from datetime import datetime
 
@@ -27,6 +28,8 @@ from sparkstack.core.ipc_server import (
 )
 
 from . import main
+
+logger = logging.getLogger(__name__)
 
 SOCKET_PATH = "/tmp/spark-stack.sock"
 
@@ -239,6 +242,7 @@ class DeploymentMonitorApp(App):
                             event = deserialize_event(line)
                             self.feed_event(event)
                         except Exception:
+                            logger.exception("Failed to deserialize or process IPC event")
                             continue
                 finally:
                     writer.close()
