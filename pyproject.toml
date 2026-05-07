@@ -92,6 +92,7 @@ exclude = [
     "monitoring",
     "registry",
     ".venv",
+    ".worktrees",
     "services/monitoring/model_progress_manager.py",
 ]
 

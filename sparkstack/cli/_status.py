@@ -191,13 +191,13 @@ class DeploymentMonitorApp(App):
         status = event.status or "Unknown"
         progress = event.progress or 0.0
         note = event.note or ""
-        
+
         if not hasattr(self, "_service_timestamps"):
             self._service_timestamps = {}
-            
+
         if not dimmed:
             self._service_timestamps[service] = datetime.now().strftime("%H:%M:%S")
-            
+
         updated_time = self._service_timestamps.get(service, datetime.now().strftime("%H:%M:%S"))
 
         status_style = {
@@ -271,7 +271,9 @@ class DeploymentMonitorApp(App):
                         await writer.wait_closed()
 
                 # Connection dropped cleanly (EOF)
-                self._on_disconnected(conn_status, log_panel, "Orchestrator disconnected — waiting for reconnect…")
+                self._on_disconnected(
+                    conn_status, log_panel, "Orchestrator disconnected — waiting for reconnect…"
+                )
 
             except (FileNotFoundError, ConnectionRefusedError):
                 conn_status.update_status(False, "Waiting for orchestrator…")
@@ -280,7 +282,9 @@ class DeploymentMonitorApp(App):
 
             await asyncio.sleep(2)
 
-    def _on_disconnected(self, conn_status: ConnectionStatus, log_panel: RichLog, message: str) -> None:
+    def _on_disconnected(
+        self, conn_status: ConnectionStatus, log_panel: RichLog, message: str
+    ) -> None:
         """Handle a disconnection: update status, log it, and dim the dashboard."""
         conn_status.update_status(False, message)
         log_panel.write(f"[yellow]⚠ {message}[/]")

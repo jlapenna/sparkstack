@@ -28,20 +28,19 @@ def test_command_error():
 
 
 @pytest.mark.asyncio
-@patch("core.utils.async_run_command")
-async def test_docker_probe_healthy(mock_run):
-    # Mock 'docker inspect' returning running and healthy
-    mock_run.return_value = CommandResult(returncode=0, stdout="running healthy", stderr="", cmd=[])
+@patch("sparkstack.core.utils.health.DockerClient.get_status")
+async def test_docker_probe_healthy(mock_get_status):
+    mock_get_status.return_value = ("running", "healthy")
     probe = DockerProbe("test-container")
     result = await probe.probe()
     assert result == HealthStatus.HEALTHY
-    mock_run.assert_called_once()
+    mock_get_status.assert_called_once_with("test-container")
 
 
 @pytest.mark.asyncio
-@patch("core.utils.async_run_command")
-async def test_docker_probe_crashed(mock_run):
-    mock_run.return_value = CommandResult(returncode=0, stdout="exited none", stderr="", cmd=[])
+@patch("sparkstack.core.utils.health.DockerClient.get_status")
+async def test_docker_probe_crashed(mock_get_status):
+    mock_get_status.return_value = ("exited", "none")
     probe = DockerProbe("test-container")
     result = await probe.probe()
     assert result == HealthStatus.CRASHED
@@ -73,7 +72,7 @@ async def test_http_probe_starting(mock_get):
 
 
 @pytest.mark.asyncio
-@patch("core.utils.async_run_command")
+@patch("sparkstack.core.utils.health.async_run_command")
 async def test_log_probe_crash(mock_run):
     mock_run.return_value = CommandResult(
         returncode=0, stdout="Traceback (most recent call last):", stderr="", cmd=[]
@@ -84,7 +83,7 @@ async def test_log_probe_crash(mock_run):
 
 
 @pytest.mark.asyncio
-@patch("core.utils.async_run_command")
+@patch("sparkstack.core.utils.health.async_run_command")
 async def test_log_probe_unknown(mock_run):
     mock_run.return_value = CommandResult(
         returncode=0, stdout="Server started successfully", stderr="", cmd=[]

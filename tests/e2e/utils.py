@@ -24,4 +24,3 @@ def extract_cli_json(output: str) -> dict | None:
         if "status" in obj:
             return obj
     return all_parsed[-1] if all_parsed else None
-

@@ -3,6 +3,7 @@ import os
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
 
@@ -201,12 +202,13 @@ class Service(ABC):
 
 class UpdaterService(Service):
     """A generic Service that delegates its update to a BaseUpdater."""
-    updater_class = None
+
+    updater_class: type[Any] | None = None
 
     async def update(self) -> None:
         if self.updater_class is None:
             raise NotImplementedError("updater_class must be defined on subclass")
-        
+
         updater = self.updater_class(
             pull_latest=self.settings.pull_latest, project_root=self.settings.project_root
         )
@@ -295,9 +297,7 @@ class VllmService(Service):
                 HttpProbe("http://localhost:4000/health"),
             ],
         )
-        await self._probe_health(
-            phase_num, manager, timeout=60, fail_msg="Health check timed out"
-        )
+        await self._probe_health(phase_num, manager, timeout=60, fail_msg="Health check timed out")
 
 
 class MonitoringService(Service):

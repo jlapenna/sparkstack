@@ -9,14 +9,20 @@ on:
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spark-stack
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout spark-stack
+        uses: actions/checkout@v4
+        with:
+          path: spark-stack
       
       - name: Checkout sparkrun
         uses: actions/checkout@v4
         with:
           repository: spark-arena/sparkrun
-          path: ../sparkrun
+          path: sparkrun
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -26,7 +32,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version-file: "pyproject.toml"
+          python-version-file: "spark-stack/pyproject.toml"
 
       - name: Install dependencies
         run: uv sync --all-extras --dev
