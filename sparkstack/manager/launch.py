@@ -30,7 +30,7 @@ async def launch_stack(stack_dir: Path, *, rebuild_images: bool = False) -> None
 
     # Launch backends
     logger.info("🚀 Launching model instances via sparkrun...")
-    global_network = stack.get("globals", {}).get("network", "proxy-tier")
+    global_network = "spark-stack-net"
 
     for backend in stack.get("backends", []):
         recipe = backend["recipe"]
@@ -91,7 +91,7 @@ async def launch_stack(stack_dir: Path, *, rebuild_images: bool = False) -> None
 
     # Launch compose services
     logger.info("📦 Starting gateway and monitoring via docker compose...")
-    compose_file = stack.get("services", {}).get("compose_file", "docker-compose.yaml")
+    compose_file = "docker-compose.yaml"
     await async_run_compose(
         stack_dir,
         "-f",

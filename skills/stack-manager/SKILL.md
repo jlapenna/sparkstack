@@ -110,7 +110,7 @@ OpenClaw gateway may crash with `TypeError: Cannot read properties of undefined 
 
 ### 4. Docker DNS Breakage (resolv.conf override)
 
-If containers cannot resolve internal hostnames (e.g. `litellm`) despite being on the same custom network (like `proxy-tier`):
+If containers cannot resolve internal hostnames (e.g. `litellm`) despite being on the same custom network (like `spark-stack-net`):
 
 - **Cause**: Bind-mounting the host's `/etc/resolv.conf` into the container (`/run/systemd/resolve/resolv.conf:/etc/resolv.conf:ro`) forcibly overrides Docker's embedded DNS server (`127.0.0.11`). It blinds the container to internal Docker service discovery.
 - **Fix**: NEVER bind-mount `/etc/resolv.conf` locally when using Docker bridge networks. Let Docker natively inject its `127.0.0.11` resolver to ensure container restarts and dynamic IP mapping work correctly.

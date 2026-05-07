@@ -7,12 +7,12 @@ services:
       - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
     command: tunnel run
     networks:
-      - proxy-tier
+      - spark-stack-net
     deploy:
       resources:
         limits:
           memory: 256M
 
 networks:
-  proxy-tier:
+  spark-stack-net:
     external: true

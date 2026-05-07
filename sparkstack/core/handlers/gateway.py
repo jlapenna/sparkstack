@@ -10,10 +10,10 @@ class ApiGatewayServiceConfigurator:
             return
 
         gw = docker_builder.compose_config["services"]["litellm"]
-        gw["networks"] = ["vllm-network", "proxy-tier"]
+        gw["networks"] = ["vllm-network", "spark-stack-net"]
         gw.setdefault("deploy", {}).setdefault("resources", {}).setdefault("limits", {})[
             "memory"
         ] = memory
 
-        # Ensure proxy-tier network is defined as external
-        docker_builder.compose_config.setdefault("networks", {})["proxy-tier"] = {"external": True}
+        # Ensure spark-stack-net network is defined as external
+        docker_builder.compose_config.setdefault("networks", {})["spark-stack-net"] = {"external": True}

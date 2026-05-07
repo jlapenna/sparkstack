@@ -25,7 +25,7 @@
 - **Scenario**: OpenClaw agent sessions were failing. The litellm couldn't reach sparkrun model backends.
 - **Hypothesis**: sparkrun launches containers on host network, making them unreachable via Docker-internal DNS from the bridge-networked gateway. Using `host.docker.internal` would route through the host's port bindings.
 - **Action**: Changed `build_stack.py` to generate litellm config with `host.docker.internal:PORT` instead of container hostnames.
-- **Result**: Appeared to work initially. Chat completions returned 200 OK from the host. **Hypothesis was wrong** — the containers were actually on `proxy-tier` bridge, not host network.
+- **Result**: Appeared to work initially. Chat completions returned 200 OK from the host. **Hypothesis was wrong** — the containers were actually on `spark-stack-net` bridge, not host network.
 
 **Learnings:**
 
@@ -67,13 +67,13 @@
   1. `urllib.request.urlopen('http://host.docker.internal:8001/...')` → **ConnectionResetError [Errno 104]**
   1. `urllib.request.urlopen('http://main_solo:8001/...')` → **ConnectionRefused [Errno 111]**
   1. From host: `curl localhost:8001/v1/models` → **200 OK** (works through Docker port publishing)
-  1. Both `litellm` and `main_solo` are on `proxy-tier` network
+  1. Both `litellm` and `main_solo` are on `spark-stack-net` network
 - **Result**: Docker hairpin NAT causes `ConnectionResetError`. Direct container name fails because vllm process inside `main_solo` crashed silently (`ValueError: KV cache too small`).
 
 **Learnings:**
 
 - `host.docker.internal` routing is fragile — it depends on Docker's hairpin NAT which can fail
-- When containers share a network (proxy-tier), use direct container names for routing
+- When containers share a network (spark-stack-net), use direct container names for routing
 - The vllm process crashed silently — the container stayed "running" because `sleep infinity` was the entrypoint, masking the actual failure
 - Always check `ss -tlnp` or equivalent inside the target container to verify the process is actually listening
 - The `update_services` script may have restarted containers with parameters that exceed available GPU memory
@@ -89,7 +89,7 @@
 
 Every networking change made during this session was chasing a phantom:
 
-1. Changing backend URLs to `host.docker.internal` — unnecessary, containers share `proxy-tier`
+1. Changing backend URLs to `host.docker.internal` — unnecessary, containers share `spark-stack-net`
 1. Changing sandbox `workspaceAccess` — real fix, but unrelated to the agent timeout
 1. Changing `tools.exec.timeoutSec` — wrong diagnosis entirely
 1. Investigating hairpin NAT — real phenomenon but not the cause; vllm wasn't listening
@@ -104,7 +104,7 @@ This would have immediately shown the crash. Instead, 45+ minutes were spent on 
 
 ## DONE — Correct Architecture (Fixed 2026-04-24)
 
-`build_stack.py` now generates **direct container names on proxy-tier** for `litellm-config.yaml`:
+`build_stack.py` now generates **direct container names on spark-stack-net** for `litellm-config.yaml`:
 
 ```yaml
 # build_stack.py now generates:
@@ -112,7 +112,7 @@ api_base: http://main_solo:8001/v1
 api_base: http://embedding_solo:8002/v1
 ```
 
-This eliminates the Docker hairpin NAT issue entirely. Both containers are on proxy-tier and can reach each other directly.
+This eliminates the Docker hairpin NAT issue entirely. Both containers are on spark-stack-net and can reach each other directly.
 
 ### 2026-04-12T13:50 — Integration Test Hard-Freeze on host.docker.internal
 
@@ -167,7 +167,7 @@ This eliminates the Docker hairpin NAT issue entirely. Both containers are on pr
 
 - **Scenario**: LiteLLM proxy (litellm) was returning 500 Internal Server Error for `POST /model/new` and `POST /model/delete`. Logged error: `No DB Connected`. Simultaneously, OpenClaw gateway failed to inspect sandbox images due to missing Docker socket access.
 - **Hypothesis**: (1) Orphaned `litellm` and `autodiscover` processes on the host were attempting to register models with the containerized LiteLLM. Since the container lacks the virtual-keys database, it failed. (2) The gateway container lacked `/var/run/docker.sock` mount required for DooD sandbox management.
-- **Action**: (1) Terminated orphaned host processes using `pkill -f litellm` and `pkill -f autodiscover`. (2) Modified `openclaw/docker-compose.yml` to mount `/var/run/docker.sock:/var/run/docker.sock`. (3) Verified gateway was on `proxy-tier` and binding to `lan`.
+- **Action**: (1) Terminated orphaned host processes using `pkill -f litellm` and `pkill -f autodiscover`. (2) Modified `openclaw/docker-compose.yml` to mount `/var/run/docker.sock:/var/run/docker.sock`. (3) Verified gateway was on `spark-stack-net` and binding to `lan`.
 - **Result**: LiteLLM 500 loop stopped immediately. Gateway successfully regained control over sandbox image inspection. Connectivity restored end-to-end via Cloudflare.
 
 **Learnings:**
@@ -229,11 +229,11 @@ This eliminates the Docker hairpin NAT issue entirely. Both containers are on pr
 - **Scenario**: Agents failed to run models via the Litellm proxy. OpenClaw logged `LLM request failed: network connection error. rawError=500 litellm.InternalServerError: InternalServerError: OpenAIException - Connection error..`.
 - **Hypothesis**: The litellm gateway (litellm) was sending requests to the `sparkrun` proxy containers (`main_solo` and `embedding_solo`) using `http://host.docker.internal:PORT`, violating the container-direct communication rule and invoking Docker's hairpin NAT. This led to intermittent ConnectionResetErrors.
 - **Action**: Modified `litellm-config.yaml` to point `api_base` to the direct container network hostnames (`http://main_solo:8001/v1` and `http://embedding_solo:8002/v1`). Restarted `litellm` and `openclaw-gateway-1`.
-- **Result**: **Successful.** The hairpin NAT traversal was eliminated, and all OpenClaw requests now safely land on the model endpoints across the shared `proxy-tier` network.
+- **Result**: **Successful.** The hairpin NAT traversal was eliminated, and all OpenClaw requests now safely land on the model endpoints across the shared `spark-stack-net` network.
 
 **Learnings**:
 
-- When setting up downstream configuration files (like `litellm-config.yaml`), NEVER use `host.docker.internal` if the target containers share a Docker network (e.g., `proxy-tier`).
+- When setting up downstream configuration files (like `litellm-config.yaml`), NEVER use `host.docker.internal` if the target containers share a Docker network (e.g., `spark-stack-net`).
 - Direct container names ensure robust, DNS-native service discovery and bypass the host network stack, eliminating the risk of unexplainable 500 reset errors.
 
 ### 2026-04-18T19:44 — Lost Agent Write Access via Pydantic Validator Removal
@@ -281,7 +281,7 @@ This eliminates the Docker hairpin NAT issue entirely. Both containers are on pr
 ### 2026-04-20T03:50 — Traces Broken via Tempo Localhost Bind
 
 - **Scenario**: Traces were not appearing in Grafana. OpenClaw logs showed OTel was enabled, but Tempo reported 0 spans received.
-- **Hypothesis**: Tempo's OTLP receivers were binding to `localhost` inside the container, making them unreachable from the `openclaw-gateway` container even though they shared the `proxy-tier` network.
+- **Hypothesis**: Tempo's OTLP receivers were binding to `localhost` inside the container, making them unreachable from the `openclaw-gateway` container even though they shared the `spark-stack-net` network.
 - **Action**: Modified `services/monitoring/tempo.yaml` to explicitly bind OTLP HTTP and gRPC receivers to `0.0.0.0`.
 - **Result**: **Successful**. Connectivity verified via `curl` from the gateway, and `spans_received_total` metrics began incrementing. Traces are now visible in Grafana.
 
@@ -334,12 +334,12 @@ ______________________________________________________________________
 
 - **Scenario**: The LiteLLM gateway (`litellm`) was failing to route traffic to the vLLM backends, resulting in `ConnectionResetError`s.
 - **Hypothesis**: `manager/build_stack.py` was generating `api_base: http://host.docker.internal:8001/v1` for the LiteLLM config, triggering Docker's hairpin NAT limitations on Linux.
-- **Action**: Modified `build_stack.py` to use direct container names (`http://main_solo:8001/v1`) since both containers share the `proxy-tier` Docker network.
+- **Action**: Modified `build_stack.py` to use direct container names (`http://main_solo:8001/v1`) since both containers share the `spark-stack-net` Docker network.
 - **Result**: **Successful.** Gateway reliably routes to the backends with no connection resets.
 
 **Learnings:**
 
-- **Routing:** Always use direct container hostnames when orchestrating services that reside on the same custom Docker network (e.g., `proxy-tier`). *(Update: Added CI test in `test_proxy_integrity.py` to explicitly assert that generated configs never fall back to `host.docker.internal`.)*
+- **Routing:** Always use direct container hostnames when orchestrating services that reside on the same custom Docker network (e.g., `spark-stack-net`). *(Update: Added CI test in `test_proxy_integrity.py` to explicitly assert that generated configs never fall back to `host.docker.internal`.)*
 - **Code Gen:** Configuration generators (`build_stack.py`) must respect the network topology and not default to `host.docker.internal` for internal-only traffic.
 
 ### 2026-04-24T08:15 — Tool Parser Whitelist Conflict (nemotron_json vs qwen3_coder)
@@ -470,12 +470,12 @@ ______________________________________________________________________
 
 - **Scenario**: The API Gateway was configured with `extra_hosts: host.docker.internal:host-gateway` to communicate with backends.
 - **Hypothesis**: Using `host.docker.internal` triggers Docker hairpin NAT, which can cause `ConnectionResetError`s during heavy traffic.
-- **Action**: Removed `extra_hosts: host.docker.internal:host-gateway` from `core/handlers/gateway.py` so the gateway relies strictly on internal Docker DNS (`proxy-tier` network).
+- **Action**: Removed `extra_hosts: host.docker.internal:host-gateway` from `core/handlers/gateway.py` so the gateway relies strictly on internal Docker DNS (`spark-stack-net` network).
 - **Result**: Inter-container communication is normalized and robust.
 
 **Learnings:**
 
-- When containers share a network (e.g., `proxy-tier`), always route traffic using direct container names. Remove any configuration that injects or relies on `host.docker.internal`.
+- When containers share a network (e.g., `spark-stack-net`), always route traffic using direct container names. Remove any configuration that injects or relies on `host.docker.internal`.
 
 ### 2026-04-29T15:25 — Agent-Level models.json Drift Causing payloads=0
 

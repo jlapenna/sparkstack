@@ -7,7 +7,7 @@ services:
     - 9090:9090
     networks:
     - monitoring
-    - proxy-tier
+    - spark-stack-net
     - vllm-network
     extra_hosts:
     - host.docker.internal:host-gateway
@@ -55,7 +55,7 @@ services:
       monitoring:
         aliases:
         - otel-collector
-      proxy-tier:
+      spark-stack-net:
         aliases:
         - otel-collector
     restart: unless-stopped
@@ -115,7 +115,7 @@ services:
     - grafana_data:/var/lib/grafana
     networks:
     - monitoring
-    - proxy-tier
+    - spark-stack-net
     restart: unless-stopped
     env_file:
     - ../../.env
@@ -139,7 +139,7 @@ services:
     - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
     - monitoring
-    - proxy-tier
+    - spark-stack-net
     restart: unless-stopped
     deploy:
       resources:
@@ -162,7 +162,7 @@ services:
       - "127.0.0.1:3200:3200"
     networks:
       - monitoring
-      - proxy-tier
+      - spark-stack-net
     restart: unless-stopped
     deploy:
       resources:
@@ -172,7 +172,7 @@ services:
 networks:
   monitoring:
     driver: bridge
-  proxy-tier:
+  spark-stack-net:
     external: true
   vllm-network:
     name: vllm-network

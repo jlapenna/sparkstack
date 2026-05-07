@@ -28,9 +28,9 @@ services:
     - /app/config.yaml
     networks:
     - vllm-network
-    - proxy-tier
+    - spark-stack-net
 networks:
   vllm-network:
     external: true
-  proxy-tier:
+  spark-stack-net:
     external: true
