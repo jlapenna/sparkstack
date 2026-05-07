@@ -188,12 +188,15 @@ class ServiceHealthManager:
         async def poll_probes():
             while True:
                 statuses = await asyncio.gather(*(p.probe() for p in self.probes))
-                if HealthStatus.CRASHED in statuses:
-                    logger.error(f"Service {self.container} has crashed (detected by probe).")
-                    return False
+                # HEALTHY from a Docker/HTTP probe takes precedence over
+                # CRASHED from a LogProbe — containers like litellm emit
+                # traceback strings in debug logs during normal operation.
                 if HealthStatus.HEALTHY in statuses:
                     logger.info(f"Service {self.container} is READY.")
                     return True
+                if HealthStatus.CRASHED in statuses:
+                    logger.error(f"Service {self.container} has crashed (detected by probe).")
+                    return False
                 await asyncio.sleep(2)
 
         async def tail_for_crashes():

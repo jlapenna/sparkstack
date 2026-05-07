@@ -164,15 +164,27 @@ class DeploymentMonitorApp(App):
         elif event.event_type == "full_sync":
             self._handle_full_sync(event)
         elif event.event_type == "log":
-            log = self.query_one("#log-panel", RichLog)
-            self._handle_log(event, log)
+            self._handle_log(event)
         elif event.event_type == "exit":
-            log = self.query_one("#log-panel", RichLog)
-            self._handle_exit(event, log)
+            self._handle_exit(event)
 
     def _handle_full_sync(self, event: FullSyncEvent) -> None:
+        # Clear stale rows so the new session's services repopulate cleanly
+        table = self.query_one("#dashboard", DataTable)
+        with suppress(Exception):
+            table.clear()
         for _service_name, state_data in event.states.items():
             self._handle_state_update(state_data)
+
+    def _dim_all_rows(self) -> None:
+        """Grey out all dashboard cells to indicate stale/disconnected data."""
+        table = self.query_one("#dashboard", DataTable)
+        columns = ("Service", "Status", "Progress", "Updated", "Note")
+        for row_key in list(table.rows):
+            for col_key in columns:
+                with suppress(Exception):
+                    val = table.get_cell(row_key, col_key)
+                    table.update_cell(row_key, col_key, f"[dim]{val}[/]")
 
     def _handle_state_update(self, event: StateUpdateEvent) -> None:
         table = self.query_one("#dashboard", DataTable)
@@ -183,7 +195,6 @@ class DeploymentMonitorApp(App):
         status = event.status or "Unknown"
         progress = event.progress or 0.0
         note = event.note or ""
-
         updated_time = datetime.now().strftime("%H:%M:%S")
 
         status_style = {
@@ -193,40 +204,33 @@ class DeploymentMonitorApp(App):
             "failed": "bold red",
         }.get(status.lower(), "white")
 
-        formatted_status = f"[{status_style}]{status}[/]"
-        progress_bar = f"{progress:.1f}%"
-        updated_formatted = f"[dim]{updated_time}[/]"
+        cells = {
+            "Status": f"[{status_style}]{status}[/]",
+            "Progress": f"{progress:.1f}%",
+            "Updated": f"[dim]{updated_time}[/]",
+            "Note": note,
+        }
 
-        try:
-            table.update_cell(service, "Status", formatted_status, update_width=True)
-            table.update_cell(service, "Progress", progress_bar, update_width=True)
-            table.update_cell(service, "Updated", updated_formatted, update_width=True)
-            table.update_cell(service, "Note", note)
-            self._resize_note_column()
-        except Exception:
-            with suppress(Exception):
-                table.add_row(
-                    service,
-                    formatted_status,
-                    progress_bar,
-                    updated_formatted,
-                    note,
-                    key=service,
-                )
-                self._resize_note_column()
+        if service in table.rows:
+            for col_key, value in cells.items():
+                table.update_cell(service, col_key, value, update_width=col_key != "Note")
+        else:
+            table.add_row(service, *cells.values(), key=service)
+        self._resize_note_column()
 
     @work(exclusive=True)
     async def _connect_ipc(self) -> None:
         """Connect to UDS and listen for events, auto-reconnecting on drops."""
+        conn_status = self.query_one("#conn-status", ConnectionStatus)
+        log_panel = self.query_one("#log-panel", RichLog)
         was_connected = False
+
         while self.is_running:
             try:
                 reader, writer = await asyncio.open_unix_connection(SOCKET_PATH)
-                conn_status = self.query_one("#conn-status", ConnectionStatus)
                 if was_connected:
                     conn_status.update_status(True, "Reconnected")
-                    log = self.query_one("#log-panel", RichLog)
-                    log.write("[bold cyan]↻ Reconnected to orchestrator[/]")
+                    log_panel.write("[bold cyan]↻ Reconnected to orchestrator[/]")
                 else:
                     conn_status.update_status(True)
                 was_connected = True
@@ -235,8 +239,7 @@ class DeploymentMonitorApp(App):
                     while self.is_running:
                         line = await reader.readline()
                         if not line:
-                            # EOF — orchestrator closed the connection
-                            break
+                            break  # EOF — orchestrator closed the connection
 
                         try:
                             event = deserialize_event(line)
@@ -249,33 +252,27 @@ class DeploymentMonitorApp(App):
                     with suppress(Exception):
                         await writer.wait_closed()
 
-                # Connection dropped cleanly (EOF) — signal and retry
-                self.query_one("#conn-status", ConnectionStatus).update_status(
-                    False, "Orchestrator disconnected — waiting for reconnect…"
-                )
-                self.query_one("#log-panel", RichLog).write(
-                    "[yellow]⚠ Connection to orchestrator lost. Waiting to reconnect…[/]"
-                )
-                # Clear stale dashboard rows so the next full_sync repopulates cleanly
-                with suppress(Exception):
-                    self.query_one("#dashboard", DataTable).clear()
-                await asyncio.sleep(2)
+                # Connection dropped cleanly (EOF)
+                self._on_disconnected(conn_status, log_panel, "Orchestrator disconnected — waiting for reconnect…")
 
             except (FileNotFoundError, ConnectionRefusedError):
-                self.query_one("#conn-status", ConnectionStatus).update_status(
-                    False, "Waiting for orchestrator…"
-                )
-                await asyncio.sleep(2)
+                conn_status.update_status(False, "Waiting for orchestrator…")
             except Exception as e:
-                self.query_one("#conn-status", ConnectionStatus).update_status(False, f"Error: {e}")
-                await asyncio.sleep(2)
+                conn_status.update_status(False, f"Error: {e}")
 
-    def _handle_log(self, event: LogEvent, log: RichLog) -> None:
+            await asyncio.sleep(2)
+
+    def _on_disconnected(self, conn_status: ConnectionStatus, log_panel: RichLog, message: str) -> None:
+        """Handle a disconnection: update status, log it, and dim the dashboard."""
+        conn_status.update_status(False, message)
+        log_panel.write(f"[yellow]⚠ {message}[/]")
+        with suppress(Exception):
+            self._dim_all_rows()
+
+    def _handle_log(self, event: LogEvent) -> None:
         level = event.level
         message = event.message
         timestamp = event.timestamp
-        service = event.service
-        phase = event.phase
 
         # Truncate ISO timestamp to HH:MM:SS
         time_short = timestamp[11:19] if len(timestamp) > 19 else timestamp
@@ -290,20 +287,21 @@ class DeploymentMonitorApp(App):
         }.get(level, "white")
 
         prefix = f"[dim]{time_short}[/]"
-        if service:
-            prefix += f" [blue]\\[{service}][/]"
-        if phase is not None:
-            prefix += f" [magenta](Phase {phase})[/]"
+        if event.service:
+            prefix += f" [blue]\\[{event.service}][/]"
+        if event.phase is not None:
+            prefix += f" [magenta](Phase {event.phase})[/]"
 
-        log.write(f"{prefix} [{level_style}]{level:<8}[/] {message}")
+        self.query_one("#log-panel", RichLog).write(
+            f"{prefix} [{level_style}]{level:<8}[/] {message}"
+        )
 
-    def _handle_exit(self, event: ExitEvent, log: RichLog) -> None:
-        success = event.success
-        message = event.message
-        if success:
-            log.write(f"\n[bold green]✨ {message}[/]")
+    def _handle_exit(self, event: ExitEvent) -> None:
+        log = self.query_one("#log-panel", RichLog)
+        if event.success:
+            log.write(f"\n[bold green]✨ {event.message}[/]")
         else:
-            log.write(f"\n[bold red]❌ {message}[/]")
+            log.write(f"\n[bold red]❌ {event.message}[/]")
 
         if self.auto_quit:
             self.exit()

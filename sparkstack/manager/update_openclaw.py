@@ -21,7 +21,7 @@ from sparkstack.core.env import (
 )
 from sparkstack.core.utils import ServiceHealthManager, async_run_command, parse_cli_json
 
-OPENCLAW_REPO = "https://github.com/jlapenna/openclaw.git"
+OPENCLAW_REPO = "https://github.com/openclaw/openclaw.git"
 
 
 class UpdaterSettings(BaseSettings):
@@ -86,25 +86,6 @@ class OpenClawUpdater:
             )
             return
 
-        # Preserve in-development changes: if we're on a local branch, just rebase instead of forcing an upstream tag
-        try:
-            branch_result = await async_run_command(
-                ["git", "branch", "--show-current"], cwd=self.settings.openclaw_dir
-            )
-            current_branch = branch_result.stdout.strip()
-            if current_branch:
-                logger.info(
-                    f"OpenClaw is on active branch '{current_branch}'. Pulling updates via rebase."
-                )
-                await async_run_command(
-                    ["git", "pull", "--rebase"],
-                    cwd=self.settings.openclaw_dir,
-                    stream_output=True,
-                )
-                return
-        except Exception as e:
-            logger.debug(f"Branch check failed: {e}")
-
         # 2. Get the latest stable release tag using git ls-remote
         try:
             result = await async_run_command(
@@ -134,12 +115,37 @@ class OpenClawUpdater:
             logger.exception("Could not determine latest stable release")
             raise
 
-        # 3. Fetch tags and checkout the specific stable release
+        # 3. Fetch tags
         await async_run_command(
             ["git", "fetch", "--tags", "--force"],
             cwd=self.settings.openclaw_dir,
             stream_output=True,
         )
+
+        # 4. Preserve in-development changes: if we're on a local branch, rebase onto the latest stable tag instead of forcing checkout
+        branch_result = await async_run_command(
+            ["git", "branch", "--show-current"], cwd=self.settings.openclaw_dir
+        )
+        current_branch = branch_result.stdout.strip()
+        if current_branch:
+            # Find the old base tag
+            base_tag_result = await async_run_command(
+                ["git", "describe", "--tags", "--abbrev=0", current_branch],
+                cwd=self.settings.openclaw_dir
+            )
+            base_tag = base_tag_result.stdout.strip()
+
+            logger.info(
+                f"OpenClaw is on active branch '{current_branch}' (based on {base_tag}). Rebasing onto {latest_tag}."
+            )
+            await async_run_command(
+                ["git", "rebase", "--onto", latest_tag, base_tag, current_branch],
+                cwd=self.settings.openclaw_dir,
+                stream_output=True,
+            )
+            return
+
+        # 5. Otherwise checkout the specific stable release
         await async_run_command(
             ["git", "checkout", latest_tag], cwd=self.settings.openclaw_dir, stream_output=True
         )

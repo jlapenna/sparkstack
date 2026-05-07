@@ -124,12 +124,12 @@ To ensure your local environment doesn't drift too far from upstream, or if you 
 - **Command:** `uv run manager/update_sparkrun.py --pull-latest`
 - **Effect:** Fetches `upstream/main`, then rebases your local `local-dev` branch onto it. Your local-only patches will remain at the top of the commit history.
 
-#### B. OpenClaw (Hard Reset)
+#### B. OpenClaw (Automated Rebase onto Stable)
 
-`openclaw` uses a **hard-reset** strategy to maintain alignment with official stable releases and avoid complex merge/rebase noise from its extremely active upstream.
+`openclaw` uses a **rebase** strategy against tagged stable releases to maintain alignment with official releases while preserving local patches.
 
-- **Command:** `git reset --hard $(git tag -l 'v*' | grep -v beta | sort -V | tail -n 1)`
-- **Warning:** This **WIPES** all local-dev patches. You MUST follow the restoration protocol in Section 4 immediately after.
+- **Command:** `uv run manager/update_openclaw.py --pull-latest` (or similar script if available)
+- **Effect:** Fetches the latest stable tag from upstream and rebases your local `local-dev` branch onto it, preserving your local patches.
 
 #### C. Manual Sync Fallback (General)
 
@@ -141,13 +141,13 @@ git fetch --tags upstream
 # For sparkrun (Preserves patches)
 git checkout local-dev && git rebase upstream/main
 
-# For openclaw (Stable alignment, clears patches)
-git checkout local-dev && git reset --hard <latest-tag>
+# For openclaw (Preserves patches against stable tag)
+git checkout local-dev && git rebase <latest-tag>
 ```
 
 ### 4. Restoring Local-Dev Integrations (After Sync)
 
-If a hard-reset (required for `openclaw`) or a manual reset clears your `local-dev` patches, you must restore them.
+If a manual reset clears your `local-dev` patches, you must restore them.
 
 1. **Identify Lost Commits**: Use `git reflog local-dev` to find the SHAs of the commits that were present before the reset.
    ```bash

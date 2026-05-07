@@ -143,6 +143,61 @@ class Service(ABC):
             self.state.fail(f"Compose failed: {e.stderr[:100]}")
             raise
 
+    async def _pull_images(
+        self,
+        directory: Path,
+        phase_num: int,
+        task_name: str = "Pulling images",
+        project_name: str | None = None,
+    ) -> int:
+        """Helper to pull docker images if settings.pull_latest is True."""
+        if self.settings.pull_latest:
+            self.progress.phase(phase_num, task_name)
+            self.state.set_task(task_name, 20)
+            await self.run_compose(
+                directory, "pull", "--ignore-pull-failures", check=False, project_name=project_name
+            )
+            self.progress.phase_end()
+            return phase_num + 1
+        return phase_num
+
+    async def _deploy_compose(
+        self,
+        directory: Path,
+        phase_num: int,
+        up_args: list[str],
+        down_args: list[str] | None = None,
+        task_name: str = "Deploying stack",
+        project_name: str | None = None,
+    ) -> int:
+        """Helper to execute down (optional) then up for docker compose."""
+        self.progress.phase(phase_num, task_name)
+        self.state.set_task(task_name, 60)
+        if down_args:
+            await self.run_compose(
+                directory, "down", *down_args, check=False, project_name=project_name
+            )
+        await self.run_compose(directory, "up", *up_args, project_name=project_name)
+        self.progress.phase_end()
+        return phase_num + 1
+
+    async def _probe_health(
+        self,
+        phase_num: int,
+        manager: ServiceHealthManager,
+        timeout: int = 60,
+        task_name: str = "Probing health",
+        fail_msg: str | None = None,
+    ) -> None:
+        """Helper to probe service health and complete the service update."""
+        self.progress.phase(phase_num, task_name)
+        self.state.set_task(task_name, 80)
+        if await manager.wait_for_ready(timeout=timeout):
+            self.progress.phase_end()
+            self.state.complete()
+        else:
+            self.state.fail(fail_msg or f"{task_name} timed out or failed")
+
 
 class SparkrunService(Service):
     async def update(self) -> None:
@@ -163,27 +218,23 @@ class CloudflareService(Service):
         self.progress.begin_phases(3 if self.settings.pull_latest else 2)
         phase_num = 1
 
-        if self.settings.pull_latest:
-            self.progress.phase(phase_num, "Pulling images")
-            self.state.set_task("Pulling images", 20)
-            await self.run_compose(cf_dir, "pull", "--ignore-pull-failures", check=False)
-            self.progress.phase_end()
-            phase_num += 1
+        phase_num = await self._pull_images(cf_dir, phase_num)
 
-        self.progress.phase(phase_num, "Deploying tunnel")
-        self.state.set_task("Deploying tunnel", 60)
-        await self.run_compose(cf_dir, "up", "-d", "--force-recreate")
-        self.progress.phase_end()
-        phase_num += 1
+        # down first to clear stale container references that cause
+        # "No such container" errors on force-recreate
+        phase_num = await self._deploy_compose(
+            cf_dir,
+            phase_num,
+            down_args=["--remove-orphans"],
+            up_args=["-d", "--force-recreate"],
+            task_name="Deploying tunnel",
+        )
 
-        self.progress.phase(phase_num, "Probing health")
-        self.state.set_task("Probing health", 80)
-        manager = ServiceHealthManager("cloudflared")
-        if await manager.wait_for_ready(timeout=60):
-            self.progress.phase_end()
-            self.state.complete()
-        else:
-            self.state.fail("Health check timed out or failed")
+        await self._probe_health(
+            phase_num,
+            ServiceHealthManager("cloudflared"),
+            fail_msg="Health check timed out or failed",
+        )
 
 
 class VllmService(Service):
@@ -198,14 +249,9 @@ class VllmService(Service):
         self.progress.begin_phases(4 if self.settings.pull_latest else 3)
         phase_num = 1
 
-        if self.settings.pull_latest:
-            self.progress.phase(phase_num, "Pulling vLLM")
-            self.state.set_task("Pulling vLLM", 20)
-            await self.run_compose(
-                vllm_current, "pull", "--ignore-pull-failures", check=False, project_name="current"
-            )
-            self.progress.phase_end()
-            phase_num += 1
+        phase_num = await self._pull_images(
+            vllm_current, phase_num, task_name="Pulling vLLM", project_name="current"
+        )
 
         # Always rebuild configs from stack.yaml to pick up builder changes.
         self.progress.phase(phase_num, "Rebuilding configs")
@@ -230,8 +276,6 @@ class VllmService(Service):
         self.progress.phase_end()
         phase_num += 1
 
-        self.progress.phase(phase_num, "Probing health")
-        self.state.set_task("Probing health", 80)
         # Use centralized health manager with explicit probes
         manager = ServiceHealthManager(
             "litellm",
@@ -241,11 +285,9 @@ class VllmService(Service):
                 HttpProbe("http://localhost:4000/health"),
             ],
         )
-        if await manager.wait_for_ready(timeout=60):
-            self.progress.phase_end()
-            self.state.complete()
-        else:
-            self.state.fail("Health check timed out")
+        await self._probe_health(
+            phase_num, manager, timeout=60, fail_msg="Health check timed out"
+        )
 
 
 class MonitoringService(Service):
@@ -268,29 +310,20 @@ class MonitoringService(Service):
         self.progress.begin_phases(3 if self.settings.pull_latest else 2)
         phase_num = 1
 
-        if self.settings.pull_latest:
-            self.progress.phase(phase_num, "Pulling images")
-            self.state.set_task("Pulling images", 20)
-            await self.run_compose(mon_dir, "pull", "--ignore-pull-failures", check=False)
-            self.progress.phase_end()
-            phase_num += 1
+        phase_num = await self._pull_images(mon_dir, phase_num)
 
-        self.progress.phase(phase_num, "Deploying stack")
-        self.state.set_task("Deploying stack", 60)
-        await self.run_compose(mon_dir, "up", "-d", "--build")
-        self.progress.phase_end()
-        phase_num += 1
+        phase_num = await self._deploy_compose(
+            mon_dir,
+            phase_num,
+            up_args=["-d", "--build"],
+        )
 
-        self.progress.phase(phase_num, "Probing health")
-        self.state.set_task("Probing health", 80)
         manager = ServiceHealthManager(
             "vllm-progress-manager", probes=[HttpProbe("http://localhost:8126/status", timeout=2.0)]
         )
-        if await manager.wait_for_ready(timeout=60):
-            self.progress.phase_end()
-            self.state.complete()
-        else:
-            self.state.fail("Monitoring telemetry health check timed out")
+        await self._probe_health(
+            phase_num, manager, timeout=60, fail_msg="Monitoring telemetry health check timed out"
+        )
 
 
 class RegistrySyncService(Service):
