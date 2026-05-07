@@ -1,0 +1,3 @@
+[submodule "sparkstack-registry"]
+	path = sparkstack-registry
+	url = https://github.com/jlapenna/sparkstack-registry.git
