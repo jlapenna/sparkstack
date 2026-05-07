@@ -1,6 +1,6 @@
 #!/bin/bash
 
-LOG_FILE="/home/jlapenna/p/spark-stack/ssh-watchdog.log"
+LOG_FILE="/home/jlapenna/p/sparkstack/ssh-watchdog.log"
 echo "Starting SSH force-fix watchdog... Logging to $LOG_FILE" | tee -a "$LOG_FILE"
 
 while true; do

@@ -14,7 +14,7 @@
   "ignorePaths": [
     "openclaw/**",
     "sparkrun/**",
-    "spark-stack-registry/**"
+    "sparkstack-registry/**"
   ],
   "customManagers": [
     {

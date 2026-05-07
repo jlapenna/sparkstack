@@ -1,6 +1,6 @@
 # Host Setup Guide
 
-This document outlines system-level configurations and tweaks necessary for setting up a new host for the `spark-stack` ecosystem. Because this project relies heavily on Docker and `docker-compose` routing, a vanilla Linux host configuration will experience networking conflicts and remote connection drops if not tuned properly.
+This document outlines system-level configurations and tweaks necessary for setting up a new host for the `sparkstack` ecosystem. Because this project relies heavily on Docker and `docker-compose` routing, a vanilla Linux host configuration will experience networking conflicts and remote connection drops if not tuned properly.
 
 ## 1. Protecting SSH Connections from Docker (VS Code Remote)
 

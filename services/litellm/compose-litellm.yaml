@@ -28,9 +28,9 @@ services:
     - /app/config.yaml
     networks:
     - vllm-network
-    - spark-stack-net
+    - sparkstack-net
 networks:
   vllm-network:
     external: true
-  spark-stack-net:
+  sparkstack-net:
     external: true

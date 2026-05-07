@@ -16,7 +16,7 @@ _test_lock = None
 
 def pytest_configure(config):
     global _test_lock
-    lockfile = Path(__file__).parent.parent / "tmp" / ".spark-stack-e2e.lock"
+    lockfile = Path(__file__).parent.parent / "tmp" / ".sparkstack-e2e.lock"
     lockfile.parent.mkdir(exist_ok=True)
     _test_lock = ProcessLock(str(lockfile))
     _test_lock.__enter__()
@@ -59,7 +59,7 @@ def ctx(request):
     if stack == "current":
         stack_dir = (root_dir / "current").resolve()
     else:
-        stack_dir = root_dir / "spark-stack-registry" / "stacks" / stack
+        stack_dir = root_dir / "sparkstack-registry" / "stacks" / stack
 
     oc_bin = Path(shutil.which("openclaw") or Path.home() / "bin" / "openclaw")
     gateway_url = "http://localhost:4000/v1"

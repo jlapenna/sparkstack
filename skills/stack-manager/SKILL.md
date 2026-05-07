@@ -38,7 +38,7 @@ For **ANY** model addition, upgrade, or stack modification, you MUST defer to th
 1. **Execution & Verification**: Once approved, execute the plan strictly as written, progressing through all infrastructure, stack orchestration, E2E Verification, and **Formal Benchmarking (Phase 4)** phases detailed in the template.
 1. **ZERO HOT-PATCHING**: If a step fails, **HALT** and inform the user. Do not attempt quiet fixes or ad-hoc hacks.
 1. **No Log Summarization**: You are strictly banned from summarizing verification logs in Phase 6. You must dump the literal unedited `stdout` blocks into the `plan.md` to prevent hallucinated success records.
-1. **Cheat-Sheet Finalization**: For Phase 7 cleanup, the mandatory final rotation command is exactly `uv run python manager/set_current.py spark-stack-registry/stacks/<clean_stack_name>`. Execute this after stripping the iterative suffix and deleting failed iterations.
+1. **Cheat-Sheet Finalization**: For Phase 7 cleanup, the mandatory final rotation command is exactly `uv run python manager/set_current.py sparkstack-registry/stacks/<clean_stack_name>`. Execute this after stripping the iterative suffix and deleting failed iterations.
 
 _(Refer to `skills/stack-manager/references/plan-template.md` for the exact requirements of Phase 1 through Phase 7)._
 
@@ -110,7 +110,7 @@ OpenClaw gateway may crash with `TypeError: Cannot read properties of undefined 
 
 ### 4. Docker DNS Breakage (resolv.conf override)
 
-If containers cannot resolve internal hostnames (e.g. `litellm`) despite being on the same custom network (like `spark-stack-net`):
+If containers cannot resolve internal hostnames (e.g. `litellm`) despite being on the same custom network (like `sparkstack-net`):
 
 - **Cause**: Bind-mounting the host's `/etc/resolv.conf` into the container (`/run/systemd/resolve/resolv.conf:/etc/resolv.conf:ro`) forcibly overrides Docker's embedded DNS server (`127.0.0.11`). It blinds the container to internal Docker service discovery.
 - **Fix**: NEVER bind-mount `/etc/resolv.conf` locally when using Docker bridge networks. Let Docker natively inject its `127.0.0.11` resolver to ensure container restarts and dynamic IP mapping work correctly.
@@ -135,7 +135,7 @@ If `sparkrun benchmark` (using `llama-benchy`) fails immediately with `HTTP 400 
 #### 👍 The Dos
 
 - **Internal Log Tailing**: Always tail `/tmp/sparkrun_serve.log` inside model containers for high-signal diagnostics.
-- **Benchmark Hygiene**: Since `sparkrun benchmark` hard-dumps its results in the repository root, you MUST immediately move the telemetry output files (`benchmark_*`) into the active stack's directory (e.g., `spark-stack-registry/stacks/<stack_name>/`) to keep the repository base clean.
+- **Benchmark Hygiene**: Since `sparkrun benchmark` hard-dumps its results in the repository root, you MUST immediately move the telemetry output files (`benchmark_*`) into the active stack's directory (e.g., `sparkstack-registry/stacks/<stack_name>/`) to keep the repository base clean.
 
 #### 👎 The Do-Nots
 

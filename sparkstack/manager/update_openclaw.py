@@ -523,4 +523,4 @@ if __name__ == "__main__":
         async for _ in updater.run_events():
             pass
 
-    run_with_lock(".spark-stack-update-openclaw.lock", _cli_run())
+    run_with_lock(".sparkstack-update-openclaw.lock", _cli_run())

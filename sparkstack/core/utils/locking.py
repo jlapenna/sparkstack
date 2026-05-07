@@ -37,7 +37,7 @@ class ProcessLock:
 def run_with_lock(lock_name: str, main_coroutine):
     """
     Run an async coroutine with a process lock.
-    lock_name: filename of the lock (e.g. '.spark-stack-update-monitoring.lock')
+    lock_name: filename of the lock (e.g. '.sparkstack-update-monitoring.lock')
     main_coroutine: the coroutine to run (e.g. main())
     """
     lock_file = Path(__file__).parent.parent.parent.parent / "tmp" / lock_name

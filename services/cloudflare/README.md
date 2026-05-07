@@ -21,7 +21,7 @@ docker compose --env-file ../../.env ps       # Check status
 1. **Join the Network:** Add this to the new service's `docker-compose.yml`:
    ```yaml
    networks:
-     spark-stack-net:
+     sparkstack-net:
        external: true
    ```
 1. **Map in Dashboard:**
@@ -38,7 +38,7 @@ docker compose logs -f tunnel
 docker compose restart tunnel
 
 # Connect an existing container manually to the proxy
-docker network connect spark-stack-net <container_name>
+docker network connect sparkstack-net <container_name>
 ```
 
 ## Files

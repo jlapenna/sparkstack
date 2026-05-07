@@ -25,7 +25,7 @@ ______________________________________________________________________
 *If the new deployment causes a catastrophic failure, you MUST have the exact rollback commands pre-defined here so the system can be restored instantly without further research.*
 
 - **Previous Stable Stack Name**: \[e.g., `core-upgrade-20260320`\]
-- **Rollback Command**: `uv run python manager/set_current.py spark-stack-registry/stacks/[PREVIOUS_STABLE]`
+- **Rollback Command**: `uv run python manager/set_current.py sparkstack-registry/stacks/[PREVIOUS_STABLE]`
 
 ______________________________________________________________________
 
@@ -62,7 +62,7 @@ ______________________________________________________________________
 
 Create or verify the custom `sparkrun` recipe in the registry.
 
-- **File**: `spark-stack-registry/sparkrun/[MODEL_ID].yaml`
+- **File**: `sparkstack-registry/sparkrun/[MODEL_ID].yaml`
 - **VLLM Config Details to Verify**:
   - **Resource Allocation**: Must match the budget calculated above.
   - **Quantization Format**: Explicitly state the target format (e.g., `NVFP4`, `AWQ`, `FP8`) as this drastically dictates the VRAM footprint and throughput expectations.
@@ -70,7 +70,7 @@ Create or verify the custom `sparkrun` recipe in the registry.
   - **Hardware Alignment**: Ensure `max_model_len` and `max_num_batched_tokens` are properly aligned per the latest registry standards.
 - **Action (Model Accessibility)**: `uv run python manager/verify_hf_model.py <repo_id>`
   - **Expect**: ✅ "VERIFIED: Repository ... physically exists on Hugging Face."
-- **Action (VRAM Validation)**: `uv run sparkrun recipe vram spark-stack-registry/sparkrun/[MODEL_ID].yaml --tp 1`
+- **Action (VRAM Validation)**: `uv run sparkrun recipe vram sparkstack-registry/sparkrun/[MODEL_ID].yaml --tp 1`
   - **Expect**: Estimated VRAM within the budget calculated in Phase 1. No OOM flags.
 
 ### Step 2: Infrastructure Patching (Tooling Layer)
@@ -94,7 +94,7 @@ Generate the multi-container configuration using the iterative naming convention
 Atomically rotate the containers and sync OpenClaw per the **stack-manager** protocol.
 
 1. **Shutdown/Cleanup**: Perform clean shutdown of previous containers.
-1. **Launch**: Activate the new stack via `uv run python manager/set_current.py spark-stack-registry/stacks/[STACK_NAME]`.
+1. **Launch**: Activate the new stack via `uv run python manager/set_current.py sparkstack-registry/stacks/[STACK_NAME]`.
 1. **Backend Readiness Gate**: Wait for all model backends to complete loading and pass post-load smoke tests.
    - **Action**: `uv run python manager/wait_for_backends.py --timeout 1800`
    - **Expect**: ✅ "Backend Readiness (All models loaded)" + passing smoke tests for each backend.
@@ -143,7 +143,7 @@ ______________________________________________________________________
 - **Action**: Run:
   ```bash
   export $(rg -v '^#' .env | xargs) && uv run sparkrun benchmark \
-    spark-stack-registry/sparkrun/[MODEL_NAME].yaml \
+    sparkstack-registry/sparkrun/[MODEL_NAME].yaml \
     --skip-run --port 4000 \
     -b served_model_name=main \
     -b api_key=$LITELLM_MASTER_KEY \
@@ -152,7 +152,7 @@ ______________________________________________________________________
   *(Note: telemetry defaults to `SparkrunConfig` output directories and auto-derives the inference alias.)*
 - **Cleanup Requirement**: The benchmark utility dumps `.csv`, `.json`, and `.yaml` result files into the repository root. You MUST immediately move them into the active stack's directory:
   ```bash
-  mv benchmark_* spark-stack-registry/stacks/[STACK_NAME]/
+  mv benchmark_* sparkstack-registry/stacks/[STACK_NAME]/
   ```
 - **Expect**: Securely capture Output Tokens per Second (T/s), Time to First Token (TTFT), and End-to-End Latency.
 - **Baseline Capture**:
@@ -182,8 +182,8 @@ ______________________________________________________________________
 Once verified functional:
 
 1. **Document Learnings**: Ensure this executed plan is completely filled out and saved as `plan.md` in the stack's directory (and update the files in `skills/stack-knowledge/references/` if new technical constraints were discovered).
-1. **Cleanup**: Remove all failed iterative stack directories from the `spark-stack-registry/stacks/` folder.
+1. **Cleanup**: Remove all failed iterative stack directories from the `sparkstack-registry/stacks/` folder.
 1. **Standardize Name**: Rename the working stack directory to remove the iterative suffix (e.g., `core-upgrade-20260329-01` -> `core-upgrade-20260329`).
-1. **Reset Current**: Run `uv run python manager/set_current.py spark-stack-registry/stacks/<clean_stack_name>` to finalize symlinks to the clean name.
+1. **Reset Current**: Run `uv run python manager/set_current.py sparkstack-registry/stacks/<clean_stack_name>` to finalize symlinks to the clean name.
 1. **Post-Rename Verification**: Re-run `uv run pytest -x tests/e2e/test_memory_law.py tests/e2e/test_system_health.py` to confirm the renamed stack is still functional.
-1. **Commit**: Stage and commit the finalized stack directory and updated symlink changes to the `spark-stack-registry`.
+1. **Commit**: Stage and commit the finalized stack directory and updated symlink changes to the `sparkstack-registry`.

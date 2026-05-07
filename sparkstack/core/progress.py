@@ -38,7 +38,7 @@ class StackProgress:
         self.verbosity = verbosity
         # Use loguru wrapper or fallback to stdlib logging depending on binding
         # Here we prefer standard logging which loguru can intercept,
-        # or we just use loguru directly. spark-stack uses loguru.
+        # or we just use loguru directly. sparkstack uses loguru.
         self._log = logger.bind(logger_name="sparkstack.progress")
 
         self._current_phase: int | None = None

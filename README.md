@@ -26,13 +26,13 @@ The ecosystem relies on Docker and Docker Compose to network different services 
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/jlapenna/spark-stack.git
-   cd spark-stack
+   git clone https://github.com/jlapenna/sparkstack.git
+   cd sparkstack
    ```
 
 1. **Clone source dependencies (if you have access):**
 
-   Ensure `openclaw`, `sparkrun`, and `spark-stack-registry` are cloned in the parent directory (`../`).
+   Ensure `openclaw`, `sparkrun`, and `sparkstack-registry` are cloned in the parent directory (`../`).
 
 1. **Configure Environment:**
    Copy `.env.example` to `.env` and fill in the appropriate values.

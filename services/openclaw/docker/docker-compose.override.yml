@@ -47,7 +47,7 @@ services:
 
     networks:
       - default
-      - spark-stack-net
+      - sparkstack-net
 
   openclaw-cli:
     image: openclaw-gateway-custom:latest
@@ -64,5 +64,5 @@ services:
       - OPENCLAW_IGNORE_BIND_WARNING=1
 
 networks:
-  spark-stack-net:
+  sparkstack-net:
     external: true

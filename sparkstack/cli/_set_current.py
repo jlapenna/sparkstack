@@ -28,7 +28,7 @@ from ._common import json_option, resolve_stack_dir, run_async, setup_command_lo
 def set_current(ctx: click.Context, target: str, no_launch: bool, output_json: bool) -> None:
     """Switch the active stack and restart services.
 
-    TARGET is a stack name (resolved under spark-stack-registry/stacks/)
+    TARGET is a stack name (resolved under sparkstack-registry/stacks/)
     or an absolute path to a stack directory.
     """
     stack_dir = resolve_stack_dir(target)

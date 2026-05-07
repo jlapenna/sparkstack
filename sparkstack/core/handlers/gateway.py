@@ -10,10 +10,10 @@ class ApiGatewayServiceConfigurator:
             return
 
         gw = docker_builder.compose_config["services"]["litellm"]
-        gw["networks"] = ["vllm-network", "spark-stack-net"]
+        gw["networks"] = ["vllm-network", "sparkstack-net"]
         gw.setdefault("deploy", {}).setdefault("resources", {}).setdefault("limits", {})[
             "memory"
         ] = memory
 
-        # Ensure spark-stack-net network is defined as external
-        docker_builder.compose_config.setdefault("networks", {})["spark-stack-net"] = {"external": True}
+        # Ensure sparkstack-net network is defined as external
+        docker_builder.compose_config.setdefault("networks", {})["sparkstack-net"] = {"external": True}

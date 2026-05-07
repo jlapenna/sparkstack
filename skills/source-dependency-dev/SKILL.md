@@ -68,7 +68,7 @@ Because the source dependencies track the main upstream source repositories nati
 1. **Push from Worktree:** Push the isolated feature branch from the worktree to your fork and create the PR. This ensures PRs are cleanly mergeable on top of the target base branch without bringing along other unfinished features from `local-dev`.
 1. **Update Existing PRs in Worktrees:** All PR feedback patches and CI fixes MUST be applied strictly from within the isolated feature worktree directory. Once updated and pushed, you can merge those fixes back into `local-dev` to keep your local environment up to date.
 1. **Handle Closed PRs:** PRs that are closed are considered abandoned. You MUST NOT apply them to the `local-dev` integration branch. If they exist in your local `local-dev` branch, they MUST be reverted locally.
-1. **Commit isolated integrations to `spark-stack`:** The root `spark-stack` repo should track the commit of the `local-dev` branch (from the primary source dependency) to ensure stability during system-wide testing. However, when committing this pointer update, you MUST NEVER sweep unrelated files from the `spark-stack` repository into the commit of the main repository.
+1. **Commit isolated integrations to `sparkstack`:** The root `sparkstack` repo should track the commit of the `local-dev` branch (from the primary source dependency) to ensure stability during system-wide testing. However, when committing this pointer update, you MUST NEVER sweep unrelated files from the `sparkstack` repository into the commit of the main repository.
 
 ## Step-by-Step Workflow
 
@@ -92,7 +92,7 @@ When a specific feature or fix is ready for review, extract it into a clean PR b
 1. Add a new worktree for your feature based on the canonical root (`origin/main`). We conventionally place the worktree inside the `.worktrees/` folder at the root of the repository so it stays within IDE workspaces but remains ignored by `git`. To avoid relative path (`../`) confusion, **always use absolute paths**:
    ```bash
    # resolve the absolute root path from the source dependency directory
-   ROOT_DIR="$(cd ../spark-stack && pwd)"
+   ROOT_DIR="$(cd ../sparkstack && pwd)"
 
    # create a new branch and worktree safely within the ignored .worktrees space
    git worktree add -b <feature-name> "$ROOT_DIR/.worktrees/<source dependency-name>/<feature-name>" <upstream-base-branch> # e.g. origin/develop or origin/main
@@ -200,7 +200,7 @@ cd ../openclaw && git checkout -b my-new-feature
 
 ```bash
 # GOOD: Adding an isolated worktree outside the parent's immediate traversal space
-ROOT_DIR="$(cd ../spark-stack && pwd)"
+ROOT_DIR="$(cd ../sparkstack && pwd)"
 git worktree add -b my-new-feature "$ROOT_DIR/.worktrees/openclaw/my-new-feature" origin/main
 ```
 
@@ -216,5 +216,5 @@ You MUST conclude your integration actions with this exact structure:
 *(Directly output the results from running `python3 util/source_dependency_status.py` here)*
 
 ### 3. Repo Health
-*(Confirm that the primary source dependency and the root `spark-stack` repo show zero dangling/untracked files)*
+*(Confirm that the primary source dependency and the root `sparkstack` repo show zero dangling/untracked files)*
 ```

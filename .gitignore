@@ -67,4 +67,4 @@ tmp/
 gha-creds-*.json
 
 # Lock files
-.spark-stack*.lock
+.sparkstack*.lock

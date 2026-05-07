@@ -7,7 +7,7 @@ ______________________________________________________________________
 
 # Stack Debugging with Distributed Tracing
 
-In modern, multi-host, orchestration-heavy environments (like `spark-stack`), debugging purely from container stdout logs can be blind to context and request flow.
+In modern, multi-host, orchestration-heavy environments (like `sparkstack`), debugging purely from container stdout logs can be blind to context and request flow.
 
 Distributed tracing (OpenTelemetry) provides an end-to-end visualization of the request lifecycle. It allows you to:
 
@@ -132,7 +132,7 @@ docker logs --tail 200 litellm
 ```
 
 **Viewing General Docker Logs:**
-For any other service in the `spark-stack` deployment:
+For any other service in the `sparkstack` deployment:
 
 ```bash
 docker logs --tail 200 <container-name>
@@ -188,7 +188,7 @@ If this fails with `ConnectionResetError [Errno 104]` → hairpin NAT issue. Swi
 
 Unlike reactive debugging (where you respond to an active incident or broken test), **Proactive Debugging** involves open-ended hunting for anomalies, unhandled edge cases, and regressions *before* they surface to the user.
 
-In the `spark-stack` environment, OpenTelemetry traces sent to Grafana Tempo are a great vehicle for discovery. However, **do not limit yourself to only the patterns below.** Trust your intuition, craft your own queries, and investigate any suspicious metrics, logs, or traces you uncover.
+In the `sparkstack` environment, OpenTelemetry traces sent to Grafana Tempo are a great vehicle for discovery. However, **do not limit yourself to only the patterns below.** Trust your intuition, craft your own queries, and investigate any suspicious metrics, logs, or traces you uncover.
 
 ### When to Use Proactive Debugging
 

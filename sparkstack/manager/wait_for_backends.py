@@ -281,7 +281,7 @@ if __name__ == "__main__":
 
     root_dir = Path(__file__).parent.parent.absolute()
     stack_dir = (
-        root_dir / "spark-stack-registry" / "stacks" / args.stack
+        root_dir / "sparkstack-registry" / "stacks" / args.stack
         if args.stack
         else (root_dir / "current").resolve()
     )

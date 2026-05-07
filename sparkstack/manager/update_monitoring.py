@@ -132,4 +132,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    run_with_lock(".spark-stack-update-monitoring.lock", main())
+    run_with_lock(".sparkstack-update-monitoring.lock", main())

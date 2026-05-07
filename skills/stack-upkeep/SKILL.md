@@ -53,7 +53,7 @@ The underlying vLLM and LiteLLM containers may have received upstream patches.
 
 If pulling the latest container image introduces a breaking registry change or stability issue, you must rollback to a known-good configuration immediately:
 
-- **Command:** `uv run python manager/set_current.py spark-stack-registry/stacks/<previous_stable_stack_directory>`
+- **Command:** `uv run python manager/set_current.py sparkstack-registry/stacks/<previous_stable_stack_directory>`
 - **Behavior:** This resets the `current` symlink and rebuilds the active docker-compose configuration using the older, verified images and recipes. Run `cd current && docker compose up -d --force-recreate` to solidify the restore.
 
 ### 4. Manual Version Discovery & Pinning (When Renovate Fails)
@@ -103,8 +103,8 @@ If any model configuration changes were detected upstream, rebuild and restart t
 
 - **Commands:**
   ```bash
-  # Assuming the active stack is 'spark-stack-registry/stacks/official-main-20260325'
-  uv run python manager/set_current.py spark-stack-registry/stacks/official-main-20260325
+  # Assuming the active stack is 'sparkstack-registry/stacks/official-main-20260325'
+  uv run python manager/set_current.py sparkstack-registry/stacks/official-main-20260325
   ```
 
 ### 7. Final Verification (MANDATORY)
@@ -117,7 +117,7 @@ After applying updates and verifying functionality, run the full `spark-arena-v1
 
 - **Command:**
   ```bash
-  uv run sparkrun benchmark /path/to/spark-stack-registry/sparkrun/<YOUR_ACTIVE_MAIN_MODEL>.yaml \
+  uv run sparkrun benchmark /path/to/sparkstack-registry/sparkrun/<YOUR_ACTIVE_MAIN_MODEL>.yaml \
       --profile spark-arena-v1 \
       --skip-run \
       --port 8001 \

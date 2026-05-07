@@ -97,5 +97,5 @@ def resolve_stack_dir(name: str | None = None) -> Path:
         Resolved absolute path to the stack directory.
     """
     if name and name != "current":
-        return (PROJECT_ROOT / "spark-stack-registry" / "stacks" / name).resolve()
+        return (PROJECT_ROOT / "sparkstack-registry" / "stacks" / name).resolve()
     return (PROJECT_ROOT / "current").resolve()

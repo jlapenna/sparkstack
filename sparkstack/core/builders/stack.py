@@ -184,7 +184,7 @@ class StackBuilder:
         self._validate_configs()
         self._generate_launcher_script()
         logger.info(
-            f"🚀 Stack '{self.stack_name}' built successfully in spark-stack-registry/stacks/{self.stack_name}"
+            f"🚀 Stack '{self.stack_name}' built successfully in sparkstack-registry/stacks/{self.stack_name}"
         )
 
     async def _process_model_request(self, idx: int, req: ModelRequest):

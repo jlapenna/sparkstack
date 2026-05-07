@@ -10,7 +10,7 @@ triggers:
 
 - docker networking
 - container connectivity
-- spark-stack-net routing
+- sparkstack-net routing
 - litellm network
 - fix container DNS
 - why can't container reach
@@ -108,7 +108,7 @@ When interacting with OpenClaw, it is critical to distinguish between its immuta
 | Network                 | Subnet        | Purpose                                     |
 | ----------------------- | ------------- | ------------------------------------------- |
 | `bridge`                | 172.17.0.0/16 | Default Docker bridge (unused)              |
-| `spark-stack-net`       | 172.19.0.0/16 | Shared network for all user-facing services |
+| `sparkstack-net`       | 172.19.0.0/16 | Shared network for all user-facing services |
 | `vllm-network`          | 172.18.0.0/16 | Gateway + prometheus only                   |
 | `monitoring_monitoring` | 172.20.0.0/16 | Monitoring stack                            |
 | `openclaw_default`      | 172.21.0.0/16 | OpenClaw internal                           |
@@ -117,24 +117,24 @@ When interacting with OpenClaw, it is critical to distinguish between its immuta
 
 | Container                     | NetworkMode             | Networks                                             |
 | ----------------------------- | ----------------------- | ---------------------------------------------------- |
-| `main_solo`                   | `spark-stack-net`       | spark-stack-net                                      |
-| `embedding_solo`              | `spark-stack-net`       | spark-stack-net                                      |
-| `litellm`                     | `vllm-network`          | vllm-network, spark-stack-net                        |
-| `openclaw-openclaw-gateway-1` | `openclaw_default`      | openclaw_default, spark-stack-net                    |
-| `prometheus`                  | `monitoring_monitoring` | monitoring_monitoring, spark-stack-net, vllm-network |
-| `alloy`                       | `monitoring_monitoring` | monitoring_monitoring, spark-stack-net               |
+| `main_solo`                   | `sparkstack-net`       | sparkstack-net                                      |
+| `embedding_solo`              | `sparkstack-net`       | sparkstack-net                                      |
+| `litellm`                     | `vllm-network`          | vllm-network, sparkstack-net                        |
+| `openclaw-openclaw-gateway-1` | `openclaw_default`      | openclaw_default, sparkstack-net                    |
+| `prometheus`                  | `monitoring_monitoring` | monitoring_monitoring, sparkstack-net, vllm-network |
+| `alloy`                       | `monitoring_monitoring` | monitoring_monitoring, sparkstack-net               |
 | `nv-monitor`                  | `monitoring_monitoring` | monitoring_monitoring                                |
-| `grafana`                     | `monitoring_monitoring` | monitoring_monitoring, spark-stack-net               |
-| `vllm-progress-manager`       | `monitoring_monitoring` | monitoring_monitoring, spark-stack-net               |
+| `grafana`                     | `monitoring_monitoring` | monitoring_monitoring, sparkstack-net               |
+| `vllm-progress-manager`       | `monitoring_monitoring` | monitoring_monitoring, sparkstack-net               |
 
-| `tempo` | `monitoring_monitoring` | monitoring_monitoring, spark-stack-net |
-| `cloudflared` | `spark-stack-net` | spark-stack-net |
+| `tempo` | `monitoring_monitoring` | monitoring_monitoring, sparkstack-net |
+| `cloudflared` | `sparkstack-net` | sparkstack-net |
 
 ### Key Routing Paths
 
-- **OpenClaw → LLM**: openclaw-gateway → `litellm:4000` (via spark-stack-net) → backend
-- **litellm → main_solo**: Uses direct container hostname `main_solo:8001` on shared `spark-stack-net` network
-- **litellm → embedding_solo**: Uses direct container hostname `embedding_solo:8002` on shared `spark-stack-net` network
+- **OpenClaw → LLM**: openclaw-gateway → `litellm:4000` (via sparkstack-net) → backend
+- **litellm → main_solo**: Uses direct container hostname `main_solo:8001` on shared `sparkstack-net` network
+- **litellm → embedding_solo**: Uses direct container hostname `embedding_solo:8002` on shared `sparkstack-net` network
 
 > **Note:** Legacy stacks may still reference `host.docker.internal`. See Rule 2 below for why this is prohibited.
 
@@ -158,13 +158,13 @@ These rules are distilled from real incidents. They are non-negotiable.
 
 ### Rule 1: Use Container Names on Shared Networks, Not `host.docker.internal`
 
-When containers share a network (e.g., `spark-stack-net`), route traffic using **direct container names**. `host.docker.internal` routing depends on Docker's hairpin NAT which can and does fail with `ConnectionResetError`.
+When containers share a network (e.g., `sparkstack-net`), route traffic using **direct container names**. `host.docker.internal` routing depends on Docker's hairpin NAT which can and does fail with `ConnectionResetError`.
 
 ```yaml
 # WRONG (fragile — hairpin NAT):
 api_base: http://host.docker.internal:8001/v1
 
-# CORRECT (direct routing on shared spark-stack-net network):
+# CORRECT (direct routing on shared sparkstack-net network):
 api_base: http://main_solo:8001/v1
 ```
 
@@ -194,7 +194,7 @@ This is a distilled list of commonly encountered issues and silent failures extr
 
 ### 1. Networking & Connectivity
 
-- **Avoid `host.docker.internal` on Shared Networks:** If containers share a Docker network (e.g., `spark-stack-net`), ALWAYS route traffic using direct container hostnames (e.g., `main_solo:8001`). Using `host.docker.internal` forces traffic through Docker's hairpin NAT, which frequently fails with `ConnectionResetError`s.
+- **Avoid `host.docker.internal` on Shared Networks:** If containers share a Docker network (e.g., `sparkstack-net`), ALWAYS route traffic using direct container hostnames (e.g., `main_solo:8001`). Using `host.docker.internal` forces traffic through Docker's hairpin NAT, which frequently fails with `ConnectionResetError`s.
 - **Verify the Process Before the Network:** A container showing as "running" does not mean the service inside is alive. If `vllm` crashes but the container entrypoint is `sleep infinity`, the container stays up. Always run `docker exec <container> ss -tlnp` and check logs (`tail /tmp/sparkrun_serve.log`) before assuming a network issue.
 - **Never Bind-Mount `/etc/resolv.conf`:** Mounting the host's `resolv.conf` into a container overwrites Docker's embedded DNS server (`127.0.0.11`), blinding the container to internal service discovery.
 

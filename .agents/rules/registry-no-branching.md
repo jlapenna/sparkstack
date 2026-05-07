@@ -8,7 +8,7 @@ ______________________________________________________________________
 
 ## Spark Stack Registry Branching Policy
 
-IMMUTABLE RULE: You CANNOT create branches or git worktrees for `spark-stack-registry` (`./workspaces/spark-stack-registry` or `spark-stack-registry/`).
+IMMUTABLE RULE: You CANNOT create branches or git worktrees for `sparkstack-registry` (`./workspaces/sparkstack-registry` or `sparkstack-registry/`).
 
-All updates and operations on the `spark-stack-registry` MUST be done directly on the `main` branch.
+All updates and operations on the `sparkstack-registry` MUST be done directly on the `main` branch.
 Do not attempt to check out feature branches or use `git worktree add` for the registry repository under any circumstances.

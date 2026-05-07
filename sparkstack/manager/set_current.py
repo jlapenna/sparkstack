@@ -18,7 +18,7 @@ async def main():
     parser = argparse.ArgumentParser(description="Switch active stack and restart services")
     parser.add_argument(
         "target",
-        help="Directory name of the target stack (e.g., spark-stack-registry/stacks/powerhouse-maximize-20260330)",
+        help="Directory name of the target stack (e.g., sparkstack-registry/stacks/powerhouse-maximize-20260330)",
     )
     args = parser.parse_args()
 
@@ -26,7 +26,7 @@ async def main():
 
     # Resolve absolute path if target is relative
     if not target_str.startswith("/"):
-        if target_str.startswith("spark-stack-registry/stacks/"):
+        if target_str.startswith("sparkstack-registry/stacks/"):
             full_target = ROOT_DIR / target_str
         else:
             full_target = STACKS_DIR / target_str

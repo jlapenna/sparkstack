@@ -30,14 +30,14 @@ async def launch_stack(stack_dir: Path, *, rebuild_images: bool = False) -> None
 
     # Launch backends
     logger.info("🚀 Launching model instances via sparkrun...")
-    global_network = "spark-stack-net"
+    global_network = "sparkstack-net"
 
     for backend in stack.get("backends", []):
         recipe = backend["recipe"]
         if recipe.startswith("@"):
             recipe_path = recipe
         else:
-            recipe_path = repo_root / "spark-stack-registry" / recipe
+            recipe_path = repo_root / "sparkstack-registry" / recipe
         cmd = [
             "uv",
             "run",

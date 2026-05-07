@@ -11,7 +11,7 @@ PROJECT_ROOT = Path(
     os.getenv("SPARK_STACK_ROOT") or str(Path(__file__).resolve().parent.parent)
 ).absolute()
 REGISTRY_DIR = Path(
-    os.getenv("SPARK_STACK_REGISTRY") or str(PROJECT_ROOT / "spark-stack-registry")
+    os.getenv("SPARK_STACK_REGISTRY") or str(PROJECT_ROOT / "sparkstack-registry")
 ).absolute()
 BASE_DIR = PROJECT_ROOT / "services"
 STACKS_DIR = REGISTRY_DIR / "stacks"

@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     target_services: tuple[str, ...] | None = None
 
 
-SOCKET_PATH = "/tmp/spark-stack.sock"
+SOCKET_PATH = "/tmp/sparkstack.sock"
 
 
 class Orchestrator:
@@ -276,4 +276,4 @@ async def _run_main_with_signals():
 
 
 if __name__ == "__main__":
-    run_with_lock(".spark-stack-update-services.lock", _run_main_with_signals())
+    run_with_lock(".sparkstack-update-services.lock", _run_main_with_signals())

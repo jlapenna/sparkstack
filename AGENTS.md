@@ -16,7 +16,7 @@ ______________________________________________________________________
 
 # Project Overview: Spark Services Orchestrator
 
-Spark Services Orchestrator (`spark-stack`) is a high-performance deployment orchestrator for the Spark ecosystem. It manages a suite of AI services, including the **OpenClaw** backend gateway, the **SparkRun** orchestrator, and various local LLM inference stacks (powered by **vLLM**).
+Spark Services Orchestrator (`sparkstack`) is a high-performance deployment orchestrator for the Spark ecosystem. It manages a suite of AI services, including the **OpenClaw** backend gateway, the **SparkRun** orchestrator, and various local LLM inference stacks (powered by **vLLM**).
 
 The project is designed for Linux hosts, utilizing Docker and Docker Compose for secure service isolation and networking. It focuses on robust, async-first orchestration scripts to manage the full lifecycle of the AI stack.
 
@@ -30,7 +30,7 @@ The project is designed for Linux hosts, utilizing Docker and Docker Compose for
   - **SparkRun:** Automated orchestration and evaluation (Managed as an editable path source dependency in ../sparkrun).
   - **vLLM:** High-throughput LLM inference backend.
 - **Monitoring:** Prometheus, Grafana, and Tempo (Managed via Grafana Alloy).
-- **Registry:** `spark-stack-registry` for deployment recipes and model configurations.
+- **Registry:** `sparkstack-registry` for deployment recipes and model configurations.
 
 ## Building and Running
 
@@ -99,7 +99,7 @@ When `--json` is active:
 - Human-readable Rich progress bars and spinners are suppressed.
 - All log events are written as JSON-Lines to **stdout**.
 - Errors and debug logs are still written to `update_services.log`.
-- The IPC UDS socket (`/tmp/spark-stack.sock`) still broadcasts events for any connected TUI clients.
+- The IPC UDS socket (`/tmp/sparkstack.sock`) still broadcasts events for any connected TUI clients.
 
 ## Development Conventions
 
@@ -121,7 +121,7 @@ When `--json` is active:
 
 ## IPC Monitoring Architecture
 
-`sparkstack update` embeds an IPC server broadcasting JSON-Lines events over a UNIX Domain Socket (`/tmp/spark-stack.sock`). There are two ways to consume these events:
+`sparkstack update` embeds an IPC server broadcasting JSON-Lines events over a UNIX Domain Socket (`/tmp/sparkstack.sock`). There are two ways to consume these events:
 
 1. **Interactive TUI:** `sparkstack status` — a Textual app that connects to the UDS for live dashboard monitoring.
 1. **Headless JSON:** `sparkstack update --json` — emits the same events as JSON-Lines to stdout, suitable for piping into `jq`, logging aggregators, or automated agents.
@@ -144,7 +144,7 @@ sparkstack update (Orchestrator + IPCServer)  ──UDS──▶  sparkstack sta
 - `sparkstack/manager/`: High-level orchestration scripts for building, updating, and syncing the stack.
 - `services/`: Configuration fragments, `docker-compose.yml` files, and service-specific managers.
 - `skills/`: Local AI agent skills (e.g., `stack-manager`, `source-dependency-dev`).
-- `../spark-stack-registry/`: Source dependency containing model and stack deployment recipes.
+- `../sparkstack-registry/`: Source dependency containing model and stack deployment recipes.
 - `tests/`: End-to-end and unit tests (Requires `pytest`).
 - `benchmarks/`: Performance testing and evaluation suites.
 

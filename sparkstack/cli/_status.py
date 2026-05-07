@@ -1,6 +1,6 @@
 """sparkstack status — live deployment monitor TUI.
 
-Connects to the orchestrator's UNIX Domain Socket at /tmp/spark-stack.sock
+Connects to the orchestrator's UNIX Domain Socket at /tmp/sparkstack.sock
 and renders a live dashboard with service states and streaming logs.
 """
 
@@ -31,7 +31,7 @@ from . import main
 
 logger = logging.getLogger(__name__)
 
-SOCKET_PATH = "/tmp/spark-stack.sock"
+SOCKET_PATH = "/tmp/sparkstack.sock"
 
 
 @main.command("status")
