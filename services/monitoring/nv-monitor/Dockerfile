@@ -1,4 +1,4 @@
-FROM ubuntu:24.04
+FROM ubuntu:26.04
 RUN apt-get update && apt-get install -y curl ca-certificates libncursesw6 && rm -rf /var/lib/apt/lists/*
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ] || [ "$ARCH" = "amd64" ]; then \
