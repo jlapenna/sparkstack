@@ -53,12 +53,12 @@ def get_pr_status(source_dependency_dir, repo_name):
 
 def main():
     root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    source_dependencys = ["openclaw", "sparkrun", "spark-stack-registry"]
+    source_dependencys = ["openclaw", "sparkrun", "sparkstack-registry"]
 
     repo_map = {
         "openclaw": "openclaw/openclaw",
         "sparkrun": "spark-arena/sparkrun",
-        "spark-stack-registry": "jlapenna/spark-stack-registry",
+        "sparkstack-registry": "jlapenna/sparkstack-registry",
     }
 
     print("### 1. Pending Pull Requests\n")
@@ -111,7 +111,7 @@ def main():
     print("| :--- | :--- | :--- |")
 
     for sub in source_dependencys:
-        if sub == "spark-stack-registry":
+        if sub == "sparkstack-registry":
             sub_dir = os.path.join(root_dir, sub)
         else:
             parent_dir = os.path.dirname(root_dir)
@@ -119,10 +119,10 @@ def main():
 
         branch = run_cmd("git rev-parse --abbrev-ref HEAD", cwd=sub_dir)
 
-        integration_branch = "main" if sub == "spark-stack-registry" else "local-dev"
+        integration_branch = "main" if sub == "sparkstack-registry" else "local-dev"
         if sub == "sparkrun":
             base_ref = "upstream/develop"
-        elif sub == "spark-stack-registry":
+        elif sub == "sparkstack-registry":
             base_ref = "origin/main"
         else:
             # For openclaw, local-dev tracks the newest stable tag
