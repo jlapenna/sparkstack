@@ -4,7 +4,6 @@ update_sparkrun.py - Source Dependency management and rebase logic for SparkRun.
 """
 
 import argparse
-import asyncio
 from pathlib import Path
 
 # Add parent directory to path to allow importing core
@@ -15,7 +14,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from sparkstack.core.env import PROJECT_ROOT, SPARKRUN_DIR
 from sparkstack.core.git import sync_sparkrun_repo
 from sparkstack.core.updater import BaseUpdater
-from sparkstack.core.utils import ProcessLock, async_run_command
+from sparkstack.core.utils import async_run_command
+from sparkstack.core.utils.locking import run_with_lock
 
 
 class SparkrunSettings(BaseSettings):
@@ -80,7 +80,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    lock_file = Path(__file__).parent.parent / "tmp" / ".spark-stack-update-sparkrun.lock"
-    lock_file.parent.mkdir(exist_ok=True)
-    with ProcessLock(str(lock_file)):
-        asyncio.run(main())
+    run_with_lock(".spark-stack-update-sparkrun.lock", main())

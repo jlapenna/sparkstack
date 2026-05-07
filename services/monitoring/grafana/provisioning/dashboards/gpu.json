@@ -454,7 +454,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "nv_gpu_sm_clock_mhz{instance=~\"${instance}\", gpu=~\"${gpu}\"} * 1000000",
+          "expr": "nv_gpu_clock_mhz{instance=~\"${instance}\", gpu=~\"${gpu}\"} * 1000000",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -668,7 +668,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "nv_gpu_memory_used_bytes{instance=~\"${instance}\", gpu=~\"${gpu}\"}",
+          "expr": "nv_memory_used_bytes{instance=~\"${instance}\"}",
           "interval": "",
           "legendFormat": "GPU {{gpu}}",
           "refId": "A"
@@ -774,7 +774,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "DCGM_FI_PROF_PIPE_TENSOR_ACTIVE{instance=~\"${instance}\", gpu=~\"${gpu}\"}",
+          "expr": "nv_gpu_utilization_percent{instance=~\"${instance}\", gpu=~\"${gpu}\"}",
           "interval": "",
           "legendFormat": "GPU {{gpu}}",
           "refId": "A"

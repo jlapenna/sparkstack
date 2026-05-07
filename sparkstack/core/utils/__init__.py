@@ -10,7 +10,7 @@ from sparkstack.core.utils.health import (
     SparkrunLogProbe,
 )
 from sparkstack.core.utils.json import parse_cli_json
-from sparkstack.core.utils.locking import ProcessLock
+from sparkstack.core.utils.locking import ProcessLock, run_with_lock
 from sparkstack.core.utils.shell import (
     CommandError,
     CommandResult,
@@ -37,5 +37,6 @@ __all__ = [
     "async_run_command",
     "async_run_compose",
     "parse_cli_json",
+    "run_with_lock",
     "slugify",
 ]

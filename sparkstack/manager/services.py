@@ -199,15 +199,25 @@ class Service(ABC):
             self.state.fail(fail_msg or f"{task_name} timed out or failed")
 
 
-class SparkrunService(Service):
+class UpdaterService(Service):
+    """A generic Service that delegates its update to a BaseUpdater."""
+    updater_class = None
+
     async def update(self) -> None:
-        updater = SparkrunUpdater(
+        if self.updater_class is None:
+            raise NotImplementedError("updater_class must be defined on subclass")
+        
+        updater = self.updater_class(
             pull_latest=self.settings.pull_latest, project_root=self.settings.project_root
         )
 
         async for task_name, progress in updater.run_events():
             self.state.set_task(task_name, progress)
         self.state.complete()
+
+
+class SparkrunService(UpdaterService):
+    updater_class = SparkrunUpdater
 
 
 class CloudflareService(Service):
@@ -336,14 +346,6 @@ class RegistrySyncService(Service):
         self.state.complete()
 
 
-class OpenClawService(Service):
+class OpenClawService(UpdaterService):
     dependencies = []
-
-    async def update(self) -> None:
-        updater = OpenClawUpdater(
-            pull_latest=self.settings.pull_latest, project_root=self.settings.project_root
-        )
-
-        async for task_name, progress in updater.run_events():
-            self.state.set_task(task_name, progress)
-        self.state.complete()
+    updater_class = OpenClawUpdater

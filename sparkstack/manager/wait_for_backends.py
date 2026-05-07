@@ -2,7 +2,6 @@
 import argparse
 import asyncio
 import os
-import subprocess
 import sys
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
@@ -20,8 +19,9 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 
+from sparkstack.core.discovery import get_active_services
 from sparkstack.core.ipc_server import IPCServer, StateUpdateEvent
-from tests.e2e.utils import get_active_services
+from sparkstack.core.utils import async_run_command
 
 
 @dataclass
@@ -70,11 +70,11 @@ class BackendProbe:
                             if is_crash:
                                 logs = ""
                                 try:
-                                    logs = subprocess.check_output(
+                                    res = await async_run_command(
                                         ["docker", "logs", "--tail", "20", c],
-                                        stderr=subprocess.STDOUT,
-                                        text=True,
+                                        check=False,
                                     )
+                                    logs = res.stdout + res.stderr
                                 except Exception as e:
                                     logs = f"Failed to fetch logs: {e}"
                                 yield BackendStatusUpdate(
@@ -138,7 +138,7 @@ async def wait_for_backends_to_load(
     ) as progress:
         tasks = {}
         for c in expected_containers:
-            display_name = container_to_name.get(c, c)
+            display_name = str(container_to_name.get(c) or c)
             tasks[c] = progress.add_task(
                 f"Loading [cyan]{display_name}[/]", total=100, phase="[dim]Initializing...[/dim]"
             )
@@ -151,7 +151,7 @@ async def wait_for_backends_to_load(
 
         async def poll_ui():
             async for update in probe.poll():
-                display_name = container_to_name.get(update.container, update.container)
+                display_name = str(container_to_name.get(update.container) or update.container)
                 if update.is_crash:
                     if ipc_server:
                         ipc_server.update_state(
@@ -211,7 +211,7 @@ async def wait_for_backends_to_load(
         logger.info("✅ Pass: Backend Readiness (All models loaded)")
         if ipc_server:
             for c in expected_containers:
-                display_name = container_to_name.get(c, c)
+                display_name = str(container_to_name.get(c) or c)
                 ipc_server.update_state(
                     StateUpdateEvent(
                         service=display_name, status="Complete", progress=100.0, note="Loaded"

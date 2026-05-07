@@ -191,7 +191,14 @@ class DeploymentMonitorApp(App):
         status = event.status or "Unknown"
         progress = event.progress or 0.0
         note = event.note or ""
-        updated_time = datetime.now().strftime("%H:%M:%S")
+        
+        if not hasattr(self, "_service_timestamps"):
+            self._service_timestamps = {}
+            
+        if not dimmed:
+            self._service_timestamps[service] = datetime.now().strftime("%H:%M:%S")
+            
+        updated_time = self._service_timestamps.get(service, datetime.now().strftime("%H:%M:%S"))
 
         status_style = {
             "waiting": "dim",
@@ -200,12 +207,19 @@ class DeploymentMonitorApp(App):
             "failed": "bold red",
         }.get(status.lower(), "white")
 
+        def fmt(text: str, style: str = "") -> str:
+            if not text:
+                return ""
+            if dimmed:
+                return f"[dim]{text}[/]"
+            return f"[{style}]{text}[/]" if style else text
+
         cells = {
-            "Service": f"[dim]{service}[/]" if dimmed else service,
-            "Status": f"[dim]{status}[/]" if dimmed else f"[{status_style}]{status}[/]",
-            "Progress": f"[dim]{progress:.1f}%[/]" if dimmed else f"{progress:.1f}%",
-            "Updated": f"[dim]{updated_time}[/]",
-            "Note": f"[dim]{note}[/]" if dimmed and note else note,
+            "Service": fmt(service),
+            "Status": fmt(status, status_style),
+            "Progress": fmt(f"{progress:.1f}%"),
+            "Updated": fmt(updated_time),
+            "Note": fmt(note),
         }
 
         if service in table.rows:

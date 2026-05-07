@@ -24,7 +24,7 @@ from sparkstack.core.ipc_server import (
 )
 from sparkstack.core.schemas import ServiceStatus
 from sparkstack.core.statsd import StatsdClient
-from sparkstack.core.utils.locking import ProcessLock
+from sparkstack.core.utils.locking import run_with_lock
 from sparkstack.manager.orchestration_utils import cleanup_zombies, pre_flight_checks
 from sparkstack.manager.services import (
     CloudflareService,
@@ -191,6 +191,7 @@ class Orchestrator:
             )
         return True
 
+
 async def main():
 
     parser = argparse.ArgumentParser(description="Professional service updater.")
@@ -253,29 +254,26 @@ async def main():
         sys.exit(1)
 
 
-if __name__ == "__main__":
-    lock_file = Path(__file__).parent.parent / "tmp" / ".spark-stack-update-services.lock"
-    lock_file.parent.mkdir(exist_ok=True)
-    with ProcessLock(str(lock_file)):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+async def _run_main_with_signals():
+    loop = asyncio.get_running_loop()
+    main_task = asyncio.current_task()
 
-        # Setup graceful signal handlers
-        main_task = loop.create_task(main())
-
+    if main_task:
         for sig in (signal.SIGINT, signal.SIGTERM):
             with suppress(NotImplementedError):
                 loop.add_signal_handler(sig, main_task.cancel)
 
-        try:
-            loop.run_until_complete(main_task)
-        except asyncio.CancelledError:
-            print("\nAborted by user.")
-            sys.exit(1)
-        except SystemExit as e:
-            sys.exit(e.code)
-        except Exception:
-            logger.exception("Global failure")
-            sys.exit(1)
-        finally:
-            loop.close()
+    try:
+        await main()
+    except asyncio.CancelledError:
+        print("\nAborted by user.")
+        sys.exit(1)
+    except SystemExit as e:
+        sys.exit(e.code)
+    except Exception:
+        logger.exception("Global failure")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    run_with_lock(".spark-stack-update-services.lock", _run_main_with_signals())

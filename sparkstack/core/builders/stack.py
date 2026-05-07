@@ -315,9 +315,7 @@ class StackBuilder:
         stack_yaml = {
             "version": "1",
             "name": self.stack_name,
-            "globals": {"network": "proxy-tier"},
             "backends": self.stack_backends,
-            "services": {"compose_file": "docker-compose.yaml"},
         }
 
         stack_yaml_path = self.stack_dir / "stack.yaml"

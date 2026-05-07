@@ -7,7 +7,7 @@ from pathlib import Path
 import httpx
 from loguru import logger
 
-from sparkstack.core.utils import ProcessLock
+from sparkstack.core.utils import run_with_lock
 
 COMPOSE_FILE = Path("services/monitoring/docker-compose.yml")
 
@@ -132,7 +132,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    lock_file = Path(__file__).parent.parent / "tmp" / ".spark-stack-update-monitoring.lock"
-    lock_file.parent.mkdir(exist_ok=True)
-    with ProcessLock(str(lock_file)):
-        asyncio.run(main())
+    run_with_lock(".spark-stack-update-monitoring.lock", main())

@@ -1,7 +1,9 @@
+import asyncio
 import contextlib
 import fcntl
 import os
 import sys
+from pathlib import Path
 
 
 class ProcessLock:
@@ -30,3 +32,15 @@ class ProcessLock:
             self._fd.close()
             with contextlib.suppress(OSError):
                 os.unlink(self.lockfile)
+
+
+def run_with_lock(lock_name: str, main_coroutine):
+    """
+    Run an async coroutine with a process lock.
+    lock_name: filename of the lock (e.g. '.spark-stack-update-monitoring.lock')
+    main_coroutine: the coroutine to run (e.g. main())
+    """
+    lock_file = Path(__file__).parent.parent.parent.parent / "tmp" / lock_name
+    lock_file.parent.mkdir(exist_ok=True)
+    with ProcessLock(str(lock_file)):
+        asyncio.run(main_coroutine)

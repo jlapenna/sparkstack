@@ -25,7 +25,7 @@ async def pre_flight_checks(settings):
     logger.info("Pre-flight complete.")
 
 
-async def cleanup_zombies(settings):
+async def cleanup_zombies(settings=None):
     """The 'Zombie Protocol' - cleans up stuck tasks and stale containers."""
     logger.info("Executing Zombie Protocol...")
 

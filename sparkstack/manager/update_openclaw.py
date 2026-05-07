@@ -19,7 +19,9 @@ from sparkstack.core.env import (
     OPENCLAW_ENV,
     SPARK_STACK_OPENCLAW_SKILLS_DIR,
 )
+from sparkstack.core.updater import BaseUpdater
 from sparkstack.core.utils import ServiceHealthManager, async_run_command, parse_cli_json
+from sparkstack.manager.orchestration_utils import cleanup_zombies
 
 OPENCLAW_REPO = "https://github.com/openclaw/openclaw.git"
 
@@ -34,7 +36,7 @@ class UpdaterSettings(BaseSettings):
     openclaw_branch: str | None = Field(default=None, alias="OPENCLAW_BRANCH")
 
 
-class OpenClawUpdater:
+class OpenClawUpdater(BaseUpdater):
     def __init__(
         self,
         pull_latest: bool = False,
@@ -131,7 +133,7 @@ class OpenClawUpdater:
             # Find the old base tag
             base_tag_result = await async_run_command(
                 ["git", "describe", "--tags", "--abbrev=0", current_branch],
-                cwd=self.settings.openclaw_dir
+                cwd=self.settings.openclaw_dir,
             )
             base_tag = base_tag_result.stdout.strip()
 
@@ -291,35 +293,6 @@ class OpenClawUpdater:
         await async_run_command(
             cmd, cwd=self.settings.openclaw_dir, env=env, stream_output=self.verbose
         )
-
-    async def cleanup_zombies(self) -> None:
-        """The 'Zombie Protocol' - cleans up stuck tasks and stale containers."""
-        logger.info("Executing OpenClaw Zombie Protocol...")
-
-        # 1. Clear stuck OpenClaw tasks
-
-        task_db = OPENCLAW_CONFIG_DIR / "tasks" / "runs.sqlite"
-        if task_db.exists():
-            logger.info(f"Clearing zombie tasks in {task_db}")
-            try:
-                await async_run_command(
-                    [
-                        "sqlite3",
-                        str(task_db),
-                        "UPDATE task_runs SET status = 'failed', error = 'Zombie task cleared by update_openclaw' WHERE status = 'running';",
-                    ],
-                    check=False,
-                )
-            except Exception as e:
-                logger.warning(f"Failed to clear zombie tasks: {e}")
-
-        # 2. Cleanup stale containers (orphaned or exited long ago)
-        logger.info("Cleaning up stale containers and networks...")
-        try:
-            await async_run_command(["docker", "container", "prune", "-f"], check=False)
-            await async_run_command(["docker", "network", "prune", "-f"], check=False)
-        except Exception as e:
-            logger.warning(f"Docker cleanup failed: {e}")
 
     async def verify_deployment(self) -> None:
         """Verify that OpenClaw is running and models are correctly synced."""
@@ -500,7 +473,7 @@ class OpenClawUpdater:
                 shutil.rmtree(build_skills_dir)
 
             yield ("Cleaning up zombies", 75)
-            await self.cleanup_zombies()
+            await cleanup_zombies()
 
             yield ("Deploying", 80)
             await self.run_compose_up()
@@ -523,7 +496,7 @@ if __name__ == "__main__":
     import asyncio
     from pathlib import Path
 
-    from sparkstack.core.utils import ProcessLock
+    from sparkstack.core.utils import run_with_lock
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -550,7 +523,4 @@ if __name__ == "__main__":
         async for _ in updater.run_events():
             pass
 
-    lock_file = Path(__file__).parent.parent / "tmp" / ".spark-stack-update-openclaw.lock"
-    lock_file.parent.mkdir(exist_ok=True)
-    with ProcessLock(str(lock_file)):
-        asyncio.run(_cli_run())
+    run_with_lock(".spark-stack-update-openclaw.lock", _cli_run())
