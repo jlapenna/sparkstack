@@ -75,6 +75,7 @@ class TestSerialization:
         evt = StateUpdateEvent(service="svc", status="waiting")
         data = serialize_event(evt)
         restored = deserialize_event(data)
+        assert isinstance(restored, StateUpdateEvent)
         assert restored.progress is None
         assert restored.note is None
 
