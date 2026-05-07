@@ -16,4 +16,6 @@ class ApiGatewayServiceConfigurator:
         ] = memory
 
         # Ensure sparkstack-net network is defined as external
-        docker_builder.compose_config.setdefault("networks", {})["sparkstack-net"] = {"external": True}
+        docker_builder.compose_config.setdefault("networks", {})["sparkstack-net"] = {
+            "external": True
+        }
