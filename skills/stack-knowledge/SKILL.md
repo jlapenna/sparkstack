@@ -108,22 +108,22 @@ When interacting with OpenClaw, it is critical to distinguish between its immuta
 | Network                 | Subnet        | Purpose                                     |
 | ----------------------- | ------------- | ------------------------------------------- |
 | `bridge`                | 172.17.0.0/16 | Default Docker bridge (unused)              |
-| `spark-stack-net`            | 172.19.0.0/16 | Shared network for all user-facing services |
+| `spark-stack-net`       | 172.19.0.0/16 | Shared network for all user-facing services |
 | `vllm-network`          | 172.18.0.0/16 | Gateway + prometheus only                   |
 | `monitoring_monitoring` | 172.20.0.0/16 | Monitoring stack                            |
 | `openclaw_default`      | 172.21.0.0/16 | OpenClaw internal                           |
 
 ### Container → Network Memberships
 
-| Container                     | NetworkMode             | Networks                                        |
-| ----------------------------- | ----------------------- | ----------------------------------------------- |
-| `main_solo`                   | `spark-stack-net`            | spark-stack-net                                      |
-| `embedding_solo`              | `spark-stack-net`            | spark-stack-net                                      |
+| Container                     | NetworkMode             | Networks                                             |
+| ----------------------------- | ----------------------- | ---------------------------------------------------- |
+| `main_solo`                   | `spark-stack-net`       | spark-stack-net                                      |
+| `embedding_solo`              | `spark-stack-net`       | spark-stack-net                                      |
 | `litellm`                     | `vllm-network`          | vllm-network, spark-stack-net                        |
 | `openclaw-openclaw-gateway-1` | `openclaw_default`      | openclaw_default, spark-stack-net                    |
 | `prometheus`                  | `monitoring_monitoring` | monitoring_monitoring, spark-stack-net, vllm-network |
 | `alloy`                       | `monitoring_monitoring` | monitoring_monitoring, spark-stack-net               |
-| `nv-monitor`                  | `monitoring_monitoring` | monitoring_monitoring                           |
+| `nv-monitor`                  | `monitoring_monitoring` | monitoring_monitoring                                |
 | `grafana`                     | `monitoring_monitoring` | monitoring_monitoring, spark-stack-net               |
 | `vllm-progress-manager`       | `monitoring_monitoring` | monitoring_monitoring, spark-stack-net               |
 
