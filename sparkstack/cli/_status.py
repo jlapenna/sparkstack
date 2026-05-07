@@ -7,7 +7,6 @@ and renders a live dashboard with service states and streaming logs.
 from __future__ import annotations
 
 import asyncio
-import json
 from contextlib import suppress
 from datetime import datetime
 
@@ -16,6 +15,16 @@ from textual import work
 from textual.app import App, ComposeResult
 from textual.containers import Vertical
 from textual.widgets import DataTable, Footer, Header, RichLog, Static
+
+from sparkstack.core.ipc_server import (
+    ExitEvent,
+    FullSyncEvent,
+    IPCEvent,
+    LogEvent,
+    StateUpdateEvent,
+    deserialize_event,
+    event_adapter,
+)
 
 from . import main
 
@@ -137,49 +146,49 @@ class DeploymentMonitorApp(App):
         except Exception:
             pass
 
-    def feed_event(self, event_dict: dict) -> None:
-        """Feed a dictionary event directly into the app (used for local mode)."""
-        etype = event_dict.get("event_type")
-        if etype == "state":
-            self._handle_state_update(event_dict)
-        elif etype == "full_sync":
-            self._handle_full_sync(event_dict)
-        elif etype == "log":
-            log = self.query_one("#log-panel", RichLog)
-            self._handle_log(event_dict, log)
-        elif etype == "exit":
-            log = self.query_one("#log-panel", RichLog)
-            self._handle_exit(event_dict, log)
+    def feed_event(self, raw_event: IPCEvent | dict) -> None:
+        """Feed an event directly into the app (used for local mode)."""
+        if isinstance(raw_event, dict):
+            try:
+                event = event_adapter.validate_python(raw_event)
+            except Exception:
+                return
+        else:
+            event = raw_event
 
-    def _handle_full_sync(self, event: dict) -> None:
-        states = event.get("states", {})
-        for _service_name, state_data in states.items():
+        if event.event_type == "state":
+            self._handle_state_update(event)
+        elif event.event_type == "full_sync":
+            self._handle_full_sync(event)
+        elif event.event_type == "log":
+            log = self.query_one("#log-panel", RichLog)
+            self._handle_log(event, log)
+        elif event.event_type == "exit":
+            log = self.query_one("#log-panel", RichLog)
+            self._handle_exit(event, log)
+
+    def _handle_full_sync(self, event: FullSyncEvent) -> None:
+        for _service_name, state_data in event.states.items():
             self._handle_state_update(state_data)
 
-    def _handle_state_update(self, event: dict) -> None:
+    def _handle_state_update(self, event: StateUpdateEvent) -> None:
         table = self.query_one("#dashboard", DataTable)
-        service = event.get("service")
+        service = event.service
         if not service:
             return
 
-        status = event.get("status", "Unknown")
-        progress = event.get("progress", 0.0)
-        note = event.get("note", "")
+        status = event.status or "Unknown"
+        progress = event.progress or 0.0
+        note = event.note or ""
 
-        timestamp_raw = event.get("timestamp", "")
-        if timestamp_raw and len(timestamp_raw) > 19:
-            updated_time = timestamp_raw[11:19]
-        elif timestamp_raw:
-            updated_time = timestamp_raw
-        else:
-            updated_time = datetime.now().strftime("%H:%M:%S")
+        updated_time = datetime.now().strftime("%H:%M:%S")
 
         status_style = {
             "waiting": "dim",
             "running": "cyan",
             "complete": "bold green",
             "failed": "bold red",
-        }.get(str(status).lower(), "white")
+        }.get(status.lower(), "white")
 
         formatted_status = f"[{status_style}]{status}[/]"
         progress_bar = f"{progress:.1f}%"
@@ -189,7 +198,7 @@ class DeploymentMonitorApp(App):
             table.update_cell(service, "Status", formatted_status, update_width=True)
             table.update_cell(service, "Progress", progress_bar, update_width=True)
             table.update_cell(service, "Updated", updated_formatted, update_width=True)
-            table.update_cell(service, "Note", str(note))
+            table.update_cell(service, "Note", note)
             self._resize_note_column()
         except Exception:
             with suppress(Exception):
@@ -198,7 +207,7 @@ class DeploymentMonitorApp(App):
                     formatted_status,
                     progress_bar,
                     updated_formatted,
-                    str(note),
+                    note,
                     key=service,
                 )
                 self._resize_note_column()
@@ -227,9 +236,9 @@ class DeploymentMonitorApp(App):
                             break
 
                         try:
-                            event = json.loads(line.decode().strip())
+                            event = deserialize_event(line)
                             self.feed_event(event)
-                        except json.JSONDecodeError:
+                        except Exception:
                             continue
                 finally:
                     writer.close()
@@ -257,12 +266,12 @@ class DeploymentMonitorApp(App):
                 self.query_one("#conn-status", ConnectionStatus).update_status(False, f"Error: {e}")
                 await asyncio.sleep(2)
 
-    def _handle_log(self, event: dict, log: RichLog) -> None:
-        level = event.get("level", "INFO")
-        message = event.get("message", "")
-        timestamp = event.get("timestamp", "")
-        service = event.get("service")
-        phase = event.get("phase")
+    def _handle_log(self, event: LogEvent, log: RichLog) -> None:
+        level = event.level
+        message = event.message
+        timestamp = event.timestamp
+        service = event.service
+        phase = event.phase
 
         # Truncate ISO timestamp to HH:MM:SS
         time_short = timestamp[11:19] if len(timestamp) > 19 else timestamp
@@ -284,9 +293,9 @@ class DeploymentMonitorApp(App):
 
         log.write(f"{prefix} [{level_style}]{level:<8}[/] {message}")
 
-    def _handle_exit(self, event: dict, log: RichLog) -> None:
-        success = event.get("success", False)
-        message = event.get("message", "")
+    def _handle_exit(self, event: ExitEvent, log: RichLog) -> None:
+        success = event.success
+        message = event.message
         if success:
             log.write(f"\n[bold green]✨ {message}[/]")
         else:

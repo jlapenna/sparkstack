@@ -54,6 +54,7 @@ class Settings(BaseSettings):
 
     project_root: Path = Field(default_factory=lambda: PROJECT_ROOT)
     pull_latest: bool = False
+    target_services: tuple[str, ...] | None = None
 
 
 SOCKET_PATH = "/tmp/spark-stack.sock"
@@ -83,6 +84,16 @@ class Orchestrator:
     async def run_service(self, service: Service, semaphore: asyncio.Semaphore):
         """Wait for dependencies then run the service update."""
         current_service.set(service.name)
+
+        if self.settings.target_services:
+            target_lower = {s.lower() for s in self.settings.target_services}
+            if service.name.lower() not in target_lower:
+                service.state.status = ServiceStatus.SKIPPED
+                service.state.note = "Skipped"
+                service.state.done_event.set()
+                service.state._broadcast()
+                return
+
         try:
             for dep_name in service.dependencies:
                 dep_state = self.states.get(dep_name)
@@ -91,7 +102,7 @@ class Orchestrator:
                         f"Service {service.name} depends on unknown service {dep_name}"
                     )
 
-                # Wait for the dependency to finish (Complete or Failed)
+                # Wait for the dependency to finish (Complete, Failed or Skipped)
                 await dep_state.done_event.wait()
 
                 if dep_state.status == ServiceStatus.FAILED:
@@ -112,6 +123,21 @@ class Orchestrator:
                 service.state.fail("Unknown internal error")
 
     async def run(self):
+        if self.settings.target_services:
+            target_lower = {s.lower() for s in self.settings.target_services}
+            valid_names = {s.name.lower() for s in self.services}
+            invalid = target_lower - valid_names
+            if invalid:
+                logger.error(f"Unknown services to update: {', '.join(invalid)}")
+                if self._ipc is not None:
+                    self._ipc.broadcast_event(
+                        ExitEvent(
+                            success=False,
+                            message=f"Unknown services to update: {', '.join(invalid)}",
+                        )
+                    )
+                sys.exit(1)
+
         logger.info(
             f"Starting Orchestrated Update (Pull: {'ON' if self.settings.pull_latest else 'OFF'})"
         )
@@ -168,9 +194,13 @@ async def main():
 
     parser = argparse.ArgumentParser(description="Professional service updater.")
     parser.add_argument("--pull-latest", action="store_true", help="Pull latest images.")
+    parser.add_argument("services", nargs="*", help="Specific services to update")
     args = parser.parse_args()
 
-    settings = Settings(pull_latest=args.pull_latest)
+    settings = Settings(
+        pull_latest=args.pull_latest,
+        target_services=tuple(args.services) if args.services else None
+    )
 
     # Configure loguru to be less noisy for console, but keep everything in file
     logger.remove()

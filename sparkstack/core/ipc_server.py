@@ -1,15 +1,14 @@
 import asyncio
-import json
 import logging
 import os
 from collections.abc import Callable
 from contextlib import asynccontextmanager, suppress
-from dataclasses import asdict, dataclass
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
+
+from pydantic import BaseModel, Field, TypeAdapter
 
 
-@dataclass
-class StateUpdateEvent:
+class StateUpdateEvent(BaseModel):
     service: str
     status: str
     progress: float | None = None
@@ -17,14 +16,12 @@ class StateUpdateEvent:
     event_type: Literal["state"] = "state"
 
 
-@dataclass
-class FullSyncEvent:
+class FullSyncEvent(BaseModel):
     states: dict[str, StateUpdateEvent]
     event_type: Literal["full_sync"] = "full_sync"
 
 
-@dataclass
-class LogEvent:
+class LogEvent(BaseModel):
     level: str
     message: str
     timestamp: str
@@ -33,31 +30,26 @@ class LogEvent:
     event_type: Literal["log"] = "log"
 
 
-@dataclass
-class ExitEvent:
+class ExitEvent(BaseModel):
     success: bool
     message: str
     event_type: Literal["exit"] = "exit"
 
 
-def serialize_event(event: Any) -> bytes:
-    return (json.dumps(asdict(event)) + "\n").encode("utf-8")
+IPCEvent = Annotated[
+    StateUpdateEvent | FullSyncEvent | LogEvent | ExitEvent,
+    Field(discriminator="event_type"),
+]
+
+event_adapter = TypeAdapter(IPCEvent)
 
 
-def deserialize_event(line: bytes) -> Any:
-    data = json.loads(line)
-    etype = data.pop("event_type", None)
-    if etype == "state":
-        return StateUpdateEvent(**data)
-    if etype == "full_sync":
-        states_data = data.pop("states", {})
-        states = {k: StateUpdateEvent(**v) for k, v in states_data.items()}
-        return FullSyncEvent(states=states, **data)
-    if etype == "log":
-        return LogEvent(**data)
-    if etype == "exit":
-        return ExitEvent(**data)
-    raise ValueError(f"Unknown event type: {etype}")
+def serialize_event(event: IPCEvent) -> bytes:
+    return event_adapter.dump_json(event) + b"\n"
+
+
+def deserialize_event(line: bytes) -> IPCEvent:
+    return event_adapter.validate_json(line)
 
 
 class IPCServer:
@@ -73,7 +65,7 @@ class IPCServer:
         self._states[event.service] = event
         self.broadcast_event(event)
 
-    def broadcast_event(self, event: Any):
+    def broadcast_event(self, event: IPCEvent):
         """Queues an event to be broadcast to all connected clients. Thread-safe."""
         # Use put_nowait but it is NOT thread-safe by default unless in same loop.
         # Since logs come from a separate thread, we need to schedule it on the loop.
@@ -81,7 +73,7 @@ class IPCServer:
         loop.call_soon_threadsafe(self.queue.put_nowait, event)
         if self.local_callback:
             with suppress(Exception):
-                loop.call_soon_threadsafe(self.local_callback, asdict(event))
+                loop.call_soon_threadsafe(self.local_callback, event.model_dump())
 
     async def _broadcaster_task(self):
         """Background task that reads from queue and broadcasts to all clients."""

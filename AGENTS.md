@@ -42,7 +42,7 @@ The project is a Python package (`sparkstack`) managed by `uv`. All operations u
   ```
 - **Deploying/Updating the Stack:**
   ```bash
-  sparkstack update                 # Full service update orchestration
+  sparkstack update [SERVICES]...   # Full service update orchestration (e.g. sparkstack update openclaw)
   sparkstack update --json          # Same, with JSON-Lines output (headless)
   sparkstack set-current <n>        # Switch active stack and restart services
   sparkstack launch <path>          # Launch services for a specific stack

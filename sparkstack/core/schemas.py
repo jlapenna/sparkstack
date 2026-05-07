@@ -39,6 +39,7 @@ class ServiceStatus(Enum):
     RUNNING = "running"
     COMPLETE = "complete"
     FAILED = "failed"
+    SKIPPED = "skipped"
 
 
 class PassThroughModel(BaseModel):
