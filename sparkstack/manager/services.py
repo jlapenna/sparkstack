@@ -74,7 +74,7 @@ class ServiceState:
         self.status = ServiceStatus.COMPLETE
         self.progress = 100.0
         self.note = "Complete."
-        logger.success(f"[{self.name}] Service update COMPLETE.")
+        logger.success("Service update COMPLETE.")
         self.done_event.set()
         self._broadcast()
         if self._statsd:
@@ -90,8 +90,8 @@ class ServiceState:
     def fail(self, error: str):
         self.status = ServiceStatus.FAILED
         self.error = error
-        self.note = str(error)
-        logger.error(f"[{self.name}] Service update FAILED: {error}")
+        self.note = error
+        logger.error(f"Service update FAILED: {error}")
         self.done_event.set()
         self._broadcast()
         if self._statsd:
@@ -253,8 +253,13 @@ class MonitoringService(Service):
         mon_dir = self.settings.project_root / "services" / "monitoring"
         stack_dir = self.settings.project_root / "current"
 
-        # Ensure config files exist before starting to avoid docker directory creation
-        stack_dir.mkdir(parents=True, exist_ok=True)
+        # Ensure the stack dir exists before writing configs.
+        # `current` is normally a symlink to the active stack version.
+        # If it's a dangling symlink (target was deleted), resolve the target
+        # and create that directory so the symlink becomes valid again.
+        if not stack_dir.exists():
+            target = stack_dir.resolve()
+            target.mkdir(parents=True, exist_ok=True)
         MonitoringBuilder(stack_dir).write()
 
         # Inject SPARKSTACK_STACK_DIR for compose

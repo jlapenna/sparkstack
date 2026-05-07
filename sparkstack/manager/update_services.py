@@ -122,7 +122,8 @@ class Orchestrator:
             if not service.state.done_event.is_set():
                 service.state.fail("Unknown internal error")
 
-    async def run(self):
+    async def run(self) -> bool:
+        """Run orchestration. Returns True on success, False on failure."""
         if self.settings.target_services:
             target_lower = {s.lower() for s in self.settings.target_services}
             valid_names = {s.name.lower() for s in self.services}
@@ -136,7 +137,7 @@ class Orchestrator:
                             message=f"Unknown services to update: {', '.join(invalid)}",
                         )
                     )
-                sys.exit(1)
+                return False
 
         logger.info(
             f"Starting Orchestrated Update (Pull: {'ON' if self.settings.pull_latest else 'OFF'})"
@@ -172,7 +173,7 @@ class Orchestrator:
                         message="Some services failed",
                     )
                 )
-            sys.exit(1)
+            return False
 
         logger.info("All services processed.")
 
@@ -188,7 +189,7 @@ class Orchestrator:
                     message="All services processed and models loaded",
                 )
             )
-
+        return True
 
 async def main():
 
@@ -244,9 +245,12 @@ async def main():
 
             logger.add(ui_sink, level="INFO")
 
-            await orchestrator.run()
+            success = await orchestrator.run()
     finally:
         await statsd.close()
+
+    if not success:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

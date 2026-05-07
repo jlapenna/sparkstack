@@ -103,4 +103,7 @@ async def _update_async(*, pull_latest: bool, output_json: bool, services: tuple
 
         logger.add(_ui_note_sink, level="INFO")
 
-        await orchestrator.run()
+        success = await orchestrator.run()
+
+    if not success:
+        raise SystemExit(1)
