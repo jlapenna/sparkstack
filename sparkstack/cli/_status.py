@@ -86,6 +86,7 @@ class DeploymentMonitorApp(App):
         super().__init__(**kwargs)
         self.auto_quit = auto_quit
         self.local_mode = local_mode
+        self._service_states: dict[str, StateUpdateEvent] = {}
 
     CSS = """
     #dashboard {
@@ -169,28 +170,23 @@ class DeploymentMonitorApp(App):
             self._handle_exit(event)
 
     def _handle_full_sync(self, event: FullSyncEvent) -> None:
-        # Clear stale rows so the new session's services repopulate cleanly
-        table = self.query_one("#dashboard", DataTable)
-        with suppress(Exception):
-            table.clear()
+        # We no longer clear the table here, so stale/disconnected services remain visible (dimmed).
         for _service_name, state_data in event.states.items():
             self._handle_state_update(state_data)
 
     def _dim_all_rows(self) -> None:
         """Grey out all dashboard cells to indicate stale/disconnected data."""
-        table = self.query_one("#dashboard", DataTable)
-        columns = ("Service", "Status", "Progress", "Updated", "Note")
-        for row_key in list(table.rows):
-            for col_key in columns:
-                with suppress(Exception):
-                    val = table.get_cell(row_key, col_key)
-                    table.update_cell(row_key, col_key, f"[dim]{val}[/]")
+        for state_event in self._service_states.values():
+            with suppress(Exception):
+                self._handle_state_update(state_event, dimmed=True)
 
-    def _handle_state_update(self, event: StateUpdateEvent) -> None:
+    def _handle_state_update(self, event: StateUpdateEvent, dimmed: bool = False) -> None:
         table = self.query_one("#dashboard", DataTable)
         service = event.service
         if not service:
             return
+
+        self._service_states[service] = event
 
         status = event.status or "Unknown"
         progress = event.progress or 0.0
@@ -205,17 +201,25 @@ class DeploymentMonitorApp(App):
         }.get(status.lower(), "white")
 
         cells = {
-            "Status": f"[{status_style}]{status}[/]",
-            "Progress": f"{progress:.1f}%",
+            "Service": f"[dim]{service}[/]" if dimmed else service,
+            "Status": f"[dim]{status}[/]" if dimmed else f"[{status_style}]{status}[/]",
+            "Progress": f"[dim]{progress:.1f}%[/]" if dimmed else f"{progress:.1f}%",
             "Updated": f"[dim]{updated_time}[/]",
-            "Note": note,
+            "Note": f"[dim]{note}[/]" if dimmed and note else note,
         }
 
         if service in table.rows:
             for col_key, value in cells.items():
                 table.update_cell(service, col_key, value, update_width=col_key != "Note")
         else:
-            table.add_row(service, *cells.values(), key=service)
+            table.add_row(
+                cells["Service"],
+                cells["Status"],
+                cells["Progress"],
+                cells["Updated"],
+                cells["Note"],
+                key=service,
+            )
         self._resize_note_column()
 
     @work(exclusive=True)
