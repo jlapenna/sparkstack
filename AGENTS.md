@@ -105,7 +105,7 @@ When `--json` is active:
 
 ### Source Dependency Policy
 
-- **OpenClaw (`../openclaw/`)**: Treated as an **immutable upstream source dependency**. NEVER modify source files here. Solve configuration issues by modifying inputs (like `jq` filtering) or host-level settings.
+- **OpenClaw (`../openclaw/`)**: Treated as a source dependency mainly maintained on the `local-dev` branch, which gets rebased against a tagged stable release. When working with OpenClaw, ensure you are on `local-dev` and follow a similar PR feature integration workflow as SparkRun if modifications are needed.
 - **SparkRun (`../sparkrun/`)**: Treated as an editable source dependency. **CRITICAL:** You must ensure the `local-dev` branch is checked out before making any modifications or running tests. You **MUST** strictly follow the "Trunk-Based Feature Integration" workflow documented in the `source-dependency-dev` skill for any `sparkrun` changes (creating feature branches from `main`, merging them into `local-dev`, and rebasing `local-dev` via the orchestration script).
 
 ### Scripting Standards
