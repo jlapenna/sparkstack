@@ -14,12 +14,12 @@ jobs:
         working-directory: spark-stack
     steps:
       - name: Checkout spark-stack
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: spark-stack
       
       - name: Checkout sparkrun
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: spark-arena/sparkrun
           path: sparkrun
