@@ -24,7 +24,9 @@ async def pre_flight_checks(settings):
 
     # Check/Create external network
     try:
-        await async_run_command(["docker", "network", "inspect", "sparkstack-net"], check=True, capture_output=True)
+        await async_run_command(
+            ["docker", "network", "inspect", "sparkstack-net"], check=True, capture_output=True
+        )
     except Exception:
         logger.info("Creating external network sparkstack-net")
         await async_run_command(["docker", "network", "create", "sparkstack-net"], check=True)
