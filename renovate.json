@@ -16,9 +16,6 @@
   "pep621": {
     "enabled": true
   },
-  "ignoreManagers": [
-    "uv"
-  ],
   "ignorePaths": [
     "openclaw/**",
     "sparkrun/**",
@@ -27,7 +24,7 @@
   "customManagers": [
     {
       "customType": "regex",
-      "managerFilePatterns": [
+      "fileMatch": [
         "/docker-compose\\.yml$/"
       ],
       "matchStrings": [
@@ -37,7 +34,7 @@
     },
     {
       "customType": "regex",
-      "managerFilePatterns": [
+      "fileMatch": [
         "/^services/openclaw/docker/build-versions\\.json$/"
       ],
       "matchStrings": ["\"gogcli\":\\s*\"v?(?<currentValue>[^\"]+)\""],
@@ -46,7 +43,7 @@
     },
     {
       "customType": "regex",
-      "managerFilePatterns": [
+      "fileMatch": [
         "/^services/openclaw/docker/build-versions\\.json$/"
       ],
       "matchStrings": ["\"goplaces\":\\s*\"v?(?<currentValue>[^\"]+)\""],
@@ -55,7 +52,7 @@
     },
     {
       "customType": "regex",
-      "managerFilePatterns": [
+      "fileMatch": [
         "/^services/openclaw/docker/build-versions\\.json$/"
       ],
       "matchStrings": ["\"camsnap\":\\s*\"v?(?<currentValue>[^\"]+)\""],
@@ -64,7 +61,7 @@
     },
     {
       "customType": "regex",
-      "managerFilePatterns": [
+      "fileMatch": [
         "/^services/openclaw/docker/build-versions\\.json$/"
       ],
       "matchStrings": ["\"opencode\":\\s*\"v?(?<currentValue>[^\"]+)\""],
@@ -73,7 +70,7 @@
     },
     {
       "customType": "regex",
-      "managerFilePatterns": [
+      "fileMatch": [
         "/^services/openclaw/docker/build-versions\\.json$/"
       ],
       "matchStrings": ["\"blogwatcher\":\\s*\"v?(?<currentValue>[^\"]+)\""],
@@ -82,7 +79,7 @@
     },
     {
       "customType": "regex",
-      "managerFilePatterns": [
+      "fileMatch": [
         "/^services/openclaw/docker/build-versions\\.json$/"
       ],
       "matchStrings": ["\"wacli\":\\s*\"v?(?<currentValue>[^\"]+)\""],
@@ -91,7 +88,7 @@
     },
     {
       "customType": "regex",
-      "managerFilePatterns": [
+      "fileMatch": [
         "/^services/openclaw/docker/build-versions\\.json$/"
       ],
       "matchStrings": ["\"openai-whisper\":\\s*\"v?(?<currentValue>[^\"]+)\""],
@@ -100,7 +97,7 @@
     },
     {
       "customType": "regex",
-      "managerFilePatterns": [
+      "fileMatch": [
         "/^services/openclaw/docker/build-versions\\.json$/"
       ],
       "matchStrings": ["\"nano-pdf\":\\s*\"v?(?<currentValue>[^\"]+)\""],
