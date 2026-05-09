@@ -157,11 +157,13 @@ class StackBuilder:
         self.stack_dir.mkdir(parents=True, exist_ok=True)
 
         if OPENCLAW_CONFIG_PATH.exists():
-            dest_name = "openclaw.copy.json" if OPENCLAW_CONFIG_PATH.name == "openclaw.json" else OPENCLAW_CONFIG_PATH.name
-            shutil.copy2(OPENCLAW_CONFIG_PATH, self.stack_dir / dest_name)
-            logger.info(
-                f"📄 Copied openclaw config to {self.stack_dir / dest_name}"
+            dest_name = (
+                "openclaw.copy.json"
+                if OPENCLAW_CONFIG_PATH.name == "openclaw.json"
+                else OPENCLAW_CONFIG_PATH.name
             )
+            shutil.copy2(OPENCLAW_CONFIG_PATH, self.stack_dir / dest_name)
+            logger.info(f"📄 Copied openclaw config to {self.stack_dir / dest_name}")
 
         bench_dir = self.stack_dir / "benchmarks"
         if bench_dir.exists():

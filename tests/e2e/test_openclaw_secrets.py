@@ -75,7 +75,9 @@ def test_openclaw_registry_secrets():
     if not os.path.exists(registry_path):
         pytest.skip(f"Registry not found at {registry_path}")
 
-    config_files = glob.glob(os.path.join(registry_path, "**", "openclaw.copy.json"), recursive=True)
+    config_files = glob.glob(
+        os.path.join(registry_path, "**", "openclaw.copy.json"), recursive=True
+    )
     if not config_files:
         pytest.skip(f"No openclaw.copy.json files found in registry {registry_path}")
 
