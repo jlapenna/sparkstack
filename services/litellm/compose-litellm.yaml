@@ -1,7 +1,7 @@
 services:
   litellm:
     container_name: litellm
-    image: ghcr.io/berriai/litellm:v1.83.14-stable
+    image: ghcr.io/berriai/litellm:v1.83.14-stable.patch.3
     restart: unless-stopped
     deploy:
       resources:

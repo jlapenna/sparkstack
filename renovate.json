@@ -4,6 +4,12 @@
     "config:recommended"
   ],
   "labels": ["dependencies"],
+  "ignoreDeps": [
+    "pytest",
+    "pytest-cov",
+    "pytest-asyncio",
+    "python"
+  ],
   "packageRules": [
     {
       "matchUpdateTypes": ["minor", "patch"],
