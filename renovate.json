@@ -4,6 +4,7 @@
     "config:recommended"
   ],
   "labels": ["dependencies"],
+  "skipArtifactsUpdate": true,
   "ignoreDeps": [
     "pytest",
     "pytest-cov",
