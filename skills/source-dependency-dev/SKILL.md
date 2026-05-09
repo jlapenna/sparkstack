@@ -63,8 +63,9 @@ Because the source dependencies track the main upstream source repositories nati
 ## Feature Integration Principles
 
 1. **Build on `local-dev`:** For active daily development, build new features directly on top of the `local-dev` branch in the primary source dependency checkout. This allows you to accumulate multiple interdependent or independent features in your local testing environment without losing progress (e.g., you won't lose "change branch A" when starting "new feature C").
-1. **Publish via Feature Worktrees:** When a feature is ready to be published as a Pull Request, do NOT push `local-dev`. Instead, create a new feature worktree based on the appropriate upstream branch (`origin/develop` for sparkrun, `origin/main` for openclaw).
-1. **Migrate to Worktrees:** Port (e.g., via `git cherry-pick` or patch) only the specific changes for that feature from `local-dev` into the clean feature worktree.
+1. **Publish via Feature Worktrees:** When a feature is ready to be published as a Pull Request, you MUST NOT push `local-dev` or branch directly off `local-dev`. Instead, create a new feature worktree based strictly on the pristine upstream branch (`origin/develop` for sparkrun, `origin/main` for openclaw).
+1. **Migrate to Worktrees:** Port (e.g., via `git cherry-pick <specific-commit-hash>` or patch) only the specific changes for that feature from `local-dev` into the clean feature worktree. NEVER merge `local-dev` into your feature branch.
+1. **MANDATORY ISOLATION VERIFICATION:** AI agents frequently and accidentally sweep unrelated changes, release notes, or config churn into PRs. Before pushing a feature branch, you **MUST** run `git diff <upstream-base-branch> --name-only` and explicitly verify that **ONLY** the files related to your specific feature are modified. If any unrelated files appear, you MUST remove them from the commit before pushing.
 1. **Push from Worktree:** Push the isolated feature branch from the worktree to your fork and create the PR. This ensures PRs are cleanly mergeable on top of the target base branch without bringing along other unfinished features from `local-dev`.
 1. **Update Existing PRs in Worktrees:** All PR feedback patches and CI fixes MUST be applied strictly from within the isolated feature worktree directory. Once updated and pushed, you can merge those fixes back into `local-dev` to keep your local environment up to date.
 1. **Handle Closed PRs:** PRs that are closed are considered abandoned. You MUST NOT apply them to the `local-dev` integration branch. If they exist in your local `local-dev` branch, they MUST be reverted locally.
@@ -98,7 +99,12 @@ When a specific feature or fix is ready for review, extract it into a clean PR b
    git worktree add -b <feature-name> "$ROOT_DIR/.worktrees/<source dependency-name>/<feature-name>" <upstream-base-branch> # e.g. origin/develop or origin/main
    ```
 1. Navigate to the newly created absolute worktree path.
-1. **Port Your Changes:** Use `git cherry-pick` (or manual patching) to bring over the specific commits for this feature from your `local-dev` branch into this feature branch.
+1. **Port Your Changes:** Use `git cherry-pick <commit-hash>` (or manual patching) to bring over the specific commits for this feature from your `local-dev` branch into this feature branch. **NEVER** merge `local-dev` into this branch.
+1. **MANDATORY VERIFICATION:** Before pushing, you **MUST** verify the branch has no unintended changes:
+   ```bash
+   git diff <upstream-base-branch> --name-only
+   ```
+   **CRITICALLY EXAMINE THIS LIST.** If you see any files that are not strictly necessary for your fix/feature (e.g., unrelated release notes, other feature files, dependency lockfile churn), you **MUST** remove them (e.g., using `git checkout <upstream-base-branch> -- <file>` and `git commit --amend`) before opening the PR.
 1. **Push and PR:** Push the feature branch to your fork (`git push fork <feature-name>`), and open the PR using the `pr-writer` skill.
 1. When finished and merged upstream, clean up the worktree using `git worktree remove <absolute-path>`.
 
