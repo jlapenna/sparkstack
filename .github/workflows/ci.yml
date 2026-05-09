@@ -37,16 +37,6 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras --dev
 
-      - name: Commit uv.lock if modified
-        if: github.actor == 'renovate[bot]' || github.actor == 'renovate'
-        run: |
-          if [[ -n $(git status --porcelain uv.lock) ]]; then
-            git config --global user.name "renovate[bot]"
-            git config --global user.email "renovate[bot]@users.noreply.github.com"
-            git add uv.lock
-            git commit -m "chore(deps): update uv.lock [skip ci]"
-            git push origin HEAD:${{ github.head_ref || github.ref_name }}
-          fi
 
       - name: Run ruff check
         run: uv run ruff check .

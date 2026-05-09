@@ -4,7 +4,6 @@
     "config:recommended"
   ],
   "labels": ["dependencies"],
-  "skipArtifactsUpdate": true,
   "ignoreDeps": [
     "pytest",
     "pytest-cov",
@@ -26,8 +25,7 @@
   "ignorePaths": [
     "openclaw/**",
     "sparkrun/**",
-    "sparkstack-registry/**",
-    "uv.lock"
+    "sparkstack-registry/**"
   ],
   "customManagers": [
     {
