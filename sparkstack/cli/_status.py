@@ -12,6 +12,7 @@ from contextlib import suppress
 from datetime import datetime
 
 import click
+from rich.text import Text
 from textual import work
 from textual.app import App, ComposeResult
 from textual.containers import Vertical
@@ -78,8 +79,11 @@ class DeploymentMonitorApp(App):
     TITLE = "sparkstack status"
     SUB_TITLE = "Deployment Monitor"
     BINDINGS = [
+        ("ctrl+c", "quit", "Quit"),
         ("q", "quit", "Quit"),
         ("c", "clear_log", "Clear log"),
+        ("y", "copy_row", "Copy Row"),
+        ("l", "copy_logs", "Copy Logs"),
     ]
 
     def __init__(self, auto_quit: bool = False, local_mode: bool = False, **kwargs):
@@ -332,3 +336,34 @@ class DeploymentMonitorApp(App):
 
     def action_clear_log(self) -> None:
         self.query_one("#log-panel", RichLog).clear()
+
+    def action_copy_row(self) -> None:
+        table = self.query_one("#dashboard", DataTable)
+        try:
+            row_data = table.get_row_at(table.cursor_row)
+        except Exception:
+            self.notify("No row selected", severity="error")
+            return
+
+        plain_text_parts = []
+        for cell in row_data:
+            if isinstance(cell, str):
+                plain_text_parts.append(Text.from_markup(cell).plain)
+            else:
+                plain_text_parts.append(str(cell))
+
+        text = " | ".join(plain_text_parts)
+        self.copy_to_clipboard(text)
+        self.notify("Row copied to clipboard", timeout=2)
+
+    def action_copy_logs(self) -> None:
+        log_panel = self.query_one("#log-panel", RichLog)
+        lines = []
+        for line in log_panel.lines:
+            if hasattr(line, "text"):
+                lines.append(line.text)
+            else:
+                lines.append(str(line))
+        text = "\n".join(lines)
+        self.copy_to_clipboard(text)
+        self.notify("Logs copied to clipboard", timeout=2)
