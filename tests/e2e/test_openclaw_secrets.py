@@ -68,16 +68,16 @@ def test_openclaw_runtime_secrets():
 
 
 def test_openclaw_registry_secrets():
-    """Verify that the registry openclaw.json templates contain no raw secrets."""
+    """Verify that the registry openclaw.copy.json templates contain no raw secrets."""
     registry_path = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "../../sparkstack-registry")
     )
     if not os.path.exists(registry_path):
         pytest.skip(f"Registry not found at {registry_path}")
 
-    config_files = glob.glob(os.path.join(registry_path, "**", "openclaw.json"), recursive=True)
+    config_files = glob.glob(os.path.join(registry_path, "**", "openclaw.copy.json"), recursive=True)
     if not config_files:
-        pytest.skip(f"No openclaw.json files found in registry {registry_path}")
+        pytest.skip(f"No openclaw.copy.json files found in registry {registry_path}")
 
     for config_path in config_files:
         check_no_raw_secrets(config_path)
