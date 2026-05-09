@@ -19,7 +19,8 @@
   "ignorePaths": [
     "openclaw/**",
     "sparkrun/**",
-    "sparkstack-registry/**"
+    "sparkstack-registry/**",
+    "uv.lock"
   ],
   "customManagers": [
     {
