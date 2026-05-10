@@ -1,5 +1,5 @@
 litellm_settings:
-  drop_params: True
+  drop_params: False
   pass_through_stream_options: True
   pass_through_headers: ["traceparent", "tracestate"]
   forward_traceparent_to_llm_provider: True

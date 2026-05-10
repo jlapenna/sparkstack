@@ -222,12 +222,13 @@ async def wait_for_backends_to_load(
         # Post-Load Smoke Test
         api_key = os.getenv("LITELLM_MASTER_KEY", "")
         headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+        litellm_port = os.getenv("VLLM_PORT", "4000")
 
         for svc in services:
             if svc.get("type") == "sparkrun" and svc.get("port"):
                 port = svc["port"]
                 container = svc.get("container", f"port-{port}")
-                logger.info(f"Smoke testing backend {container} directly on port {port}...")
+                logger.info(f"Smoke testing backend {container} via gateway on port {litellm_port}...")
                 try:
                     async with httpx.AsyncClient() as client:
                         model_id = svc.get("name", "").replace("backend:", "")
@@ -239,14 +240,14 @@ async def wait_for_backends_to_load(
 
                         if "embedding" in model_id:
                             res = await client.post(
-                                f"http://localhost:{port}/v1/embeddings",
+                                f"http://localhost:{litellm_port}/v1/embeddings",
                                 headers=headers,
                                 json={"model": model_id, "input": "Say hi"},
                                 timeout=180.0,
                             )
                         else:
                             res = await client.post(
-                                f"http://localhost:{port}/v1/chat/completions",
+                                f"http://localhost:{litellm_port}/v1/chat/completions",
                                 headers=headers,
                                 json={
                                     "model": model_id,
