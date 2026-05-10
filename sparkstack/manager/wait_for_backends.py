@@ -239,14 +239,14 @@ async def wait_for_backends_to_load(
 
                         if "embedding" in model_id:
                             res = await client.post(
-                                "http://localhost:4000/v1/embeddings",
+                                f"http://localhost:{port}/v1/embeddings",
                                 headers=headers,
                                 json={"model": model_id, "input": "Say hi"},
                                 timeout=180.0,
                             )
                         else:
                             res = await client.post(
-                                "http://localhost:4000/v1/chat/completions",
+                                f"http://localhost:{port}/v1/chat/completions",
                                 headers=headers,
                                 json={
                                     "model": model_id,

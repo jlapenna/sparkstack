@@ -6,7 +6,6 @@ litellm_settings:
   telemetry: True
   callbacks: ["prometheus", "otel"]
   guardrails: []
-  master_key: "${LITELLM_MASTER_KEY:-}"
   request_timeout: 1200
   num_retries: 3
   retry_policy:
@@ -14,6 +13,9 @@ litellm_settings:
   connect_timeout: 10
   health_check: True
   openai_developer_role_to_system: True
+  disable_on_boarding: True
+  store_model_in_db: False
+  proxy_batch_write_log: False
 
 # Optimization: Enable dynamic configuration monitoring
 general_settings:

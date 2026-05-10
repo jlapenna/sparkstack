@@ -27,6 +27,7 @@ def main(ctx: click.Context, verbose: int, quiet: bool) -> None:
 from ._build import build  # noqa: E402, F401
 from ._check import check  # noqa: E402, F401
 from ._launch import launch  # noqa: E402, F401
+from ._monitor import monitor  # noqa: E402, F401
 from ._monitoring import update_monitoring  # noqa: E402, F401
 from ._set_current import set_current  # noqa: E402, F401
 from ._status import status  # noqa: E402, F401
