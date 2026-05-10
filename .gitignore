@@ -59,6 +59,7 @@ Thumbs.db
 
 # Logs
 *.log
+*.txt
 
 scratch/
 tmp/

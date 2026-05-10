@@ -18,7 +18,9 @@ services:
           memory: 4G
 
     environment:
+      - OTEL_TRACES_EXPORTER=otlp
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4318
+      - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
       - OTEL_SERVICE_NAME=openclaw-gateway
       - OTEL_ATTRIBUTE_VALUE_LENGTH_LIMIT=131072
       - OPENCLAW_STATE_DIR=${OPENCLAW_CONFIG_DIR}
@@ -56,6 +58,11 @@ services:
         limits:
           memory: 4G
     environment:
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4318
+      - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+      - OTEL_SERVICE_NAME=openclaw-cli
+      - OTEL_ATTRIBUTE_VALUE_LENGTH_LIMIT=131072
       - OPENCLAW_STATE_DIR=${OPENCLAW_CONFIG_DIR}
       - NODE_COMPILE_CACHE=/var/tmp/openclaw-compile-cache
       - OPENCLAW_NO_RESPAWN=1
