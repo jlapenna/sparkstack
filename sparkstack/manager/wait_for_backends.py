@@ -228,7 +228,9 @@ async def wait_for_backends_to_load(
             if svc.get("type") == "sparkrun" and svc.get("port"):
                 port = svc["port"]
                 container = svc.get("container", f"port-{port}")
-                logger.info(f"Smoke testing backend {container} via gateway on port {litellm_port}...")
+                logger.info(
+                    f"Smoke testing backend {container} via gateway on port {litellm_port}..."
+                )
                 try:
                     async with httpx.AsyncClient() as client:
                         model_id = svc.get("name", "").replace("backend:", "")
