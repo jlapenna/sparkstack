@@ -48,11 +48,10 @@ async def sync_registry(
         "id": "LITELLM_MASTER_KEY",
     }
     global_max_reserve = 8192
-    # Pass through raw values from the registry — no fabrication needed.
-    # LiteLLM and the Responses API both default to the model's full capacity
-    # when max_tokens is omitted.
+    # Track the largest maxTokens for reserveTokens calculation.
+    # Token budget validation is enforced by OpenClawModel's schema validator.
     for model in provider_dict.get("models", []):
-        max_tokens = model.get("maxTokens")
+        max_tokens = model.get("maxTokens", 0)
         if max_tokens:
             global_max_reserve = max(global_max_reserve, max_tokens)
 
@@ -62,7 +61,8 @@ async def sync_registry(
     agents = config.setdefault("agents", {})
     defaults = agents.setdefault("defaults", {})
 
-    # Sync compaction reserve limit
+    # Sync compaction reserve: reserveTokens = max(model maxTokens) + 8192 headroom.
+    # This must always be < the smallest model's contextWindow to avoid the poison pill.
     compaction = defaults.setdefault("compaction", {})
     compaction["reserveTokens"] = global_max_reserve + 8192
 

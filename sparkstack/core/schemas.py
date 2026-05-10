@@ -2,11 +2,12 @@
 Pydantic models for service configurations.
 """
 
+import warnings
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
 
 
@@ -92,6 +93,12 @@ class OpenClawModel(BaseSchema):
 
     context_window and max_tokens are required — they must come from the
     registry, not fabricated defaults.
+
+    IMPORTANT: max_tokens is the per-turn *completion* budget (how many tokens
+    the model can generate), NOT the total context capacity.  Setting
+    max_tokens >= context_window creates a "poison pill" where OpenClaw's
+    compaction reserve exceeds the context window, causing infinite retry
+    loops and silent context loss.
     """
 
     id: str
@@ -103,6 +110,27 @@ class OpenClawModel(BaseSchema):
     api: str = "openai-responses"
     cost: OpenClawModelCost = Field(default_factory=OpenClawModelCost)
     compat: OpenClawModelCompat | None = None
+
+    @model_validator(mode="after")
+    def _clamp_max_tokens(self) -> "OpenClawModel":
+        """Prevent the compaction poison pill: max_tokens must be < context_window.
+
+        If max_tokens >= context_window, the downstream reserveTokens calculation
+        (max_tokens + headroom) will exceed the context window, making the
+        auto-compactor's constraint unsatisfiable.  This silently destroys
+        conversation history and causes agent "forgetfulness".
+        """
+        if self.max_tokens >= self.context_window > 0:
+            safe = self.context_window // 2
+            warnings.warn(
+                f"OpenClawModel '{self.id}': max_tokens ({self.max_tokens}) >= "
+                f"context_window ({self.context_window}). Clamping to {safe} "
+                f"to prevent compaction poison-pill loop.",
+                stacklevel=2,
+            )
+            self.max_tokens = safe
+        return self
+
 
 
 # --- Registry Models (Discriminated Union) ---

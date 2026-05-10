@@ -550,3 +550,24 @@ ______________________________________________________________________
 - **Reasoning mode is unsafe for tool-heavy agents on Nemotron-3-Super**: The model intermittently spends all output tokens on thinking without producing visible content after multi-step tool use. OpenClaw's retry mechanism cannot recover from this when the agent has already executed side-effectful tool calls.
 - **OpenClaw's reasoning retry has a side-effect guard**: `resolveReasoningOnlyRetryInstruction` only fires when `hadPotentialSideEffects` is `false`. Any agent that uses MCP calls, messaging tools, or mutating tools will bypass the retry entirely, making reasoning-mode failures terminal.
 - **This is a recurrence of the 2026-04-26 pattern**: Incident `2026-04-26T09:35` documented the same fundamental issue (reasoning-only output → payloads=0) and was previously fixed by disabling reasoning. The `2026-04-28T17:35` entry re-enabled reasoning under the assumption that OpenClaw could handle `reasoning_content` natively, but this assumption breaks down for tool-heavy sessions where the retry guard prevents recovery.
+
+### 2026-05-10T20:35 — Agent "Forgetfulness" Caused by maxTokens==contextWindow Poison Pill
+
+- **Scenario**: The `jclaw` agent exhibited severe "forgetfulness" — unable to recall recent steps or complete multi-turn conversations. Investigation revealed two compounding issues in the registry `models.json` and the synced `openclaw.json`:
+  1. `maxTokens: 262144` was set equal to `contextWindow: 262144` for the main model. OpenClaw interprets `maxTokens` as the *completion token budget* per turn, not the total context. The sync logic computed `reserveTokens = max(maxTokens) + 8192 = 270,336`, which **exceeded** the 262,144 context window. This made the auto-compactor's reserve constraint unsatisfiable, forcing it into an infinite retry/truncation loop that destroyed conversation history.
+  2. `reasoning: true` was still active in both `models.json` and the live config, despite being disabled in the `openclaw.copy.json` template in a prior incident (2026-05-03). The registry sync only reads from `models.json`, not the copy template.
+- **Hypothesis**: The compaction poison pill (`reserveTokens > contextWindow`) is the primary driver of forgetfulness. The auto-compactor aggressively truncates history trying to free space that can never be freed, resulting in the model losing context of recent steps. The reasoning issue (payloads=0) compounds this by occasionally crashing sessions entirely.
+- **Action**:
+  1. Fixed `maxTokens` to `16384` (completion budget) in `models.json` — this is the per-turn output limit, not the context window.
+  2. Fixed `maxTokens` for embedding model from `8192` to `4096` (same issue).
+  3. Disabled `reasoning: true` → `false` in `models.json` (the authoritative source).
+  4. Added a circuit-breaker guard in `sync_registry.py` that detects `maxTokens >= contextWindow` and auto-clamps to 50% of `contextWindow` with a warning log.
+  5. Ran `sparkstack sync-registry` to propagate fixes to the live `openclaw.json`.
+- **Result**: **Successful**. `reserveTokens` dropped from 270,336 (exceeding context window) to 24,576, freeing ~237k tokens for actual conversation history. The poison-pill guard will prevent recurrence.
+
+**Learnings:**
+
+- **`maxTokens` is the completion budget, NOT the context window**: In OpenClaw, `maxTokens` defines how many tokens the model can *generate* per turn. Setting it equal to `contextWindow` creates an impossible compaction constraint where `reserveTokens` exceeds the total available space.
+- **The compaction poison pill is silent**: Unlike the reasoning payloads=0 error (which surfaces as a visible error), the compaction overflow manifests as gradual context loss — the agent simply "forgets" without any error message. This makes it much harder to diagnose.
+- **`sync_registry.py` reads from `models.json`, not `openclaw.copy.json`**: The copy template is a reference snapshot, not the authoritative source. Fixes must be applied to `models.json` to propagate via sync.
+- **Defense in depth**: The new circuit-breaker in `sync_registry.py` will catch and auto-correct this class of misconfiguration at sync time, preventing silent deployment of poison-pill configs.

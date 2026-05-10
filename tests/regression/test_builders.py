@@ -61,13 +61,14 @@ def test_litellm_builder(temp_stack_dir):
     # input should NOT be in model_info — it's an OpenClaw-only field
     assert "input" not in model_cfg["model_info"]
 
-    # Verify OpenClaw models.json: max_tokens defaults to context_window
+    # Verify OpenClaw models.json: max_tokens defaults to context_window but the
+    # OpenClawModel validator clamps it to 50% to prevent the compaction poison pill.
     models_file = temp_stack_dir / "models.json"
     assert models_file.exists()
     with models_file.open("r") as f:
         models_config = json.load(f)
     spark_model = models_config["spark"]["models"][0]
-    assert spark_model["maxTokens"] == 8192  # defaults to context_window
+    assert spark_model["maxTokens"] == 4096  # clamped from 8192 by validator
     assert spark_model["contextWindow"] == 8192
 
 

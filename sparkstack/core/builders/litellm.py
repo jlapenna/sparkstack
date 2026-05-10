@@ -99,8 +99,9 @@ class LiteLLMBuilder:
             else f"{role_id.title()} ({human_name})"
         )
 
-        # max_tokens: pass through from registry, default to context_window
-        # (OpenClaw requires maxTokens as a number).
+        # max_tokens: per-turn completion budget.  Pass through from registry;
+        # fall back to context_window if absent (OpenClawModel's validator will
+        # clamp unsafe values).
         max_tokens = model_info.get("max_tokens", cwin)
 
         model_entry = OpenClawModel(
