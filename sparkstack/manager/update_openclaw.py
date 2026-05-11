@@ -28,7 +28,9 @@ OPENCLAW_REPO = "https://github.com/openclaw/openclaw.git"
 
 class UpdaterSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
-    project_root: Path = Field(default_factory=lambda: Path(__file__).parent.parent.parent.absolute())
+    project_root: Path = Field(
+        default_factory=lambda: Path(__file__).parent.parent.parent.absolute()
+    )
     openclaw_dir: Path = Field(default=OPENCLAW_DIR)
     config_path: Path = Field(default=OPENCLAW_CONFIG_PATH)
     pull_latest: bool = False

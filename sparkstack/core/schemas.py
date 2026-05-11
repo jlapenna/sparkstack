@@ -2,10 +2,11 @@
 Pydantic models for service configurations.
 """
 
+import os
 import warnings
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
@@ -99,7 +100,16 @@ class OpenClawModel(BaseSchema):
     max_tokens >= context_window creates a "poison pill" where OpenClaw's
     compaction reserve exceeds the context window, causing infinite retry
     loops and silent context loss.
+
+    Industry best practice: max_tokens should be a fixed value (8k-32k)
+    appropriate for the task, not a fraction of context_window. The
+    MAX_COMPLETION_TOKENS ceiling enforces this.
     """
+
+    # Maximum completion budget per turn.  Industry standard for coding agents
+    # is 16k-32k tokens -- enough for large code blocks and reasoning traces,
+    # but leaves the vast majority of the context window for conversation history.
+    MAX_COMPLETION_TOKENS: ClassVar[int] = 32_768
 
     id: str
     name: str
@@ -113,24 +123,35 @@ class OpenClawModel(BaseSchema):
 
     @model_validator(mode="after")
     def _clamp_max_tokens(self) -> "OpenClawModel":
-        """Prevent the compaction poison pill: max_tokens must be < context_window.
+        """Prevent the compaction poison pill: max_tokens must be reasonable.
 
-        If max_tokens >= context_window, the downstream reserveTokens calculation
-        (max_tokens + headroom) will exceed the context window, making the
-        auto-compactor's constraint unsatisfiable.  This silently destroys
-        conversation history and causes agent "forgetfulness".
+        Two guards:
+        1. max_tokens >= context_window → hard clamp to min(MAX_COMPLETION_TOKENS,
+           context_window // 2).  Without this, reserveTokens = max_tokens + headroom
+           exceeds the context window, making compaction unsatisfiable.
+        2. max_tokens > MAX_COMPLETION_TOKENS → soft clamp with warning.
+           No agent needs 131k tokens of output per turn; the downstream
+           reserveTokens formula (max_tokens + 8192) would consume >50% of the
+           context, starving conversation history.
         """
+        ceiling = min(self.MAX_COMPLETION_TOKENS, self.context_window // 2)
         if self.max_tokens >= self.context_window > 0:
-            safe = self.context_window // 2
             warnings.warn(
                 f"OpenClawModel '{self.id}': max_tokens ({self.max_tokens}) >= "
-                f"context_window ({self.context_window}). Clamping to {safe} "
+                f"context_window ({self.context_window}). Clamping to {ceiling} "
                 f"to prevent compaction poison-pill loop.",
                 stacklevel=2,
             )
-            self.max_tokens = safe
+            self.max_tokens = ceiling
+        elif self.max_tokens > self.MAX_COMPLETION_TOKENS and self.context_window > 0:
+            warnings.warn(
+                f"OpenClawModel '{self.id}': max_tokens ({self.max_tokens}) exceeds "
+                f"recommended ceiling ({self.MAX_COMPLETION_TOKENS}). Clamping to "
+                f"{ceiling} to prevent excessive reserve token consumption.",
+                stacklevel=2,
+            )
+            self.max_tokens = ceiling
         return self
-
 
 
 # --- Registry Models (Discriminated Union) ---
@@ -165,12 +186,111 @@ RegistryModel = Annotated[SparkrunRegistryModel | ComposeRegistryModel, Field(di
 # --- Provider & Stack Configs ---
 
 
+class ApiKeyConfig(BaseSchema):
+    source: str = "env"
+    provider: str = "default"
+    id: str = "LITELLM_MASTER_KEY"
+
+
+class RequestConfig(BaseSchema):
+    allow_private_network: bool = True
+
+
+class OpenClawCompactionConfig(BaseSchema):
+    reserve_tokens: int
+
+
+class OpenClawAgentDefaults(BaseSchema):
+    compaction: OpenClawCompactionConfig | None = None
+    models: dict[str, Any] = Field(default_factory=dict)
+
+
+class OpenClawAgentsConfig(BaseSchema):
+    defaults: OpenClawAgentDefaults = Field(default_factory=OpenClawAgentDefaults)
+
+
+class OpenClawModelsConfig(BaseSchema):
+    providers: dict[str, Any] = Field(default_factory=dict)
+
+
+class OpenClawConfig(BaseSchema):
+    """Root configuration for openclaw.json."""
+
+    models: OpenClawModelsConfig = Field(default_factory=OpenClawModelsConfig)
+    agents: OpenClawAgentsConfig = Field(default_factory=OpenClawAgentsConfig)
+
+    def update_from_spark_provider(self, provider: "SparkProvider") -> None:
+        """Update the configuration from a SparkProvider instance.
+
+        This injects the provider into the `models` block and updates global
+        agent defaults (like compaction reserve and placeholder model keys) to
+        ensure OpenClaw operates safely with the provided models.
+        """
+        self.models.providers["spark"] = provider.model_dump(by_alias=True, exclude_none=True)
+
+        reserve = provider.compaction_reserve
+        if self.agents.defaults.compaction is None:
+            self.agents.defaults.compaction = OpenClawCompactionConfig(reserve_tokens=reserve)
+        else:
+            self.agents.defaults.compaction.reserve_tokens = reserve
+
+        for m in provider.models:
+            m_id = f"spark/{m.id}"
+            if m_id not in self.agents.defaults.models:
+                self.agents.defaults.models[m_id] = {}
+
+
 class SparkProvider(BaseSchema):
-    base_url: str = "http://spark.local:4000/v1"
-    api_key: str = ""
+    """Provider configuration for the self-hosted Spark LLM backend.
+
+    timeout_seconds: The gateway's idle-timeout watchdog detects local providers
+    by hostname pattern (localhost, *.local, private IPs), but Docker DNS names
+    like ``litellm`` don't match, causing the 120s cloud default to apply.  A
+    generous timeout is needed to survive long reasoning turns and event-loop
+    pressure from concurrent plugin initialisation.
+    """
+
+    # Constants for token reserve computation
+    COMPACTION_HEADROOM: ClassVar[int] = 8192
+    MAX_RESERVE_RATIO: ClassVar[float] = 0.30
+    DEFAULT_MIN_CONTEXT_WINDOW: ClassVar[int] = 262144
+
+    base_url: str = Field(
+        default_factory=lambda: os.getenv("VLLM_GATEWAY_URL", "http://litellm:4000/v1"),
+        alias="baseUrl",
+    )
+    api_key: ApiKeyConfig | str = Field(default_factory=ApiKeyConfig)
     auth: str = "api-key"
     api: str = "openai-responses"
+    timeout_seconds: int = 300
+    request: RequestConfig = Field(default_factory=RequestConfig)
     models: list[OpenClawModel] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _ensure_api_key(self) -> "SparkProvider":
+        if isinstance(self.api_key, str) and not self.api_key:
+            self.api_key = ApiKeyConfig()
+        return self
+
+    @property
+    def compaction_reserve(self) -> int:
+        """Compute the safe compaction reserveTokens for this provider."""
+        global_max_completion = max([m.max_tokens for m in self.models] + [8192])
+        ctx_windows = [m.context_window for m in self.models if m.context_window > 16384]
+        min_context_window = min(ctx_windows) if ctx_windows else self.DEFAULT_MIN_CONTEXT_WINDOW
+
+        reserve = global_max_completion + self.COMPACTION_HEADROOM
+        max_safe_reserve = int(min_context_window * self.MAX_RESERVE_RATIO)
+
+        if reserve > max_safe_reserve:
+            warnings.warn(
+                f"Computed reserveTokens ({reserve}) exceeds {self.MAX_RESERVE_RATIO:.0%} of "
+                f"smallest context window ({min_context_window}). "
+                f"Clamping to {max_safe_reserve}.",
+                stacklevel=2,
+            )
+            return max_safe_reserve
+        return reserve
 
 
 class ModelsConfig(PassThroughModel):

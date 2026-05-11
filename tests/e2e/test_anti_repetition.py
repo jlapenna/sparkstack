@@ -1,9 +1,6 @@
-import os
 import string
 
-import httpx
 import pytest
-from dotenv import load_dotenv
 from loguru import logger
 
 from tests.e2e.context import E2EContext
@@ -12,14 +9,6 @@ from tests.e2e.context import E2EContext
 @pytest.mark.order(13)
 @pytest.mark.asyncio
 async def test_anti_repetition(ctx: E2EContext):
-    load_dotenv(ctx.root_dir / ".env")
-    api_key = os.getenv("LITELLM_MASTER_KEY", "")
-
-    if not api_key:
-        logger.error("❌ LITELLM_MASTER_KEY not found in .env")
-        raise AssertionError()
-
-    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
     payload = {
         "model": "main",
         "messages": [
@@ -32,10 +21,8 @@ async def test_anti_repetition(ctx: E2EContext):
         "temperature": 0.0,  # Greedy decoding often triggers the exact repetition loop fast if penalty is present
     }
 
-    async with httpx.AsyncClient() as client:
-        res = await client.post(
-            f"{ctx.gateway_url}/chat/completions", headers=headers, json=payload, timeout=300
-        )
+    async with ctx.gateway_client() as client:
+        res = await client.post("/chat/completions", json=payload, timeout=300)
         if res.status_code == 200:
             data = res.json()
             content = data.get("choices", [{}])[0].get("message", {}).get("content", "")

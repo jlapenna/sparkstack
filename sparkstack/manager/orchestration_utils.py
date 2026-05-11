@@ -34,6 +34,9 @@ async def pre_flight_checks(settings):
     logger.info("Pre-flight complete.")
 
 
+ZOMBIE_CONTAINER_PREFIXES = ("openclaw-sbx-", "openclaw-openclaw-cli-")
+
+
 async def cleanup_zombies(settings=None):
     """The 'Zombie Protocol' - cleans up stuck tasks and stale containers."""
     logger.info("Executing Zombie Protocol...")
@@ -54,7 +57,35 @@ async def cleanup_zombies(settings=None):
         except Exception as e:
             logger.warning(f"Failed to clear zombie tasks: {e}")
 
-    # 2. Cleanup stale containers (orphaned or exited long ago)
+    # 2. Remove stale OpenClaw sandbox and CLI containers.
+    # These are spawned dynamically by the gateway (not by Compose), so they
+    # survive `docker compose up --force-recreate openclaw-gateway` indefinitely.
+    # The gateway will recreate them on demand after the redeploy.
+    logger.info("Removing stale OpenClaw sandbox and CLI containers...")
+    for name_filter in ZOMBIE_CONTAINER_PREFIXES:
+        try:
+            result = await async_run_command(
+                [
+                    "docker",
+                    "ps",
+                    "-aq",
+                    "--filter",
+                    f"name={name_filter}",
+                ],
+                check=False,
+                capture_output=True,
+            )
+            container_ids = result.stdout.strip().split() if result.stdout else []
+            if container_ids:
+                logger.info(f"Removing {len(container_ids)} containers matching '{name_filter}*'")
+                await async_run_command(
+                    ["docker", "rm", "-f", *container_ids],
+                    check=False,
+                )
+        except Exception as e:
+            logger.warning(f"Failed to remove containers matching '{name_filter}*': {e}")
+
+    # 3. Cleanup stale containers (orphaned or exited long ago)
     logger.info("Cleaning up stale containers and networks...")
     try:
         # Restrict blast radius to ONLY our specific compose projects to prevent destroying unrelated host resources
@@ -86,7 +117,7 @@ async def cleanup_zombies(settings=None):
     except Exception as e:
         logger.warning(f"Docker cleanup failed: {e}")
 
-    # 3. Flush stale telemetry caches
+    # 4. Flush stale telemetry caches
     logger.info("Flushing telemetry cache (restarting alloy)...")
     try:
         await async_run_command(["docker", "restart", "alloy"], check=False)

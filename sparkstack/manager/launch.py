@@ -21,12 +21,22 @@ async def launch_stack(stack_dir: Path, *, rebuild_images: bool = False) -> None
 
     # Soft launch: Compose handles gateway/monitoring natively. Only recreate backends manually.
     logger.info("🧹 Removing stale backend containers...")
-    backends_to_rm = [b["name"] + "_solo" for b in stack.get("backends", [])]
-    if backends_to_rm:
-        await async_run_command(
-            ["docker", "rm", "-f"] + backends_to_rm,
+
+    # Find all currently running sparkstack backends
+    try:
+        result = await async_run_command(
+            ["docker", "ps", "-aq", "--filter", "label=sparkstack-backend=true"],
             check=False,
+            capture_output=True,
         )
+        stale_containers = result.stdout.strip().split() if result.stdout else []
+        if stale_containers:
+            await async_run_command(
+                ["docker", "rm", "-f"] + stale_containers,
+                check=False,
+            )
+    except Exception as e:
+        logger.warning(f"Failed to query or remove stale backends: {e}")
 
     # Launch backends
     logger.info("🚀 Launching model instances via sparkrun...")
@@ -60,6 +70,8 @@ async def launch_stack(stack_dir: Path, *, rebuild_images: bool = False) -> None
             "--no-follow",
             "-o",
             f"network={global_network}",
+            "--label",
+            "sparkstack-backend=true",
         ]
 
         if rebuild_images:

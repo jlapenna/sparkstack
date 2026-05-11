@@ -2,13 +2,15 @@
 
 import asyncio
 import json
-import os
 from pathlib import Path
 
 from loguru import logger
 
 from sparkstack.core.env import OPENCLAW_CONFIG_DIR, OPENCLAW_CONFIG_PATH, PROJECT_ROOT
-from sparkstack.core.schemas import SparkProvider
+from sparkstack.core.schemas import (
+    OpenClawConfig,
+    SparkProvider,
+)
 
 
 async def sync_registry(
@@ -27,53 +29,21 @@ async def sync_registry(
     # Load existing config raw
     if config_path.exists():
         config_str = await asyncio.to_thread(config_path.read_text)
-        config = json.loads(config_str)
+        config_dict = json.loads(config_str)
     else:
-        config = {}
+        config_dict = {}
 
-    # Update providers
-    models = config.setdefault("models", {})
-    providers = models.setdefault("providers", {})
+    openclaw_config = OpenClawConfig.model_validate(config_dict)
 
     # Build Spark provider
-    # We still validate the models.json source since it's purely internal schema
-
-    spark_source["baseUrl"] = os.getenv("VLLM_GATEWAY_URL", "http://litellm:4000/v1")
     provider_model = SparkProvider.model_validate(spark_source)
 
-    provider_dict = provider_model.model_dump(by_alias=True, exclude_none=True)
-    provider_dict["apiKey"] = {
-        "source": "env",
-        "provider": "default",
-        "id": "LITELLM_MASTER_KEY",
-    }
-    global_max_reserve = 8192
-    # Track the largest maxTokens for reserveTokens calculation.
-    # Token budget validation is enforced by OpenClawModel's schema validator.
-    for model in provider_dict.get("models", []):
-        max_tokens = model.get("maxTokens", 0)
-        if max_tokens:
-            global_max_reserve = max(global_max_reserve, max_tokens)
-
-    providers["spark"] = provider_dict
-
-    # Update defaults
-    agents = config.setdefault("agents", {})
-    defaults = agents.setdefault("defaults", {})
-
-    # Sync compaction reserve: reserveTokens = max(model maxTokens) + 8192 headroom.
-    # This must always be < the smallest model's contextWindow to avoid the poison pill.
-    compaction = defaults.setdefault("compaction", {})
-    compaction["reserveTokens"] = global_max_reserve + 8192
-
-    agent_models = defaults.setdefault("models", {})
-    for m in provider_model.models:
-        m_id = f"spark/{m.id}"
-        if m_id not in agent_models:
-            agent_models[m_id] = {}
+    # Update provider, agents, and models using the encapsulated method
+    openclaw_config.update_from_spark_provider(provider_model)
 
     # Save back raw JSON, preserving all unstructured fields perfectly
-    await asyncio.to_thread(config_path.write_text, json.dumps(config, indent=2) + "\n")
+    dumped_config = openclaw_config.model_dump(by_alias=True, exclude_none=True)
+    await asyncio.to_thread(config_path.write_text, json.dumps(dumped_config, indent=2) + "\n")
     logger.info("openclaw.json synchronized correctly.")
 
     # Purge stale agent-level models.json overrides to prevent configuration drift

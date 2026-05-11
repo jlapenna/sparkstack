@@ -90,20 +90,29 @@ uv run sparkrun arena login --device
 
 ## 5. Increasing File Watcher Limits (Inotify)
 
-When working with heavily nested projects, hot-reloading development tools, or extensive Docker bind mounts, you will likely exceed the default Linux file watcher limits (`inotify`). Exhausting these limits results in elusive "No space left on device" (ENOSPC) errors when tools attempt to initialize file tracking.
+When working with heavily nested projects, hot-reloading development tools, or extensive Docker bind mounts, you will likely exceed the default Linux file watcher limits (`inotify`). There are **two** limits that must be raised:
 
-To fix this and permanently double the threshold on the workstation:
+- **`max_user_watches`** (default: 65536): Total number of individual files/dirs that can be watched. Exhausting this causes `ENOSPC` ("No space left on device") errors.
+- **`max_user_instances`** (default: 128-1024): Total number of inotify file descriptors a user can create. Exhausting this causes `EMFILE` ("Too many open files") errors, which crash VS Code Remote connections and prevent `accept()` on server sockets.
+
+Both limits must be raised permanently:
 
 ```bash
-# 1. Write the new maximum watch limit to a persistent sysctl profile
-echo "fs.inotify.max_user_watches=524288" | sudo tee /etc/sysctl.d/90-inotify.conf
+# 1. Write both limits to a persistent sysctl profile
+cat <<EOF | sudo tee /etc/sysctl.d/90-inotify.conf
+fs.inotify.max_user_watches=524288
+fs.inotify.max_user_instances=8192
+EOF
 
-# 2. Reload the sysctl settings to apply the new limit live
+# 2. Reload the sysctl settings to apply live
 sudo sysctl -p /etc/sysctl.d/90-inotify.conf
 
-# 3. Verify the updated configuration
-cat /proc/sys/fs/inotify/max_user_watches
+# 3. Verify both values
+cat /proc/sys/fs/inotify/max_user_watches    # Should show 524288
+cat /proc/sys/fs/inotify/max_user_instances   # Should show 8192
 ```
+
+> **Symptom:** If you see `accept: Too many open files` in VS Code trace logs and your remote connection keeps disconnecting, the `max_user_instances` limit is almost certainly exhausted. Kill any stale file-watching processes (`nx graph --watch`, orphaned `tsc --watch`, etc.) and apply the fix above.
 
 ## 6. Maintenance and the "Zombie Protocol"
 

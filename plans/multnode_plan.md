@@ -9,8 +9,8 @@ The objective of this initiative is to extend `sparkstack` from a single-node de
 **Architectural decision:** `sparkstack` continues to delegate backend container lifecycle to `sparkrun` via `sparkrun run --hosts`. It does NOT directly manage remote Docker daemons for backends. `sparkstack`'s new responsibilities are limited to:
 
 1. **Infrastructure pre-deployment** — deploying Tailscale sidecars on remote workers (and the head node) before `sparkrun` launches backends.
-2. **Network flag orchestration** — passing the correct `--network` and environment flags to `sparkrun` so backends join the Tailscale sidecar's network namespace.
-3. **Config generation** — generating LiteLLM configs with Tailnet IPs for remote backend routing.
+1. **Network flag orchestration** — passing the correct `--network` and environment flags to `sparkrun` so backends join the Tailscale sidecar's network namespace.
+1. **Config generation** — generating LiteLLM configs with Tailnet IPs for remote backend routing.
 
 This avoids reimplementing sparkrun's model distribution, health checking, container lifecycle, and SSH execution.
 
@@ -19,6 +19,7 @@ This avoids reimplementing sparkrun's model distribution, health checking, conta
 **Architectural decision:** `sparkstack` interacts with `sparkrun` exclusively via CLI subprocesses (e.g., `uv run sparkrun cluster status --json`). It does NOT import sparkrun's internal Python APIs directly.
 
 **Rationale:**
+
 - `sparkstack` already follows this pattern in `launch.py` (shelling out to `sparkrun run`).
 - Loose coupling keeps sparkrun's internal API surface free to evolve without breaking sparkstack.
 - CLI commands like `cluster status --json` and `stop` are the public, stable interface.
@@ -26,13 +27,13 @@ This avoids reimplementing sparkrun's model distribution, health checking, conta
 
 **Available sparkrun CLI commands for orchestration:**
 
-| sparkstack needs to... | sparkrun CLI command | JSON output? |
-|---|---|---|
-| Check backends running on hosts | `sparkrun cluster status --cluster X --json` | ✅ |
-| Check a specific job's liveness | `sparkrun cluster check-job {target} --cluster X --json` | ✅ |
-| Stop backends on specific hosts | `sparkrun stop {recipe} --cluster X` | ✅ (exit code) |
-| Stop all sparkrun containers | `sparkrun stop --all --cluster X` | ✅ (exit code) |
-| Get backend logs from remote hosts | `sparkrun logs {cluster_id}` | N/A (streaming) |
+| sparkstack needs to...             | sparkrun CLI command                                     | JSON output?    |
+| ---------------------------------- | -------------------------------------------------------- | --------------- |
+| Check backends running on hosts    | `sparkrun cluster status --cluster X --json`             | ✅              |
+| Check a specific job's liveness    | `sparkrun cluster check-job {target} --cluster X --json` | ✅              |
+| Stop backends on specific hosts    | `sparkrun stop {recipe} --cluster X`                     | ✅ (exit code)  |
+| Stop all sparkrun containers       | `sparkrun stop --all --cluster X`                        | ✅ (exit code)  |
+| Get backend logs from remote hosts | `sparkrun logs {cluster_id}`                             | N/A (streaming) |
 
 **State management split:** Backend state (hosts, ports, container names, health) is queried from sparkrun via these CLI commands at the point of need. Sparkstack maintains its own `.state.json` only for Tailscale infrastructure that sparkrun has no concept of (see Step 6).
 
@@ -189,7 +190,7 @@ When `--cluster` is used, `sparkstack` reads the sparkrun cluster configuration 
 
 ### 4.1 The Three Networks
 
-- **`sparkstack-net` (Local Docker Bridge):** Head node orchestration services (OpenClaw, Headscale) reside here. 
+- **`sparkstack-net` (Local Docker Bridge):** Head node orchestration services (OpenClaw, Headscale) reside here.
 - **`vllm-network` (Local Docker Bridge):** Shared network for local inference traffic.
 - **Tailscale Overlay (`100.x.y.z`):** Remote worker nodes communicate exclusively over the encrypted Tailnet. The head node reaches these IPs via its `sparkstack-head-sidecar` container.
 
@@ -276,10 +277,10 @@ To achieve 100% isolation from any existing Tailscale network on the head node, 
 Because we avoid installing Tailscale on the host, head node services that need to route to the Tailnet must do so via the `sparkstack-head-sidecar`:
 
 1. LiteLLM, Alloy, and Prometheus are launched with `network_mode: container:sparkstack-head-sidecar`.
-2. The `sparkstack-head-sidecar` container is attached to `sparkstack-net` and `vllm-network`.
-3. Other services on `sparkstack-net` (like OpenClaw) can reach LiteLLM by calling `http://sparkstack-head-sidecar:4000` (since LiteLLM shares the sidecar's network namespace).
-4. For remote backends, LiteLLM routes via the Tailnet naturally because it shares the sidecar's networking stack: `backend_url=http://{worker_tailnet_ip}:{port}/v1`.
-5. For local backends, LiteLLM continues using Docker DNS via the shared bridge attachment: `http://main_solo:8000/v1`.
+1. The `sparkstack-head-sidecar` container is attached to `sparkstack-net` and `vllm-network`.
+1. Other services on `sparkstack-net` (like OpenClaw) can reach LiteLLM by calling `http://sparkstack-head-sidecar:4000` (since LiteLLM shares the sidecar's network namespace).
+1. For remote backends, LiteLLM routes via the Tailnet naturally because it shares the sidecar's networking stack: `backend_url=http://{worker_tailnet_ip}:{port}/v1`.
+1. For local backends, LiteLLM continues using Docker DNS via the shared bridge attachment: `http://main_solo:8000/v1`.
 
 This achieves total network isolation without requiring any host-level software dependencies on the head node.
 
@@ -304,6 +305,7 @@ This step deploys Tailscale sidecars on remote workers **before** sparkrun launc
 **Phase 1: Deploy Tailscale sidecars (Head + Workers)**
 
 First, deploy the head node sidecar (`sparkstack-head-sidecar`). It binds required gateway ports:
+
 ```bash
 docker run -d \
   --name sparkstack-head-sidecar \
@@ -324,7 +326,7 @@ docker network connect vllm-network sparkstack-head-sidecar
 Then, for each unique remote `target_host`:
 
 1. SSH into the remote host (using sparkrun's `ClusterManager` for credentials).
-2. Deploy the Tailscale sidecar as a standalone container:
+1. Deploy the Tailscale sidecar as a standalone container:
    ```bash
    ssh user@{host} docker run -d \
      --name sparkstack-sidecar-{role} \
@@ -338,7 +340,7 @@ Then, for each unique remote `target_host`:
      --restart unless-stopped \
      tailscale/tailscale:{pinned_version}
    ```
-3. Wait for sidecar health on all nodes.
+1. Wait for sidecar health on all nodes.
 
 **Phase 2: Resolve Tailnet IPs**
 
@@ -348,8 +350,8 @@ After all sidecars are healthy:
    ```bash
    ssh user@{host} docker exec sparkstack-sidecar-{role} tailscale ip -4
    ```
-2. Store the mapping `{role} → {tailnet_ip}` in the build context for use by LiteLLM config generation (Step 5).
-3. Persist the mapping to the local state file (see Step 7).
+1. Store the mapping `{role} → {tailnet_ip}` in the build context for use by LiteLLM config generation (Step 5).
+1. Persist the mapping to the local state file (see Step 7).
 
 **Phase 3: Launch backends via sparkrun**
 
@@ -377,10 +379,11 @@ else:
 **Key change:** Remote backends use `network=container:sparkstack-sidecar-{role}` instead of `network=sparkstack-net`. This makes the backend share the sidecar's network namespace, binding to `0.0.0.0:{port}` inside it. The backend becomes reachable at the sidecar's Tailnet IP. The `--solo` flag remains compatible because `sparkrun run --solo` passes `-o network=...` directly to `docker run --network=...`.
 
 **Validated override path (Phase 0 complete):** The `-o network=container:...` override has been confirmed to work end-to-end through sparkrun's existing code:
+
 1. `_parse_options()` parses `network=container:sparkstack-sidecar-main` into a dict (`coerce_value` correctly preserves the `container:` prefix as a raw string)
-2. `_apply_recipe_overrides()` merges the override into the recipe config chain
-3. `ExecutorConfig.from_chain()` resolves the `network` field
-4. `DockerExecutor._build_default_opts()` emits `--network=container:sparkstack-sidecar-main`
+1. `_apply_recipe_overrides()` merges the override into the recipe config chain
+1. `ExecutorConfig.from_chain()` resolves the `network` field
+1. `DockerExecutor._build_default_opts()` emits `--network=container:sparkstack-sidecar-main`
 
 No sparkrun code changes are required for this integration point.
 
@@ -390,27 +393,33 @@ No sparkrun code changes are required for this integration point.
 **Target File:** `services/headscale/docker-compose.yml`
 
 - **Deployment:** Headscale will be deployed as a foundational core service on the head node, initialized alongside other orchestration services on `sparkstack-net`.
+
 - **Version Pinning:** Pin to `headscale/headscale:0.28.0` (current stable as of 2026-05). The Headscale API surface changed significantly between 0.22→0.23 (gRPC replaced with REST). v0.28 uses the `headscale` CLI for pre-auth key generation:
+
   ```bash
   # Generate a reusable pre-auth key (v0.28 CLI syntax)
   docker exec sparkstack-headscale headscale preauthkeys create --user sparkstack --reusable --expiration 87600h
   ```
+
 - **State Persistence:** Mount a persistent Docker volume (`headscale-data:/var/lib/headscale`) to ensure node identities, cryptographic keys, and overlay IP assignments survive container restarts.
+
 - **User Management:** Headscale v0.28 does **not** auto-create users. The setup flow must explicitly create and manage the `sparkstack` namespace user before generating pre-auth keys. User creation is idempotent — re-running on an existing user is a no-op error that the setup script handles gracefully.
+
 - **Auth Flow & Provisioning:**
+
   1. During `sparkstack setup`, the CLI starts Headscale and waits for it to become healthy.
-  2. Create the Headscale user (idempotent):
+  1. Create the Headscale user (idempotent):
      ```bash
      docker exec sparkstack-headscale headscale users create sparkstack 2>/dev/null || true
      ```
-  3. Generate a reusable pre-auth key under that user:
+  1. Generate a reusable pre-auth key under that user:
      ```bash
      docker exec sparkstack-headscale headscale preauthkeys create \
        --user sparkstack --reusable --expiration 87600h
      ```
-  4. Store the key as `SPARKSTACK_HEADSCALE_AUTH_KEY` in `.env`.
-  5. The head node sidecar uses this to connect. Its Tailnet IP is retrieved and stored as `SPARKSTACK_HEAD_TAILNET_IP` in `.env`.
-  6. `SPARKSTACK_HEADSCALE_SERVER` is auto-detected from the host's primary LAN IP (user-overridable in `.env`).
+  1. Store the key as `SPARKSTACK_HEADSCALE_AUTH_KEY` in `.env`.
+  1. The head node sidecar uses this to connect. Its Tailnet IP is retrieved and stored as `SPARKSTACK_HEAD_TAILNET_IP` in `.env`.
+  1. `SPARKSTACK_HEADSCALE_SERVER` is auto-detected from the host's primary LAN IP (user-overridable in `.env`).
 
   **Key lifecycle:** The pre-auth key has a 10-year expiration (`87600h`). If the key is rotated or expires, re-run `sparkstack setup` to regenerate. All existing sidecars remain authenticated — only new sidecar enrollments require a valid key.
 
@@ -463,6 +472,7 @@ This avoids state duplication. Backend metadata (hosts, ports, container names, 
 #### 6.2 Sidecar State File
 
 - **State File:** `sparkstack-registry/stacks/{STACK_NAME}/.state.json`
+
   ```json
   {
     "deployed_at": "2026-05-10T17:00:00Z",
@@ -485,6 +495,7 @@ This avoids state duplication. Backend metadata (hosts, ports, container names, 
   The `cluster_name` field is required for teardown resolution — `set_current.py` receives a `stack_name` and `stack_path` but has no way to derive the sparkrun cluster name without this mapping.
 
   This file contains **only** data that sparkrun has no concept of:
+
   - Sidecar container names (Tailscale infrastructure managed by sparkstack)
   - Tailnet IPs assigned by Headscale
   - Role-to-host mapping for sidecar association
@@ -521,11 +532,11 @@ This ensures sparkrun's internal metadata (job files, pending ops) stays synchro
 After backends are stopped, sparkstack handles sidecar cleanup using `.state.json`:
 
 1. Compare the new target host set against the persisted sidecar state.
-2. For any host present in state but absent in the new deployment:
+1. For any host present in state but absent in the new deployment:
    ```bash
    ssh user@{host} docker rm -f {sidecar_container_name}
    ```
-3. Remove the host entry from `.state.json`.
+1. Remove the host entry from `.state.json`.
 
 **Partial failure handling:** If sidecar deployment succeeds but backend launch fails, the sidecar is left running (idempotent; next deploy reuses it). Sidecar state is written immediately after sidecar health confirmation, independent of backend launch success.
 
@@ -553,6 +564,7 @@ The following subsystems hardcode `localhost` or assume local Docker access for 
 **Current assumption:** `add_target()` registers scrape targets using local Docker DNS names (e.g., `main_solo:8001`). Prometheus on the head node can only resolve these for local containers.
 
 **Required change:**
+
 - For remote backends, `add_target()` must register the Tailnet IP instead of the Docker hostname: `{tailnet_ip}:{port}` rather than `{container_hostname}:{port}`.
 - This means `SparkrunServiceHandler.apply_to_builders()` must pass the resolved Tailnet IP into the monitoring builder when `is_remote` is true.
 - Local backends continue using Docker DNS names (no change).
@@ -562,19 +574,22 @@ The following subsystems hardcode `localhost` or assume local Docker access for 
 #### 8.2 Wait-for-Backends Health Probe (`sparkstack/manager/wait_for_backends.py`)
 
 **Current assumptions:**
+
 1. **Progress Manager probe (line 47):** `http://localhost:8126/status` — assumes the sparkrun progress manager runs on the head node. This remains correct because sparkrun's progress manager aggregates status centrally, but must be validated for remote backends.
-2. **Crash log retrieval (line 74):** `docker logs --tail 20 {container}` — runs against the local Docker daemon. For remote backends, the container does not exist locally.
-3. **Smoke tests (lines 245, 252):** `http://localhost:{litellm_port}/v1/...` — smoke tests run through LiteLLM on the head node. This remains correct regardless of backend location (LiteLLM proxies to remote backends).
+1. **Crash log retrieval (line 74):** `docker logs --tail 20 {container}` — runs against the local Docker daemon. For remote backends, the container does not exist locally.
+1. **Smoke tests (lines 245, 252):** `http://localhost:{litellm_port}/v1/...` — smoke tests run through LiteLLM on the head node. This remains correct regardless of backend location (LiteLLM proxies to remote backends).
 
 **Required changes:**
+
 - **Crash log retrieval:** For remote backends, use `ssh user@{host} docker logs --tail 20 {container}` instead of local `docker logs`. The backend's `target_host` must be available in the service discovery data (see 8.3).
 - **Smoke tests:** No change needed — they route through the local LiteLLM gateway, which handles remote routing transparently.
 
 #### 8.3 Service Discovery (`sparkstack/core/discovery.py`)
 
 **Current assumptions:**
+
 1. **`get_container_name_by_port()` (line 21):** Runs `docker ps` and `docker exec` against the local Docker daemon to discover which container owns a port. This is meaningless for remote backends whose containers exist on a different host.
-2. **`get_active_services()` (line 70):** Parses `litellm-config.yaml` to discover backends by API base URL. The existing logic at line 114 already handles non-localhost hostnames by using the hostname as the container name — this partially works for Tailnet IPs, but the returned `container` field will be an IP address instead of a Docker container name, which may confuse downstream callers.
+1. **`get_active_services()` (line 70):** Parses `litellm-config.yaml` to discover backends by API base URL. The existing logic at line 114 already handles non-localhost hostnames by using the hostname as the container name — this partially works for Tailnet IPs, but the returned `container` field will be an IP address instead of a Docker container name, which may confuse downstream callers.
 
 **Required changes:**
 
@@ -592,27 +607,31 @@ The following subsystems hardcode `localhost` or assume local Docker access for 
 #### 8.4 Services Manager Health Probes (`sparkstack/manager/services.py`)
 
 **Current assumptions:**
+
 1. **LiteLLM health (line 297):** `HttpProbe("http://localhost:4000/health")` — correct; LiteLLM always runs locally on the head node.
-2. **Progress manager health (line 332):** `HttpProbe("http://localhost:8126/status")` — correct; the progress manager runs locally.
+1. **Progress manager health (line 332):** `HttpProbe("http://localhost:8126/status")` — correct; the progress manager runs locally.
 
 **No changes needed.** Both probed services are head-node-local.
 
 #### 8.5 Set-Current Teardown (`sparkstack/manager/set_current.py`)
 
 **Current assumptions:**
+
 1. **Local container cleanup (lines 55-61):** `docker ps -a -q -f name=sparkrun|vllm|...` followed by `docker rm -f` — only kills containers on the local Docker daemon. Remote backend containers are untouched.
-2. **Local network prune (line 64):** Only affects local Docker networks.
-3. **Local LiteLLM removal (line 72):** LiteLLM is locally managed (though now sharing the sidecar's namespace).
+1. **Local network prune (line 64):** Only affects local Docker networks.
+1. **Local LiteLLM removal (line 72):** LiteLLM is locally managed (though now sharing the sidecar's namespace).
 
 **Required changes:**
+
 - Before performing local cleanup, `set_current.py` must invoke the two-tier teardown from Step 6:
   1. **Tier 1 (backends):** Shell out to `sparkrun stop --all --cluster {name}` to let sparkrun handle backend container teardown and its own metadata cleanup.
-  2. **Tier 2 (sidecars):** Read the outgoing stack's `.state.json` and SSH-remove sidecar containers from hosts no longer needed.
+  1. **Tier 2 (sidecars):** Read the outgoing stack's `.state.json` and SSH-remove sidecar containers from hosts no longer needed.
 - The local `docker ps` filter remains for local containers.
 
 #### 8.6 Monitor CLI (`sparkstack/cli/_monitor.py`)
 
 **Current assumptions:**
+
 - Line 331: `http://localhost:8126/status` — progress manager polling.
 - Line 352: `http://localhost:18789/healthz` — another local health endpoint.
 
@@ -627,6 +646,7 @@ The following subsystems hardcode `localhost` or assume local Docker access for 
 #### 8.8 OTEL Endpoint Hardcoding (`sparkstack/core/handlers/sparkrun.py`)
 
 **Current assumptions (lines 161-167):**
+
 - `OTEL_EXPORTER_OTLP_ENDPOINT` → `http://alloy:4318`
 - `otlp_traces_endpoint` → `http://alloy:4318/v1/traces`
 
@@ -643,6 +663,7 @@ These use Docker DNS names that only resolve on the head node's `sparkstack-net`
 #### 8.10 Global Resource Constants (`sparkstack/core/env.py`)
 
 **Current assumptions:**
+
 - `USABLE_SPARK_MEMORY_GB = 121.0` — hardcoded for a single DGX Spark.
 - `MAX_DOCKER_MEMORY_GB` — derived from the single-node pool.
 - `MAX_VRAM_UTILIZATION = 0.95` — single GPU pool ceiling.
@@ -651,33 +672,33 @@ These use Docker DNS names that only resolve on the head node's `sparkstack-net`
 
 ## Appendix A: Single-Node Assumptions Summary Table
 
-| File | Line(s) | Assumption | Plan Step | Status |
-|------|---------|-----------|-----------|--------|
-| `core/schemas.py` | 14-19 | `ModelRequest` has no `target` field | Step 1 | 🔲 New |
-| `core/env.py` | 44, 53, 56 | Global `MAX_DOCKER_MEMORY_GB`, `MAX_VRAM_UTILIZATION` | Step 5 | 🔲 New |
-| `core/builders/stack.py` | 107-140 | `_check_constraints()` sums globally | Step 5 | 🔲 New |
-| `core/builders/stack.py` | 193-270 | `_process_model_request()` has no target parsing | Step 1 | 🔲 New |
-| `core/handlers/sparkrun.py` | 127 | `"target": "localhost"` hardcoded | Step 1 + Step 4 | 🔲 New |
-| `core/handlers/sparkrun.py` | 161-167 | OTEL endpoints use Docker DNS (`alloy:4318`) | Step 4 | 🔲 New |
-| `core/handlers/sparkrun.py` | 182-186 | Monitoring targets use Docker DNS hostnames | Step 8.1 | 🔲 New |
-| `core/handlers/sparkrun.py` | 221 | `backend_url` uses `container_hostname` (Docker DNS) | Step 4 | 🔲 New |
-| `core/builders/monitoring.py` | 22-26 | `add_target()` uses Docker DNS names for scrape targets | Step 8.1 | 🔲 New |
-| `core/builders/litellm.py` | 28-92 | `backend_url` param assumed to be Docker DNS | Step 4 | 🔲 New |
-| `core/discovery.py` | 16-67 | `get_container_name_by_port()` uses local `docker ps/exec` | Step 8.3 | 🔲 New |
-| `core/discovery.py` | 70-127 | `get_active_services()` no remote metadata; needs sparkrun CLI + `.state.json` | Step 8.3 | 🔲 New |
-| `manager/launch.py` | 24-29 | Stale container cleanup uses local `docker rm` only | Step 6 + Step 8.5 | 🔲 New |
-| `manager/launch.py` | 33, 62 | Global network `sparkstack-net` for all backends | Step 2 | 🔲 New |
-| `manager/launch.py` | 48 | `backend.get("target", "localhost")` fallback | Step 2 | 🔲 New |
-| `manager/wait_for_backends.py` | 47 | Progress manager on `localhost:8126` | — | ✅ OK (local) |
-| `manager/wait_for_backends.py` | 74 | `docker logs` against local daemon for crash logs | Step 8.2 | 🔲 New |
-| `manager/wait_for_backends.py` | 245, 252 | Smoke tests via `localhost:{litellm_port}` | — | ✅ OK (proxied) |
-| `manager/services.py` | 297 | LiteLLM health probe on `localhost:4000` | — | ✅ OK (local) |
-| `manager/services.py` | 332 | Progress manager probe on `localhost:8126` | — | ✅ OK (local) |
-| `manager/set_current.py` | 55-61 | Container cleanup uses local `docker ps/rm` only | Step 8.5 | 🔲 New |
-| `manager/set_current.py` | 64-69 | Network prune/create local only | — | ✅ OK (local) |
-| `cli/_monitor.py` | 331, 352 | Health endpoints on `localhost` | — | ✅ OK (local) |
-| `core/handlers/gateway.py` | 13 | Gateway uses `network_mode: container:sparkstack-head-sidecar` | Step 4 | 🔲 New |
-| OpenClaw config | — | `LITELLM_BASE_URL` must change from `http://litellm:4000` to `http://sparkstack-head-sidecar:4000` (LiteLLM now shares sidecar namespace, not its own container name) | Step 4 | 🔲 New |
+| File                           | Line(s)    | Assumption                                                                                                                                                            | Plan Step         | Status          |
+| ------------------------------ | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | --------------- |
+| `core/schemas.py`              | 14-19      | `ModelRequest` has no `target` field                                                                                                                                  | Step 1            | 🔲 New          |
+| `core/env.py`                  | 44, 53, 56 | Global `MAX_DOCKER_MEMORY_GB`, `MAX_VRAM_UTILIZATION`                                                                                                                 | Step 5            | 🔲 New          |
+| `core/builders/stack.py`       | 107-140    | `_check_constraints()` sums globally                                                                                                                                  | Step 5            | 🔲 New          |
+| `core/builders/stack.py`       | 193-270    | `_process_model_request()` has no target parsing                                                                                                                      | Step 1            | 🔲 New          |
+| `core/handlers/sparkrun.py`    | 127        | `"target": "localhost"` hardcoded                                                                                                                                     | Step 1 + Step 4   | 🔲 New          |
+| `core/handlers/sparkrun.py`    | 161-167    | OTEL endpoints use Docker DNS (`alloy:4318`)                                                                                                                          | Step 4            | 🔲 New          |
+| `core/handlers/sparkrun.py`    | 182-186    | Monitoring targets use Docker DNS hostnames                                                                                                                           | Step 8.1          | 🔲 New          |
+| `core/handlers/sparkrun.py`    | 221        | `backend_url` uses `container_hostname` (Docker DNS)                                                                                                                  | Step 4            | 🔲 New          |
+| `core/builders/monitoring.py`  | 22-26      | `add_target()` uses Docker DNS names for scrape targets                                                                                                               | Step 8.1          | 🔲 New          |
+| `core/builders/litellm.py`     | 28-92      | `backend_url` param assumed to be Docker DNS                                                                                                                          | Step 4            | 🔲 New          |
+| `core/discovery.py`            | 16-67      | `get_container_name_by_port()` uses local `docker ps/exec`                                                                                                            | Step 8.3          | 🔲 New          |
+| `core/discovery.py`            | 70-127     | `get_active_services()` no remote metadata; needs sparkrun CLI + `.state.json`                                                                                        | Step 8.3          | 🔲 New          |
+| `manager/launch.py`            | 24-29      | Stale container cleanup uses local `docker rm` only                                                                                                                   | Step 6 + Step 8.5 | 🔲 New          |
+| `manager/launch.py`            | 33, 62     | Global network `sparkstack-net` for all backends                                                                                                                      | Step 2            | 🔲 New          |
+| `manager/launch.py`            | 48         | `backend.get("target", "localhost")` fallback                                                                                                                         | Step 2            | 🔲 New          |
+| `manager/wait_for_backends.py` | 47         | Progress manager on `localhost:8126`                                                                                                                                  | —                 | ✅ OK (local)   |
+| `manager/wait_for_backends.py` | 74         | `docker logs` against local daemon for crash logs                                                                                                                     | Step 8.2          | 🔲 New          |
+| `manager/wait_for_backends.py` | 245, 252   | Smoke tests via `localhost:{litellm_port}`                                                                                                                            | —                 | ✅ OK (proxied) |
+| `manager/services.py`          | 297        | LiteLLM health probe on `localhost:4000`                                                                                                                              | —                 | ✅ OK (local)   |
+| `manager/services.py`          | 332        | Progress manager probe on `localhost:8126`                                                                                                                            | —                 | ✅ OK (local)   |
+| `manager/set_current.py`       | 55-61      | Container cleanup uses local `docker ps/rm` only                                                                                                                      | Step 8.5          | 🔲 New          |
+| `manager/set_current.py`       | 64-69      | Network prune/create local only                                                                                                                                       | —                 | ✅ OK (local)   |
+| `cli/_monitor.py`              | 331, 352   | Health endpoints on `localhost`                                                                                                                                       | —                 | ✅ OK (local)   |
+| `core/handlers/gateway.py`     | 13         | Gateway uses `network_mode: container:sparkstack-head-sidecar`                                                                                                        | Step 4            | 🔲 New          |
+| OpenClaw config                | —          | `LITELLM_BASE_URL` must change from `http://litellm:4000` to `http://sparkstack-head-sidecar:4000` (LiteLLM now shares sidecar namespace, not its own container name) | Step 4            | 🔲 New          |
 
 ## Appendix B: Implementation Briefing for Agents
 
@@ -699,12 +720,12 @@ These use Docker DNS names that only resolve on the head node's `sparkstack-net`
 
 ### B.2 What NOT to Modify
 
-| Do NOT touch | Why |
-|---|---|
-| Any file in `~/p/sparkrun/` | The `-o network=container:...` override path has been **validated end-to-end** through sparkrun's existing code (see Step 2 notes). No sparkrun changes are needed. |
-| `sparkstack/cli/_status.py` (TUI) | The TUI reads from the local UDS (`/tmp/sparkstack.sock`). All orchestration events are generated on the head node — the TUI is topology-agnostic. |
-| `sparkstack/core/ipc_server.py` | Same reason. The IPC protocol doesn't change. |
-| Docker network names | `sparkstack-net` and `vllm-network` are created by existing compose files and referenced throughout. Don't rename them. |
+| Do NOT touch                      | Why                                                                                                                                                                 |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Any file in `~/p/sparkrun/`       | The `-o network=container:...` override path has been **validated end-to-end** through sparkrun's existing code (see Step 2 notes). No sparkrun changes are needed. |
+| `sparkstack/cli/_status.py` (TUI) | The TUI reads from the local UDS (`/tmp/sparkstack.sock`). All orchestration events are generated on the head node — the TUI is topology-agnostic.                  |
+| `sparkstack/core/ipc_server.py`   | Same reason. The IPC protocol doesn't change.                                                                                                                       |
+| Docker network names              | `sparkstack-net` and `vllm-network` are created by existing compose files and referenced throughout. Don't rename them.                                             |
 
 ### B.3 Implementation Order (Dependencies)
 
@@ -747,13 +768,13 @@ These were verified against the source code during design:
 
 1. **sparkrun `-o network=container:...`** — Works end-to-end. `coerce_value()` preserves the `container:` prefix as a raw string. Traced through `_parse_options()` → `_apply_recipe_overrides()` → `ExecutorConfig.from_chain()` → `DockerExecutor._build_default_opts()`. See Step 2 notes.
 
-2. **Headscale v0.28 CLI** — Uses `headscale users create` and `headscale preauthkeys create` (not the gRPC API from v0.22). See Step 3.
+1. **Headscale v0.28 CLI** — Uses `headscale users create` and `headscale preauthkeys create` (not the gRPC API from v0.22). See Step 3.
 
-3. **MagicDNS is disabled** — All routing uses raw Tailnet IPs. `TS_HOSTNAME` is set for human readability in `tailscale status` output only. Do not write code that depends on DNS resolution of Tailscale hostnames.
+1. **MagicDNS is disabled** — All routing uses raw Tailnet IPs. `TS_HOSTNAME` is set for human readability in `tailscale status` output only. Do not write code that depends on DNS resolution of Tailscale hostnames.
 
-4. **Head sidecar port exposure is intentional** — LiteLLM at `localhost:4000` must work for smoke tests, `sparkstack wait`, and CLI debugging. Don't remove the `-p` flags.
+1. **Head sidecar port exposure is intentional** — LiteLLM at `localhost:4000` must work for smoke tests, `sparkstack wait`, and CLI debugging. Don't remove the `-p` flags.
 
-5. **OpenClaw reaches LiteLLM via Docker DNS** — After the sidecar change, the hostname is `sparkstack-head-sidecar` (not `litellm`), because LiteLLM shares the sidecar's network namespace and its container name on `sparkstack-net` is `sparkstack-head-sidecar`.
+1. **OpenClaw reaches LiteLLM via Docker DNS** — After the sidecar change, the hostname is `sparkstack-head-sidecar` (not `litellm`), because LiteLLM shares the sidecar's network namespace and its container name on `sparkstack-net` is `sparkstack-head-sidecar`.
 
 ### B.6 Testing Strategy
 
@@ -768,11 +789,11 @@ Every row in Appendix A with a 🔲 status is a file+line that needs modificatio
 
 ### B.8 Suggested Phasing for Implementation
 
-| Phase | Steps | Deliverable | Testable? |
-|---|---|---|---|
-| **Phase 1: Infrastructure** | Step 3 (Headscale) + Step 2 Phase 1-2 (Sidecars + IP resolution) | Headscale running, sidecars connected, Tailnet IPs resolved | Yes: `tailscale status` on all sidecars shows mesh connectivity |
-| **Phase 2: Orchestration** | Step 1 (Schema) + Step 2 Phase 3 (Launch) + Step 4 (Routing) | Remote backend launched via sparkrun, reachable at Tailnet IP, LiteLLM routing to it | Yes: `curl http://localhost:4000/v1/models` returns remote model |
-| **Phase 3: Lifecycle** | Step 5 (Resources) + Step 6 (State + Teardown) | `.state.json` written, two-tier teardown works, `set_current` handles remote cleanup | Yes: deploy → switch stack → verify old sidecars cleaned up |
-| **Phase 4: Observability** | Step 7 (Error handling) + Step 8 (Monitoring/Discovery/Health) | Remote crash logs via SSH, Prometheus scraping Tailnet IPs, discovery enrichment | Yes: simulate backend crash → verify logs retrieved |
+| Phase                       | Steps                                                            | Deliverable                                                                          | Testable?                                                        |
+| --------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| **Phase 1: Infrastructure** | Step 3 (Headscale) + Step 2 Phase 1-2 (Sidecars + IP resolution) | Headscale running, sidecars connected, Tailnet IPs resolved                          | Yes: `tailscale status` on all sidecars shows mesh connectivity  |
+| **Phase 2: Orchestration**  | Step 1 (Schema) + Step 2 Phase 3 (Launch) + Step 4 (Routing)     | Remote backend launched via sparkrun, reachable at Tailnet IP, LiteLLM routing to it | Yes: `curl http://localhost:4000/v1/models` returns remote model |
+| **Phase 3: Lifecycle**      | Step 5 (Resources) + Step 6 (State + Teardown)                   | `.state.json` written, two-tier teardown works, `set_current` handles remote cleanup | Yes: deploy → switch stack → verify old sidecars cleaned up      |
+| **Phase 4: Observability**  | Step 7 (Error handling) + Step 8 (Monitoring/Discovery/Health)   | Remote crash logs via SSH, Prometheus scraping Tailnet IPs, discovery enrichment     | Yes: simulate backend crash → verify logs retrieved              |
 
 Each phase produces a testable artifact. Don't move to the next phase until the current one is verified.

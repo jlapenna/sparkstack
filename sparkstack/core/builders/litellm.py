@@ -71,7 +71,7 @@ class LiteLLMBuilder:
         # (OpenClaw-only field).
         minfo = {
             "context_window": cwin,
-            "base_model": recipe_name or backend_model,
+            "base_model": f"openai/{recipe_name or backend_model}",
         }
         if "mode" in model_info:
             minfo["mode"] = model_info["mode"]

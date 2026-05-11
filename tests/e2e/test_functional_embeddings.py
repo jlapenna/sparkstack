@@ -1,8 +1,4 @@
-import os
-
-import httpx
 import pytest
-from dotenv import load_dotenv
 from loguru import logger
 
 from tests.e2e.context import E2EContext
@@ -11,18 +7,9 @@ from tests.e2e.context import E2EContext
 @pytest.mark.order(8)
 @pytest.mark.asyncio
 async def test_functional_embeddings(ctx: E2EContext):
-    load_dotenv(ctx.root_dir / ".env")
-    api_key = os.getenv("LITELLM_MASTER_KEY", "")
-
-    if not api_key:
-        logger.error("❌ LITELLM_MASTER_KEY not found in .env")
-        raise AssertionError()
-
-    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
-
-    async with httpx.AsyncClient() as client:
+    async with ctx.gateway_client() as client:
         # Check if an embedding model is mapped before running the test
-        models_res = await client.get(f"{ctx.gateway_url}/models", headers=headers, timeout=10)
+        models_res = await client.get("/models", timeout=10)
         if models_res.status_code == 200:
             models_data = models_res.json()
             available_models = [m.get("id") for m in models_data.get("data", [])]
@@ -33,9 +20,7 @@ async def test_functional_embeddings(ctx: E2EContext):
                 pytest.skip("No embedding model mapped.")
 
         payload = {"input": "test", "model": "embedding"}
-        res = await client.post(
-            f"{ctx.gateway_url}/embeddings", headers=headers, json=payload, timeout=30
-        )
+        res = await client.post("/embeddings", json=payload, timeout=30)
         if res.status_code == 200:
             data = res.json()
             if data.get("object") == "list" and "data" in data and len(data["data"]) > 0:

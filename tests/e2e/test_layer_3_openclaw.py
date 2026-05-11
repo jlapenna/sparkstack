@@ -10,10 +10,10 @@ from tests.e2e.session_cleanup import cleanup_session
 from tests.e2e.utils import extract_cli_json
 
 
-@pytest.mark.order(7)
+@pytest.mark.order(6)
 @pytest.mark.timeout(300)
 @pytest.mark.asyncio
-async def test_consumer_readiness(ctx: E2EContext):
+async def test_layer_3_openclaw(ctx: E2EContext):
     unique_token = str(uuid.uuid4())
     session_id = f"verifier_{int(time.time())}_{unique_token[:8]}"
     tool_cmd = [

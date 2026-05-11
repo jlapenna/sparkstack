@@ -555,14 +555,14 @@ ______________________________________________________________________
 
 - **Scenario**: The `jclaw` agent exhibited severe "forgetfulness" — unable to recall recent steps or complete multi-turn conversations. Investigation revealed two compounding issues in the registry `models.json` and the synced `openclaw.json`:
   1. `maxTokens: 262144` was set equal to `contextWindow: 262144` for the main model. OpenClaw interprets `maxTokens` as the *completion token budget* per turn, not the total context. The sync logic computed `reserveTokens = max(maxTokens) + 8192 = 270,336`, which **exceeded** the 262,144 context window. This made the auto-compactor's reserve constraint unsatisfiable, forcing it into an infinite retry/truncation loop that destroyed conversation history.
-  2. `reasoning: true` was still active in both `models.json` and the live config, despite being disabled in the `openclaw.copy.json` template in a prior incident (2026-05-03). The registry sync only reads from `models.json`, not the copy template.
+  1. `reasoning: true` was still active in both `models.json` and the live config, despite being disabled in the `openclaw.copy.json` template in a prior incident (2026-05-03). The registry sync only reads from `models.json`, not the copy template.
 - **Hypothesis**: The compaction poison pill (`reserveTokens > contextWindow`) is the primary driver of forgetfulness. The auto-compactor aggressively truncates history trying to free space that can never be freed, resulting in the model losing context of recent steps. The reasoning issue (payloads=0) compounds this by occasionally crashing sessions entirely.
 - **Action**:
   1. Fixed `maxTokens` to `16384` (completion budget) in `models.json` — this is the per-turn output limit, not the context window.
-  2. Fixed `maxTokens` for embedding model from `8192` to `4096` (same issue).
-  3. Disabled `reasoning: true` → `false` in `models.json` (the authoritative source).
-  4. Added a circuit-breaker guard in `sync_registry.py` that detects `maxTokens >= contextWindow` and auto-clamps to 50% of `contextWindow` with a warning log.
-  5. Ran `sparkstack sync-registry` to propagate fixes to the live `openclaw.json`.
+  1. Fixed `maxTokens` for embedding model from `8192` to `4096` (same issue).
+  1. Disabled `reasoning: true` → `false` in `models.json` (the authoritative source).
+  1. Added a circuit-breaker guard in `sync_registry.py` that detects `maxTokens >= contextWindow` and auto-clamps to 50% of `contextWindow` with a warning log.
+  1. Ran `sparkstack sync-registry` to propagate fixes to the live `openclaw.json`.
 - **Result**: **Successful**. `reserveTokens` dropped from 270,336 (exceeding context window) to 24,576, freeing ~237k tokens for actual conversation history. The poison-pill guard will prevent recurrence.
 
 **Learnings:**
@@ -571,3 +571,24 @@ ______________________________________________________________________
 - **The compaction poison pill is silent**: Unlike the reasoning payloads=0 error (which surfaces as a visible error), the compaction overflow manifests as gradual context loss — the agent simply "forgets" without any error message. This makes it much harder to diagnose.
 - **`sync_registry.py` reads from `models.json`, not `openclaw.copy.json`**: The copy template is a reference snapshot, not the authoritative source. Fixes must be applied to `models.json` to propagate via sync.
 - **Defense in depth**: The new circuit-breaker in `sync_registry.py` will catch and auto-correct this class of misconfiguration at sync time, preventing silent deployment of poison-pill configs.
+
+### 2026-05-10T22:30 — Definitive Fix: Three-Layer Token Budget Enforcement
+
+- **Scenario**: Despite the initial 2026-05-10T20:35 fix clamping `maxTokens` to 50% of `contextWindow`, the poison pill persisted. The schema clamp produced `maxTokens=131,072` (50% of 262k), which fed into `sync_registry.py`'s formula `reserveTokens = maxTokens + 8192 = 139,264` — still 53.2% of the context window. OpenClaw's `preemptive-compaction.ts` safety valve (`MIN_PROMPT_BUDGET_RATIO=0.5`) only guarantees a minimum of `Math.min(8000, ctx*0.5) = 8,000` tokens for prompt — far too small for the 262k context. The agent retained only 123k tokens for conversation history (46.8%), triggering premature compaction and continued forgetfulness.
+- **Hypothesis**: `maxTokens` must be a fixed *completion budget* (industry standard: 8k-32k for coding agents), not a fraction of context window. The 50% clamp was still too generous.
+- **Action**: Three-layer defense-in-depth:
+  1. **Source truth** (`models.json`): Set `maxTokens: 32768` — a fixed, task-appropriate completion budget.
+  1. **Schema validator** (`schemas.py`): Added `MAX_COMPLETION_TOKENS = 32,768` ceiling. Any `maxTokens` exceeding this is clamped to `min(32768, contextWindow // 2)` with a warning.
+  1. **Sync guard** (`sync_registry.py`): Added `MAX_RESERVE_RATIO = 0.30` — `reserveTokens` is independently clamped to never exceed 30% of the smallest non-embedding context window, regardless of `maxTokens`.
+- **Result**: **Successful**.
+  - `maxTokens`: 131,072 → 32,768
+  - `reserveTokens`: 139,264 → 40,960 (15.6% of context)
+  - Prompt budget: 122,880 → 221,184 (84.4% of context — 80% increase)
+  - Compaction fires at 84.4% utilization instead of 46.8%
+
+**Learnings:**
+
+- **`maxTokens` is a task-specific constant, not a context fraction**: Industry consensus (Anthropic, OpenAI, agent framework docs) is 8k-32k for coding agents. Setting it to `contextWindow // 2` produced 131k — no agent needs 131k tokens of output per turn.
+- **OpenClaw's safety valve is insufficient for large contexts**: `MIN_PROMPT_BUDGET_TOKENS = 8,000` floors the prompt budget at only 3% of a 262k context, making it effectively useless as a guard against oversized reserves.
+- **Defense in depth requires independent guards**: Source values, schema validation, AND sync-time ratio checks must each independently prevent the poison pill. Any single layer can be bypassed by misconfiguration.
+- **Formula**: `reserveTokens = maxTokens + 8192 (headroom)`, hard-clamped to `contextWindow * 0.30`. For 262k context: `32768 + 8192 = 40960` (15.6% — well within the 30% safety limit).
