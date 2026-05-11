@@ -1,3 +1,4 @@
+x-sparkstack-enforce: ${SPARKSTACK_DIR:?SPARKSTACK_DIR must be set}
 services:
   tunnel:
     image: cloudflare/cloudflared:2026.3.0

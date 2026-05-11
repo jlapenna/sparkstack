@@ -1,3 +1,4 @@
+x-sparkstack-enforce: ${SPARKSTACK_DIR:?SPARKSTACK_DIR must be set}
 services:
   prometheus:
     image: quay.io/prometheus/prometheus:v3.11.3
@@ -12,8 +13,8 @@ services:
     extra_hosts:
     - host.docker.internal:host-gateway
     volumes:
-    - ${SPARKSTACK_STACK_DIR}/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    - ${SPARKSTACK_STACK_DIR}/targets.json:/etc/prometheus/targets.json:ro
+    - ${SPARKSTACK_DIR:?SPARKSTACK_DIR must be set}/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    - ${SPARKSTACK_DIR:?SPARKSTACK_DIR must be set}/targets.json:/etc/prometheus/targets.json:ro
     - prometheus_data:/prometheus
     - /var/run/docker.sock:/var/run/docker.sock:ro
     command:
@@ -43,7 +44,7 @@ services:
     - --server.http.listen-addr=0.0.0.0:12345
     - /etc/alloy/config.alloy
     volumes:
-    - ${SPARKSTACK_STACK_DIR}/config.alloy:/etc/alloy/config.alloy:ro
+    - ${SPARKSTACK_DIR:?SPARKSTACK_DIR must be set}/config.alloy:/etc/alloy/config.alloy:ro
     - /proc:/host/proc:ro
     - /sys:/host/sys:ro
     - /:/rootfs:ro
@@ -68,9 +69,13 @@ services:
       context: ./nv-monitor
     container_name: nv-monitor
     restart: unless-stopped
+    privileged: true
     ports:
       - 9101:9101
     pid: "host"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
     volumes:
       - /proc:/proc:ro
       - /sys:/sys:ro
@@ -80,9 +85,9 @@ services:
           devices:
             - driver: nvidia
               count: all
-              capabilities: [gpu, utility]
+              capabilities: [gpu, utility, compute, management, video]
         limits:
-          memory: 32M
+          memory: 128M
     networks:
       - monitoring
 

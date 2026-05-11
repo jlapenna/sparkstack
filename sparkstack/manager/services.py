@@ -314,8 +314,8 @@ class MonitoringService(Service):
             target.mkdir(parents=True, exist_ok=True)
         MonitoringBuilder(stack_dir).write()
 
-        # Inject SPARKSTACK_STACK_DIR for compose
-        os.environ["SPARKSTACK_STACK_DIR"] = str(stack_dir.resolve())
+        # Inject SPARKSTACK_DIR for compose
+        os.environ["SPARKSTACK_DIR"] = str(stack_dir.resolve())
 
         self.progress.begin_phases(3 if self.settings.pull_latest else 2)
         phase_num = 1

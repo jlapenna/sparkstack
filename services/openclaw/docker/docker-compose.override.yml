@@ -8,6 +8,7 @@
 #
 # Those mappings let the node process read config at its native HOME.
 # This override adds the items below on top of that.
+x-sparkstack-enforce: ${SPARKSTACK_DIR:?SPARKSTACK_DIR must be set}
 services:
   openclaw-gateway:
     image: openclaw-gateway-custom:latest

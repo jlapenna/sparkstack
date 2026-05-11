@@ -1,6 +1,7 @@
 #
 # NEVER modify this file without reviewing all previous docker adjustments in `skills/stack-knowledge/SKILL.md`
 
+x-sparkstack-enforce: ${SPARKSTACK_DIR:?SPARKSTACK_DIR must be set}
 services:
   openclaw-gateway:
     volumes:
