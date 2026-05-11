@@ -466,7 +466,7 @@
           "id": null,
           "options": {
             "legend": {
-              "displayMode": "list",
+              "displayMode": "table",
               "placement": "right",
               "calcs": [
                 "lastNotNull"

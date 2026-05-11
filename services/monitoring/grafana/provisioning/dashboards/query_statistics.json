@@ -92,7 +92,7 @@
               }
             ]
           },
-          "unit": "req/s"
+          "unit": "tok/s"
         },
         "overrides": []
       },
@@ -157,7 +157,7 @@
               }
             ]
           },
-          "unit": "req/s"
+          "unit": "tok/s"
         },
         "overrides": []
       },

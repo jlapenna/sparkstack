@@ -1210,7 +1210,7 @@
       },
       "id": null,
       "panels": [],
-      "title": "TPS (Tokens Per Second)",
+      "title": "Time to First Token",
       "type": "row"
     },
     {
@@ -1330,7 +1330,7 @@
           "refId": "C"
         }
       ],
-      "title": "TPS (Tokens Per Second) Over Time",
+      "title": "Time to First Token Over Time",
       "type": "timeseries"
     }
   ],

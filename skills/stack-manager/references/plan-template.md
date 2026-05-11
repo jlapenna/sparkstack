@@ -25,7 +25,7 @@ ______________________________________________________________________
 *If the new deployment causes a catastrophic failure, you MUST have the exact rollback commands pre-defined here so the system can be restored instantly without further research.*
 
 - **Previous Stable Stack Name**: \[e.g., `core-upgrade-20260320`\]
-- **Rollback Command**: `uv run python manager/set_current.py sparkstack-registry/stacks/[PREVIOUS_STABLE]`
+- **Rollback Command**: `uv run sparkstack set-current --json sparkstack-registry/stacks/[PREVIOUS_STABLE]`
 
 ______________________________________________________________________
 
@@ -35,7 +35,7 @@ ______________________________________________________________________
 
 - **SparkRun Branch**: `cd ../sparkrun && git branch --show-current` → Must be `local-dev`
 - **SparkRun State**: `cd ../sparkrun && git status --porcelain` → Must be a clean working directory (no uncommitted changes)
-- **OpenClaw Branch**: `cd ../openclaw && git branch --show-current` → Must be on a detached stable tag or `main` (Not a dev branch)
+- **OpenClaw Branch**: `cd ../openclaw && git branch --show-current` → Must be `local-dev`
 - **OpenClaw State**: `cd ../openclaw && git status --porcelain` → Must be a clean working directory (immutable upstream)
 - **Registry Sync**: `uv run sparkrun update` → Ensure recipe cache is current
 - **SparkRun Version**: `uv run sparkrun --version` → Record version hash: [\_\_\_\_\_\_\_]
@@ -68,7 +68,7 @@ Create or verify the custom `sparkrun` recipe in the registry.
   - **Quantization Format**: Explicitly state the target format (e.g., `NVFP4`, `AWQ`, `FP8`) as this drastically dictates the VRAM footprint and throughput expectations.
   - **Engine & Architecture**: Consult the **stack-manager** "Troubleshooting & Learnings" section for model-specific engine overrides (e.g., V1 vs V0 requirements, attention backends, and reasoning parser plugins).
   - **Hardware Alignment**: Ensure `max_model_len` and `max_num_batched_tokens` are properly aligned per the latest registry standards.
-- **Action (Model Accessibility)**: `uv run python manager/verify_hf_model.py <repo_id>`
+- **Action (Model Accessibility)**: `uv run sparkstack verify-model --json <repo_id>`
   - **Expect**: ✅ "VERIFIED: Repository ... physically exists on Hugging Face."
 - **Action (VRAM Validation)**: `uv run sparkrun recipe vram sparkstack-registry/sparkrun/[MODEL_ID].yaml --tp 1`
   - **Expect**: Estimated VRAM within the budget calculated in Phase 1. No OOM flags.
@@ -87,22 +87,23 @@ Identify if existing scripts require patching to support the new model role.
 
 Generate the multi-container configuration using the iterative naming convention.
 
-- **Action**: Use `uv run python manager/build_stack.py` to generate the new stack configuration.
+- **Action**: Use `uv run sparkstack build --json [RECIPE]` to generate the new stack configuration.
 
 ### Step 4: Activation & Synchronization (Deployment Layer)
 
 Atomically rotate the containers and sync OpenClaw per the **stack-manager** protocol.
 
 1. **Shutdown/Cleanup**: Perform clean shutdown of previous containers.
-1. **Launch**: Activate the new stack via `uv run python manager/set_current.py sparkstack-registry/stacks/[STACK_NAME]`.
+1. **Launch**: Activate the new stack via `uv run sparkstack set-current --json sparkstack-registry/stacks/[STACK_NAME]`.
 1. **Backend Readiness Gate**: Wait for all model backends to complete loading and pass post-load smoke tests.
-   - **Action**: `uv run python manager/wait_for_backends.py --timeout 1800`
+   - **Action**: `uv run sparkstack wait --json --timeout 1800`
    - **Expect**: ✅ "Backend Readiness (All models loaded)" + passing smoke tests for each backend.
    - **Failure Mode**: If any backend reports `-1` (crash), HALT immediately. Tail `/tmp/sparkrun_serve.log` inside the crashed container and report findings to the user.
 1. **Post-Deploy Memory Compliance**:
-   - **Action**: `uv run python manager/check_memory_law.py`
+   - **Action**: `uv run sparkstack check memory --json`
    - **Expect**: ✅ "Memory Law compliant across both RAM and VRAM dimensions."
 1. **Sync**: Synchronize the OpenClaw configuration.
+   - **Action**: `uv run sparkstack sync-registry --json`
 1. **Network Resolution**: Restart edge networking if necessary to clear tunnel IP caches.
 1. **Telemetry Verification**:
    - **Metrics Pipeline**: Verify `vllm_model_load_progress` metrics are pushing through to Prometheus: `curl -s http://localhost:9102/metrics | rg vllm_model_load_progress` → Must return metric lines for all deployed models.
@@ -154,6 +155,10 @@ ______________________________________________________________________
   ```bash
   mv benchmark_* sparkstack-registry/stacks/[STACK_NAME]/
   ```
+- **Security Requirement (Pre-commit)**: The benchmark utility records the passed `api_key` in the `.json` and `.yaml` result files. You MUST scrub this key before committing, otherwise the `gitleaks` pre-commit hook will fail and block your commit.
+  ```bash
+  sed -i "s/$LITELLM_MASTER_KEY/REDACTED/g" sparkstack-registry/stacks/[STACK_NAME]/benchmark_*
+  ```
 - **Expect**: Securely capture Output Tokens per Second (T/s), Time to First Token (TTFT), and End-to-End Latency.
 - **Baseline Capture**:
   - **Throughput (Tokens/s)**: [Record T/s]
@@ -184,6 +189,6 @@ Once verified functional:
 1. **Document Learnings**: Ensure this executed plan is completely filled out and saved as `plan.md` in the stack's directory (and update the files in `skills/stack-knowledge/references/` if new technical constraints were discovered).
 1. **Cleanup**: Remove all failed iterative stack directories from the `sparkstack-registry/stacks/` folder.
 1. **Standardize Name**: Rename the working stack directory to remove the iterative suffix (e.g., `core-upgrade-20260329-01` -> `core-upgrade-20260329`).
-1. **Reset Current**: Run `uv run python manager/set_current.py sparkstack-registry/stacks/<clean_stack_name>` to finalize symlinks to the clean name.
+1. **Reset Current**: Run `uv run sparkstack set-current --json sparkstack-registry/stacks/<clean_stack_name>` to finalize symlinks to the clean name.
 1. **Post-Rename Verification**: Re-run `uv run pytest -x tests/e2e/test_memory_law.py tests/e2e/test_system_health.py` to confirm the renamed stack is still functional.
 1. **Commit**: Stage and commit the finalized stack directory and updated symlink changes to the `sparkstack-registry`.
