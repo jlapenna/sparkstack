@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from dotenv import load_dotenv
 
-from sparkstack.core.utils import ProcessLock
+from sparkstack.core.utils import LockHeldError, ProcessLock
 from tests.e2e.context import E2EContext
 from tests.e2e.session_cleanup import wipe_all_sessions
 
@@ -19,7 +19,10 @@ def pytest_configure(config):
     lockfile = Path(__file__).parent.parent / "tmp" / ".sparkstack-e2e.lock"
     lockfile.parent.mkdir(exist_ok=True)
     _test_lock = ProcessLock(str(lockfile))
-    _test_lock.__enter__()
+    try:
+        _test_lock.__enter__()
+    except LockHeldError as exc:
+        pytest.exit(f"LOCK CONTENTION: {exc}", returncode=1)
 
 
 def pytest_unconfigure(config):
