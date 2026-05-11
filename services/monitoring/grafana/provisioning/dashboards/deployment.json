@@ -37,7 +37,7 @@
       "gridPos": {
         "x": 0,
         "y": 1,
-        "w": 6,
+        "w": 8,
         "h": 6
       },
       "targets": [
@@ -82,63 +82,15 @@
     {
       "id": null,
       "type": "stat",
-      "title": "SparkRun Provisioning",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 6,
-        "y": 1,
-        "w": 6,
-        "h": 6
-      },
-      "targets": [
-        {
-          "expr": "avg(max by (host, name, model_id) (vllm_model_load_progress) unless on(host, name, model_id) (max by (host, name, model_id) (vllm_model_load_progress{host=\"head-node\"}) and on(name) vllm_model_load_progress{host!=\"head-node\"})) or max(vllm_sparkrun_deploy_progress)",
-          "legendFormat": "SparkRun",
-          "refId": "A"
-        }
-      ],
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "mappings": [],
-          "max": 100,
-          "min": 0,
-          "unit": "percent",
-          "color": {
-            "mode": "continuous-RdYlGr"
-          }
-        }
-      },
-      "transparent": true
-    },
-    {
-      "id": null,
-      "type": "stat",
       "title": "Overall Model Load",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 12,
+        "x": 8,
         "y": 1,
-        "w": 6,
+        "w": 8,
         "h": 6
       },
       "targets": [
@@ -345,9 +297,9 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 18,
+        "x": 16,
         "y": 1,
-        "w": 6,
+        "w": 8,
         "h": 6
       },
       "targets": [

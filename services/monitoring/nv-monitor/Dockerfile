@@ -1,5 +1,5 @@
 FROM ubuntu:26.04
-RUN apt-get update && apt-get install -y curl ca-certificates libncursesw6 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y curl ca-certificates libncursesw6 python3 && rm -rf /var/lib/apt/lists/*
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ] || [ "$ARCH" = "amd64" ]; then \
         BIN_ARCH="amd64"; \
@@ -8,4 +8,5 @@ RUN ARCH=$(uname -m) && \
     fi && \
     curl -sL "https://github.com/wentbackward/nv-monitor/releases/latest/download/nv-monitor-linux-${BIN_ARCH}" -o /usr/local/bin/nv-monitor && \
     chmod +x /usr/local/bin/nv-monitor
-CMD ["/usr/local/bin/nv-monitor", "-n", "-p", "9101"]
+COPY proxy.py /usr/local/bin/proxy.py
+CMD /usr/local/bin/nv-monitor -n -p 9102 & python3 /usr/local/bin/proxy.py

@@ -80,7 +80,7 @@ services:
           devices:
             - driver: nvidia
               count: all
-              capabilities: [gpu]
+              capabilities: [gpu, utility]
         limits:
           memory: 32M
     networks:
