@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "@google/gemini-cli": "0.41.2",
+    "@google/gemini-cli": "0.42.0",
     "@mariozechner/pi-coding-agent": "0.73.1",
     "mcporter": "0.10.2",
     "@steipete/summarize": "0.14.1"
