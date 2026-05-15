@@ -114,16 +114,16 @@ class OpenClawModel(BaseSchema):
     id: str
     name: str
     context_window: int
-    max_tokens: int
+    max_tokens: int | None = None
     input: list[Literal["text", "image"]] = Field(default_factory=lambda: ["text"])
     reasoning: bool = False
-    api: str = "openai-responses"
+    api: str | None = None
     cost: OpenClawModelCost = Field(default_factory=OpenClawModelCost)
     compat: OpenClawModelCompat | None = None
 
     @model_validator(mode="after")
-    def _clamp_max_tokens(self) -> "OpenClawModel":
-        """Prevent the compaction poison pill: max_tokens must be reasonable.
+    def _validate_model(self) -> "OpenClawModel":
+        """Validate model properties and prevent the compaction poison pill.
 
         Two guards:
         1. max_tokens >= context_window → hard clamp to min(MAX_COMPLETION_TOKENS,
@@ -134,6 +134,14 @@ class OpenClawModel(BaseSchema):
            reserveTokens formula (max_tokens + 8192) would consume >50% of the
            context, starving conversation history.
         """
+        is_embedding = "embedding" in self.id.lower()
+
+        if not self.api:
+            self.api = "openai-embeddings" if is_embedding else "openai-responses"
+
+        if self.max_tokens is None or is_embedding:
+            return self
+
         ceiling = min(self.MAX_COMPLETION_TOKENS, self.context_window // 2)
         if self.max_tokens >= self.context_window > 0:
             warnings.warn(
@@ -197,7 +205,10 @@ class RequestConfig(BaseSchema):
 
 
 class OpenClawCompactionConfig(BaseSchema):
-    reserve_tokens: int
+    model_config = ConfigDict(extra="allow")
+    mode: str | None = None
+    reserveTokensFloor: int | None = None
+    reserveTokens: int | None = None
 
 
 class OpenClawAgentDefaults(BaseSchema):
@@ -228,11 +239,18 @@ class OpenClawConfig(BaseSchema):
         """
         self.models.providers["spark"] = provider.model_dump(by_alias=True, exclude_none=True)
 
-        reserve = provider.compaction_reserve
+        max_gen_tokens = 0
+        for m in provider.models:
+            if m.api != "openai-embeddings" and m.max_tokens is not None:
+                max_gen_tokens = max(max_gen_tokens, m.max_tokens)
+
         if self.agents.defaults.compaction is None:
-            self.agents.defaults.compaction = OpenClawCompactionConfig(reserve_tokens=reserve)
-        else:
-            self.agents.defaults.compaction.reserve_tokens = reserve
+            self.agents.defaults.compaction = OpenClawCompactionConfig()
+            
+        self.agents.defaults.compaction.mode = "safeguard"
+        if max_gen_tokens > 0 and self.agents.defaults.compaction.reserveTokensFloor is None:
+            # 8k headroom above max_tokens
+            self.agents.defaults.compaction.reserveTokensFloor = max_gen_tokens + 8192
 
         for m in provider.models:
             m_id = f"spark/{m.id}"
@@ -250,18 +268,13 @@ class SparkProvider(BaseSchema):
     pressure from concurrent plugin initialisation.
     """
 
-    # Constants for token reserve computation
-    COMPACTION_HEADROOM: ClassVar[int] = 8192
-    MAX_RESERVE_RATIO: ClassVar[float] = 0.30
-    DEFAULT_MIN_CONTEXT_WINDOW: ClassVar[int] = 262144
-
     base_url: str = Field(
         default_factory=lambda: os.getenv("VLLM_GATEWAY_URL", "http://litellm:4000/v1"),
         alias="baseUrl",
     )
     api_key: ApiKeyConfig | str = Field(default_factory=ApiKeyConfig)
     auth: str = "api-key"
-    api: str = "openai-responses"
+    api: str | None = None
     timeout_seconds: int = 300
     request: RequestConfig = Field(default_factory=RequestConfig)
     models: list[OpenClawModel] = Field(default_factory=list)
@@ -271,26 +284,6 @@ class SparkProvider(BaseSchema):
         if isinstance(self.api_key, str) and not self.api_key:
             self.api_key = ApiKeyConfig()
         return self
-
-    @property
-    def compaction_reserve(self) -> int:
-        """Compute the safe compaction reserveTokens for this provider."""
-        global_max_completion = max([m.max_tokens for m in self.models] + [8192])
-        ctx_windows = [m.context_window for m in self.models if m.context_window > 16384]
-        min_context_window = min(ctx_windows) if ctx_windows else self.DEFAULT_MIN_CONTEXT_WINDOW
-
-        reserve = global_max_completion + self.COMPACTION_HEADROOM
-        max_safe_reserve = int(min_context_window * self.MAX_RESERVE_RATIO)
-
-        if reserve > max_safe_reserve:
-            warnings.warn(
-                f"Computed reserveTokens ({reserve}) exceeds {self.MAX_RESERVE_RATIO:.0%} of "
-                f"smallest context window ({min_context_window}). "
-                f"Clamping to {max_safe_reserve}.",
-                stacklevel=2,
-            )
-            return max_safe_reserve
-        return reserve
 
 
 class ModelsConfig(PassThroughModel):
