@@ -31,12 +31,17 @@ async def test_agent_skills(ctx: E2EContext):
     skill_names = {s["name"] for s in skills if s.get("eligible")}
 
     builtin_skill = "mcporter"
+    personal_skill = "coding-agent"
 
     if builtin_skill not in skill_names:
         logger.error(f"❌ Built-in skill '{builtin_skill}' not found or not ready.")
         raise AssertionError()
+        
+    if personal_skill not in skill_names:
+        logger.error(f"❌ Personal skill '{personal_skill}' not found or not ready.")
+        raise AssertionError()
 
-    logger.info(f"✅ Skills discovered: {builtin_skill}")
+    logger.info(f"✅ Skills discovered: {builtin_skill}, {personal_skill}")
 
     # 2. Check Sandbox access directly
     # We attempt to run a command in the default sandbox that requires skill file access.
