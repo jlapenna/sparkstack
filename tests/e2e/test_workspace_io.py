@@ -24,7 +24,7 @@ async def test_workspace_io(ctx: E2EContext):
     )
 
     cmd_write = [
-        str(ctx.oc_bin),
+        str(ctx.openclaw_bin),
         "agent",
         "--agent",
         "verifier",
@@ -45,7 +45,7 @@ async def test_workspace_io(ctx: E2EContext):
     )
 
     cmd_read = [
-        str(ctx.oc_bin),
+        str(ctx.openclaw_bin),
         "agent",
         "--agent",
         "verifier",

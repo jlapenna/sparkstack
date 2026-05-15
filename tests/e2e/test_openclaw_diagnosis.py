@@ -8,7 +8,7 @@ from tests.e2e.context import E2EContext
 @pytest.mark.order(9)
 @pytest.mark.asyncio
 async def test_openclaw_diagnosis(ctx: E2EContext):
-    result = await async_run_command([str(ctx.oc_bin), "models", "list", "--json"])
+    result = await async_run_command([str(ctx.openclaw_bin), "models", "list", "--json"])
     try:
         data = parse_cli_json(result.stdout)
         assert isinstance(data, dict)

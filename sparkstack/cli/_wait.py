@@ -38,10 +38,12 @@ def wait(
 
     setup_command_logging(output_json, ctx.obj.get("verbose", 0))
 
-    run_async(_wait_async(stack_dir, timeout, fail_fast=not no_fail_fast))
+    run_async(_wait_async(stack_dir, timeout, fail_fast=not no_fail_fast, output_json=output_json))
 
 
-async def _wait_async(stack_dir, timeout: int, *, fail_fast: bool) -> None:
-    success = await wait_for_backends_to_load(stack_dir, timeout, fail_fast=fail_fast)
+async def _wait_async(stack_dir, timeout: int, *, fail_fast: bool, output_json: bool = False) -> None:
+    success = await wait_for_backends_to_load(
+        stack_dir, timeout, fail_fast=fail_fast, output_json=output_json
+    )
     if not success:
         sys.exit(1)

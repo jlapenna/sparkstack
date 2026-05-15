@@ -21,17 +21,12 @@ Blackwell is optimized for 4-bit and 8-bit native inference. Using higher precis
 
 KV cache consumption depends on the model architecture (Attention Heads) and the requested context window.
 
-## 3. Safe Harbor Distribution (108GB Budget)
+## 3. Memory Law Compliance
 
-To prevent DGX OS hangs, the aggregate limit for all Docker containers must not exceed **108GB**.
+To prevent DGX OS hangs, the aggregate limit for all workload containers must not exceed the system's calculated `MAX_DOCKER_MEMORY_GB`.
 
-### Example Distribution:
-
-For a high-context setup:
-
-- **Main (Powerhouse):** 80GB Limit.
-- **Researcher (Coding):** 28GB Limit.
-- **Total:** 108GB.
+- **Aggregate RAM Budget**: Sum of all container `memory_limit` values must be within the budget.
+- **VRAM Allocation**: Managed via `--gpu-memory-utilization`.
 
 ## 4. vLLM Configuration Flags
 

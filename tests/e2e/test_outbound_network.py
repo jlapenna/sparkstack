@@ -21,7 +21,7 @@ async def test_outbound_network(ctx: E2EContext):
     )
 
     tool_cmd = [
-        str(ctx.oc_bin),
+        str(ctx.openclaw_bin),
         "agent",
         "--agent",
         "verifier",

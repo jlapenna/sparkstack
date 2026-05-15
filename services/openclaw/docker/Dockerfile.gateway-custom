@@ -121,11 +121,12 @@ RUN set -ex; \
 # Prepare directory for plugin runtime dependencies
 RUN mkdir -p /var/lib/openclaw/plugin-runtime-deps && chown -R node:node /var/lib/openclaw
 
+# Setup OpenTelemetry preloading
+RUN pnpm add -w @opentelemetry/auto-instrumentations-node @opentelemetry/core @opentelemetry/exporter-trace-otlp-proto @opentelemetry/sdk-node @opentelemetry/semantic-conventions @opentelemetry/resources
+
 # Return to node user for execution
 USER node
 
-# Setup OpenTelemetry preloading
-RUN npm install @opentelemetry/auto-instrumentations-node @opentelemetry/core @opentelemetry/exporter-trace-otlp-proto @opentelemetry/sdk-node @opentelemetry/semantic-conventions @opentelemetry/resources
 COPY --chown=node:node docker/otel-preload.mjs /app/otel-preload.mjs
 ENV NODE_OPTIONS="--import /app/otel-preload.mjs"
 ENV OTEL_EXPORTER_OTLP_ENDPOINT="http://alloy:4318"

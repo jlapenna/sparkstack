@@ -101,6 +101,10 @@ async def _set_current_async(stack_dir, *, no_launch: bool) -> None:
     # Recreate Prometheus
     logger.info("🔄 Refreshing monitoring stack...")
     monitor_dir = ROOT_DIR / "services" / "monitoring"
+    
+    # Inject SPARKSTACK_DIR for compose, matching MonitoringService behavior
+    os.environ["SPARKSTACK_DIR"] = str(resolved.resolve())
+    
     await async_run_compose(monitor_dir, "rm", "-fsv", "prometheus", check=False)
     await async_run_compose(monitor_dir, "up", "-d", check=False)
 

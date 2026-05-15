@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 class E2EContext:
     root_dir: Path
     stack_dir: Path
-    oc_bin: Path
+    openclaw_bin: Path
     gateway_url: str
     telemetry_url: str
     soak_minutes: int

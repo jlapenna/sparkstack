@@ -18,7 +18,7 @@ async def test_tracing(ctx: E2EContext):
     """
     logger.info("Triggering an agent inference to generate a trace...")
     inference_cmd = [
-        str(ctx.oc_bin),
+        str(ctx.openclaw_bin),
         "agent",
         "--agent",
         "verifier",

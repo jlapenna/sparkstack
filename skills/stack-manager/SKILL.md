@@ -44,11 +44,11 @@ _(Refer to `skills/stack-manager/references/plan-template.md` for the exact requ
 
 ## Core Mandates (Blackwell Safety)
 
-### 1. The Memory Law (128GB Unified / 120GB Docker Ceiling)
+### 1. The Memory Law (Aggregate VRAM & RAM Budget)
 
-The DGX Spark (GB10) has **128GB total unified memory**. After OS and driver overhead, **~121GB** is usable by applications. The Docker container memory ceiling is **120GB** (`MAX_DOCKER_MEMORY_GB`).
+The DGX Spark (GB10) has **128GB total unified memory**. Hardware resource limits are dynamically calculated based on the host configuration and system safety reserves.
 
-- **Total Docker Limit**: Aggregate memory limits in all containers MUST NOT exceed **120GB**.
+- **Total Docker Limit**: Aggregate memory limits in all containers MUST NOT exceed the `MAX_DOCKER_MEMORY_GB` calculated by the stack manager (derived from `USABLE_SPARK_MEMORY_GB` - `SYSTEM_RESERVED_MEMORY_GB`).
 - **GPU Utilization Range**: Aggregate `gpu-memory-utilization` should be tuned within the **0.80–0.95** range depending on workload:
   - **Conservative (0.80)**: Recommended when co-locating multiple models (e.g., dense + embedding). Provides maximum headroom against OOM.
   - **Standard (0.90)**: Suitable for single-model stacks with moderate context windows.
@@ -71,7 +71,7 @@ The DGX Spark (GB10) has **128GB total unified memory**. After OS and driver ove
 
 ### 4. OpenClaw Hygiene
 
-- **Sync Tooling**: ALWAYS use `~/bin/openclaw config set` for manual edits to ensure schema validation.
+- **Sync Tooling**: ALWAYS use the automated registry sync tools to ensure schema validation.
 
 ### 5. Git & Repository Hygiene
 

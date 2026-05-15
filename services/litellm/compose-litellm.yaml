@@ -1,7 +1,8 @@
 services:
   litellm:
-    container_name: litellm
-    image: ghcr.io/berriai/litellm:v1.83.14-stable.patch.3
+    build:
+      context: ../../../services/litellm/docker
+    image: sparkstack-litellm:latest
     restart: unless-stopped
     deploy:
       resources:
@@ -23,6 +24,9 @@ services:
     - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}
     - LITELLM_LOG=DEBUG
     - LITELLM_FORWARD_TRACEPARENT_TO_LLM_PROVIDER=True
+    entrypoint:
+    - opentelemetry-instrument
+    - litellm
     command:
     - --config
     - /app/config.yaml

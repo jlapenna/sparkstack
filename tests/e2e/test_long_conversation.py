@@ -31,7 +31,7 @@ async def test_long_conversation(ctx: E2EContext):
             prompt = f"Message {i} of {total_messages}. This is NOT a heartbeat check. You MUST reply with ONLY the exact string 'ACK_{i}'. Do not reply HEARTBEAT_OK."
 
             tool_cmd = [
-                str(ctx.oc_bin),
+                str(ctx.openclaw_bin),
                 "agent",
                 "--agent",
                 "verifier",

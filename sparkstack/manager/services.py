@@ -283,7 +283,7 @@ class VllmService(Service):
             compose_yaml = vllm_current / "docker-compose.yaml"
             if compose_yaml.exists():
                 await self.run_compose(
-                    vllm_current, "up", "-d", "--remove-orphans", project_name="current"
+                    vllm_current, "up", "-d", "--build", "--remove-orphans", project_name="current"
                 )
         self.progress.phase_end()
         phase_num += 1

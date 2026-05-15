@@ -1,6 +1,7 @@
 #!/usr/bin/env -S uv run --env-file .env --frozen --offline python3
 import argparse
 import asyncio
+import json
 import os
 import sys
 from collections.abc import AsyncIterator
@@ -98,11 +99,61 @@ class BackendProbe:
                 await asyncio.sleep(2)
 
 
+async def _smoke_test_direct(
+    container: str, port: int, model_id: str
+) -> bool | None:
+    """Test a backend directly via docker exec, bypassing the LiteLLM gateway.
+
+    Returns ``True`` on success, ``None`` on failure (the caller treats
+    ``None`` as a signal to abort the entire smoke-test run).
+    """
+    # json imported at module level
+
+    if "embedding" in model_id:
+        payload = json.dumps({"model": model_id, "input": "Say hi"})
+        endpoint = "embeddings"
+    else:
+        payload = json.dumps(
+            {
+                "model": model_id,
+                "messages": [{"role": "user", "content": "Say hi"}],
+                "max_tokens": 5,
+            }
+        )
+        endpoint = "chat/completions"
+
+    script = (
+        "import urllib.request, json, sys; "
+        f"req = urllib.request.Request('http://localhost:{port}/v1/{endpoint}', "
+        f"data={payload!r}.encode(), "
+        "headers={'Content-Type': 'application/json'}); "
+        "resp = urllib.request.urlopen(req, timeout=180); "
+        "print(resp.status)"
+    )
+    cmd = ["docker", "exec", container, "python3", "-c", script]
+    try:
+        result = await asyncio.wait_for(
+            async_run_command(cmd, check=False), timeout=200
+        )
+        stdout = result.stdout.strip()
+        if stdout == "200":
+            logger.info(f"✅ Smoke test passed for {container} (direct)")
+            return True
+        logger.error(
+            f"❌ Direct smoke test failed for {container}: "
+            f"stdout={result.stdout!r} stderr={result.stderr!r}"
+        )
+        return None
+    except Exception as e:
+        logger.error(f"❌ Direct smoke test error for {container}: {e}")
+        return None
+
 async def wait_for_backends_to_load(
     stack_dir: Path,
     timeout: int = 1800,
     fail_fast: bool = True,
     ipc_server: IPCServer | None = None,
+    output_json: bool = False,
 ) -> bool:
     services = await get_active_services(stack_dir)
     if not services:
@@ -123,10 +174,12 @@ async def wait_for_backends_to_load(
         logger.info("✅ Pass: No backends require loading")
         return True
 
-    logger.info(f"Waiting for {len(expected_containers)} backend containers to be fully loaded...")
+    if not output_json:
+        logger.info(f"Waiting for {len(expected_containers)} backend containers to be fully loaded...")
 
     probe = BackendProbe(expected_containers, fail_fast=fail_fast)
 
+    # Use a dummy Progress context if output_json is True to keep the code clean
     with Progress(
         SpinnerColumn("dots"),
         TextColumn("[progress.description]{task.description}"),
@@ -135,6 +188,7 @@ async def wait_for_backends_to_load(
         TimeRemainingColumn(),
         TimeElapsedColumn(),
         TextColumn("[progress.description]{task.fields[phase]}"),
+        disable=output_json,
     ) as progress:
         tasks = {}
         for c in expected_containers:
@@ -152,6 +206,15 @@ async def wait_for_backends_to_load(
         async def poll_ui():
             async for update in probe.poll():
                 display_name = str(container_to_name.get(update.container) or update.container)
+
+                if output_json:
+                    logger.info(
+                        f"Progress: {display_name} {update.pct}% ({update.phase})",
+                        service=display_name,
+                        progress=update.pct,
+                        phase=update.phase,
+                    )
+
                 if update.is_crash:
                     if ipc_server:
                         ipc_server.update_state(
@@ -160,15 +223,18 @@ async def wait_for_backends_to_load(
                             )
                         )
                     if fail_fast:
-                        print(f"\n❌ Failure: Fatal crash detected in backend {update.container}")
-                        progress.update(
-                            tasks[update.container],
-                            description=f"Loading [red]{update.container}[/] [FAILED]",
-                            phase="[red]Crash[/red]",
-                        )
-                        print(f"\n--- Last 20 lines of {update.container} logs ---")
-                        print(update.logs)
-                        print("----------------------------------\n")
+                        if not output_json:
+                            print(f"\n❌ Failure: Fatal crash detected in backend {update.container}")
+                            progress.update(
+                                tasks[update.container],
+                                description=f"Loading [red]{update.container}[/] [FAILED]",
+                                phase="[red]Crash[/red]",
+                            )
+                            print(f"\n--- Last 20 lines of {update.container} logs ---")
+                            print(update.logs)
+                            print("----------------------------------\n")
+                        else:
+                            logger.error(f"Fatal crash in {update.container}: {update.logs}")
                         return False
 
                     progress.update(
@@ -258,6 +324,23 @@ async def wait_for_backends_to_load(
                                 },
                                 timeout=180.0,
                             )
+
+                        # If LiteLLM has no DB, bearer auth fails with
+                        # "no_db_connection".  Fall back to testing the backend
+                        # directly via docker exec (ports are internal-only).
+                        if (
+                            res.status_code != 200
+                            and "no_db_connection" in res.text
+                        ):
+                            logger.warning(
+                                f"Gateway has no DB for {container}, "
+                                "falling back to direct backend smoke test..."
+                            )
+                            res = await _smoke_test_direct(container, port, model_id)
+                            if res is None:
+                                return False
+                            continue
+
                         if res.status_code == 200:
                             logger.info(f"✅ Smoke test passed for {container}")
                         else:

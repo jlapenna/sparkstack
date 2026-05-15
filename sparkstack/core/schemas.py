@@ -125,15 +125,22 @@ class OpenClawModel(BaseSchema):
     def _validate_model(self) -> "OpenClawModel":
         """Validate model properties and prevent the compaction poison pill.
 
-        Two guards:
-        1. max_tokens >= context_window → hard clamp to min(MAX_COMPLETION_TOKENS,
+        Three guards:
+        1. Tokenizer Drift Buffer: Downscale context_window by 15% to safely
+           encapsulate tokenizer expansion rates between OpenClaw and backends.
+        2. max_tokens >= context_window → hard clamp to min(MAX_COMPLETION_TOKENS,
            context_window // 2).  Without this, reserveTokens = max_tokens + headroom
            exceeds the context window, making compaction unsatisfiable.
-        2. max_tokens > MAX_COMPLETION_TOKENS → soft clamp with warning.
+        3. max_tokens > MAX_COMPLETION_TOKENS → soft clamp with warning.
            No agent needs 131k tokens of output per turn; the downstream
            reserveTokens formula (max_tokens + 8192) would consume >50% of the
            context, starving conversation history.
         """
+        # Guard 1: Tokenizer Drift Buffer (Reference: Incident 2026-05-02)
+        # Downscale by 15% to protect against 13.8% observed tokenizer drift.
+        if self.context_window > 0:
+            self.context_window = int(self.context_window * 0.85)
+
         is_embedding = "embedding" in self.id.lower()
 
         if not self.api:
@@ -142,6 +149,7 @@ class OpenClawModel(BaseSchema):
         if self.max_tokens is None or is_embedding:
             return self
 
+        # Guard 2 & 3: Compaction Poison Pill (Reference: Incident 2026-05-10)
         ceiling = min(self.MAX_COMPLETION_TOKENS, self.context_window // 2)
         if self.max_tokens >= self.context_window > 0:
             warnings.warn(
@@ -240,17 +248,37 @@ class OpenClawConfig(BaseSchema):
         self.models.providers["spark"] = provider.model_dump(by_alias=True, exclude_none=True)
 
         max_gen_tokens = 0
+        min_context_window = float("inf")
+
         for m in provider.models:
-            if m.api != "openai-embeddings" and m.max_tokens is not None:
-                max_gen_tokens = max(max_gen_tokens, m.max_tokens)
+            if m.api != "openai-embeddings":
+                if m.max_tokens is not None:
+                    max_gen_tokens = max(max_gen_tokens, m.max_tokens)
+                if m.context_window > 0:
+                    min_context_window = min(min_context_window, m.context_window)
 
         if self.agents.defaults.compaction is None:
             self.agents.defaults.compaction = OpenClawCompactionConfig()
 
         self.agents.defaults.compaction.mode = "safeguard"
+
         if max_gen_tokens > 0 and self.agents.defaults.compaction.reserveTokensFloor is None:
-            # 8k headroom above max_tokens
-            self.agents.defaults.compaction.reserveTokensFloor = max_gen_tokens + 8192
+            # Layer 3 Enforcement: Compute reserve and clamp to MAX_RESERVE_RATIO
+            # Formula: reserveTokens = maxTokens + HEADROOM (8192)
+            # Reference: plans/token_budget_algorithm.md
+            HEADROOM = 8192
+            MAX_RESERVE_RATIO = 0.30
+
+            reserve = max_gen_tokens + HEADROOM
+
+            if min_context_window != float("inf"):
+                max_safe_reserve = int(min_context_window * MAX_RESERVE_RATIO)
+                if reserve > max_safe_reserve:
+                    reserve = max_safe_reserve
+                    # We don't warn here because Layer 2 (Schema) already handles
+                    # individual model warnings. This is the global sync safety net.
+
+            self.agents.defaults.compaction.reserveTokensFloor = reserve
 
         for m in provider.models:
             m_id = f"spark/{m.id}"

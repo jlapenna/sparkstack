@@ -259,6 +259,13 @@ class OpenClawUpdater(BaseUpdater):
         # Load .env from openclaw config dir so docker compose interpolates correctly
         env.update({k: str(v) for k, v in OPENCLAW_ENV.items() if v is not None})
 
+        # The docker-compose.override.yml requires SPARKSTACK_DIR for the
+        # x-sparkstack-enforce guard.  Resolve the ``current`` symlink the
+        # same way MonitoringService and _set_current do.
+        stack_dir = self.settings.project_root / "current"
+        if stack_dir.exists():
+            env["SPARKSTACK_DIR"] = str(stack_dir.resolve())
+
         return env
 
     async def run_compose_up(self) -> None:

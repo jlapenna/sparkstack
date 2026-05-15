@@ -100,9 +100,9 @@ class LiteLLMBuilder:
         )
 
         # max_tokens: per-turn completion budget.  Pass through from registry;
-        # fall back to context_window if absent (OpenClawModel's validator will
-        # clamp unsafe values).
-        max_tokens = model_info.get("max_tokens", cwin)
+        # fall back to sane industry standard if absent (OpenClawModel's
+        # validator will further clamp unsafe values).
+        max_tokens = model_info.get("max_tokens", OpenClawModel.MAX_COMPLETION_TOKENS)
 
         model_entry = OpenClawModel(
             id=role_id,

@@ -64,14 +64,14 @@ def ctx(request):
     else:
         stack_dir = root_dir / "sparkstack-registry" / "stacks" / stack
 
-    oc_bin = Path(shutil.which("openclaw") or Path.home() / "bin" / "openclaw")
+    openclaw_bin = Path(shutil.which("openclaw") or Path.home() / "bin" / "openclaw")
     gateway_url = "http://localhost:4000/v1"
     telemetry_url = "http://localhost:9090/api/v1/targets"
 
     return E2EContext(
         root_dir=root_dir,
         stack_dir=stack_dir,
-        oc_bin=oc_bin,
+        openclaw_bin=openclaw_bin,
         gateway_url=gateway_url,
         telemetry_url=telemetry_url,
         soak_minutes=soak,

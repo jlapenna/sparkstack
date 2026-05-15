@@ -25,7 +25,7 @@ ______________________________________________________________________
 *If the new deployment causes a catastrophic failure, you MUST have the exact rollback commands pre-defined here so the system can be restored instantly without further research.*
 
 - **Previous Stable Stack Name**: \[e.g., `core-upgrade-20260320`\]
-- **Rollback Command**: `uv run sparkstack set-current --json sparkstack-registry/stacks/[PREVIOUS_STABLE]`
+- **Rollback Command**: `uv run sparkstack set-current [PREVIOUS_STABLE]`
 
 ______________________________________________________________________
 
@@ -33,10 +33,10 @@ ______________________________________________________________________
 
 *Verify that sparkrun, openclaw, the registry, and all source dependencies are synchronized before building. A stale CLI or recipe cache will cause silent deployment failures.*
 
-- **SparkRun Branch**: `cd ../sparkrun && git branch --show-current` → Must be `local-dev`
-- **SparkRun State**: `cd ../sparkrun && git status --porcelain` → Must be a clean working directory (no uncommitted changes)
-- **OpenClaw Branch**: `cd ../openclaw && git branch --show-current` → Must be `local-dev`
-- **OpenClaw State**: `cd ../openclaw && git status --porcelain` → Must be a clean working directory (immutable upstream)
+- **SparkRun Branch**: `(cd ../sparkrun && git branch --show-current)` → Must be `local-dev`
+- **SparkRun State**: `(cd ../sparkrun && git status --porcelain)` → Must be a clean working directory (no uncommitted changes)
+- **OpenClaw Branch**: `(cd ../openclaw && git branch --show-current)` → Must be `local-dev`
+- **OpenClaw State**: `(cd ../openclaw && git status --porcelain)` → Must be a clean working directory (immutable upstream)
 - **Registry Sync**: `uv run sparkrun update` → Ensure recipe cache is current
 - **SparkRun Version**: `uv run sparkrun --version` → Record version hash: [\_\_\_\_\_\_\_]
 
@@ -44,14 +44,14 @@ ______________________________________________________________________
 
 ## 1. Hardware & Resource Budget (Verification of Constraints)
 
-*Consult **stack-manager** for the strict aggregate memory laws (e.g., 108GB RAM budget) to prevent system hangs.*
+*Consult **sparkstack check memory** for the strict aggregate memory laws (derived from `MAX_DOCKER_MEMORY_GB`) to prevent system hangs.*
 *Perform empirical VRAM profiling for all model candidates to ensure constraints hold.*
 
 - **Current Main Model (`[CURRENT_MAIN]`)**: [X]% VRAM | [Y]GB RAM
 - **New/Target Model (`[NEW_MODEL]`)**: [X]% VRAM | [Y]GB RAM
 - **Other Models (e.g., embedding)**: [X]% VRAM | [Y]GB RAM
 - **Overhead (LiteLLM/Gateway)**: \<1% VRAM | 4GB RAM
-- **Aggregate Totals**: **[TOTAL]% VRAM** | **[TOTAL]GB RAM** (Must be within limits defined in **stack-manager**).
+- **Aggregate Totals**: **[TOTAL]% VRAM** | **[TOTAL]GB RAM** (Must be within limits defined in the Memory Law).
 - **Utilization Verification**: **[Pass/Fail]** -> Aggregate VRAM *MUST* be >= 85% (Conservative ceiling is 95%). If VRAM is < 85%, you MUST increase `gpu_memory_utilization` to maximize `max_num_seqs` or `max_model_len` before deploying. Do not leave hardware stranded.
 
 ______________________________________________________________________
@@ -68,9 +68,9 @@ Create or verify the custom `sparkrun` recipe in the registry.
   - **Quantization Format**: Explicitly state the target format (e.g., `NVFP4`, `AWQ`, `FP8`) as this drastically dictates the VRAM footprint and throughput expectations.
   - **Engine & Architecture**: Consult the **stack-manager** "Troubleshooting & Learnings" section for model-specific engine overrides (e.g., V1 vs V0 requirements, attention backends, and reasoning parser plugins).
   - **Hardware Alignment**: Ensure `max_model_len` and `max_num_batched_tokens` are properly aligned per the latest registry standards.
-- **Action (Model Accessibility)**: `uv run sparkstack verify-model --json <repo_id>`
+- **Action (Model Accessibility)**: `uv run sparkstack verify-model <repo_id>`
   - **Expect**: ✅ "VERIFIED: Repository ... physically exists on Hugging Face."
-- **Action (VRAM Validation)**: `uv run sparkrun recipe vram sparkstack-registry/sparkrun/[MODEL_ID].yaml --tp 1`
+- **Action (VRAM Validation)**: `uv run sparkrun recipe vram [MODEL_RECIPE] --tp 1`
   - **Expect**: Estimated VRAM within the budget calculated in Phase 1. No OOM flags.
 
 ### Step 2: Infrastructure Patching (Tooling Layer)
@@ -87,35 +87,27 @@ Identify if existing scripts require patching to support the new model role.
 
 Generate the multi-container configuration using the iterative naming convention.
 
-- **Action**: Use `uv run sparkstack build --json [RECIPE]` to generate the new stack configuration.
+- **Action**: Use `uv run sparkstack build [STACK_NAME] [ROLE]=[RECIPE] ...` to generate the new stack configuration (e.g., `uv run sparkstack build core-upgrade-20260329-01 main=qwen3.6-35b-a3b embedding=jina-embeddings-v3`).
 
 ### Step 4: Activation & Synchronization (Deployment Layer)
 
-Atomically rotate the containers and sync OpenClaw per the **stack-manager** protocol.
+Atomically rotate the containers and sync configuration per the **stack-manager** protocol.
 
-1. **Shutdown/Cleanup**: Perform clean shutdown of previous containers.
-1. **Launch**: Activate the new stack via `uv run sparkstack set-current --json sparkstack-registry/stacks/[STACK_NAME]`.
-1. **Backend Readiness Gate**: Wait for all model backends to complete loading and pass post-load smoke tests.
+1. **Launch & Switch**: Activate the new stack and switch the `current` symlink via `uv run sparkstack set-current [STACK_NAME]`. (This command handles stopping the previous stack and cleaning up orphaned containers).
+2. **Backend Readiness Gate**: Wait for all model backends to complete loading and pass post-load smoke tests.
    - **Action**: `uv run sparkstack wait --json --timeout 1800`
    - **Expect**: ✅ "Backend Readiness (All models loaded)" + passing smoke tests for each backend.
    - **Failure Mode**: If any backend reports `-1` (crash), HALT immediately. Tail `/tmp/sparkrun_serve.log` inside the crashed container and report findings to the user.
-1. **Post-Deploy Memory Compliance**:
+3. **Post-Deploy Memory Compliance**:
    - **Action**: `uv run sparkstack check memory --json`
    - **Expect**: ✅ "Memory Law compliant across both RAM and VRAM dimensions."
-1. **Sync**: Synchronize the OpenClaw configuration.
+4. **Sync**: Synchronize the Model Registry into the OpenClaw configuration.
    - **Action**: `uv run sparkstack sync-registry --json`
-1. **Network Resolution**: Restart edge networking if necessary to clear tunnel IP caches.
-1. **Telemetry Verification**:
+5. **Network Resolution**: Restart edge networking if necessary to clear tunnel IP caches.
+6. **Telemetry Verification**:
    - **Metrics Pipeline**: Verify `vllm_model_load_progress` metrics are pushing through to Prometheus: `curl -s http://localhost:9102/metrics | rg vllm_model_load_progress` → Must return metric lines for all deployed models.
    - **Prometheus Targets**: Confirm all scrape targets are UP via the Prometheus `/targets` UI.
    - **Tracing**: Send a test request through the gateway and verify a linked trace appears in Grafana Tempo.
-
-### Step 5: OpenClaw / Application Configuration
-
-Configure consumers to utilize the new model via the OpenClaw CLI.
-
-- **Action**: Use `~/bin/openclaw config set` to update model routing in the OpenClaw configuration.
-- **Verify**: Confirm the new model is reachable through the gateway endpoint.
 
 ______________________________________________________________________
 
@@ -132,7 +124,6 @@ ______________________________________________________________________
   - Functional Role Verification — Reasoning (`test_tool_calling.py`, `test_long_conversation.py`)
   - Functional Role Verification — Embeddings (`test_functional_embeddings.py`)
   - OpenClaw System Diagnosis (`test_openclaw_diagnosis.py`)
-  - Consumer Readiness (`test_consumer_readiness.py`)
   - Telemetry Verification (`test_telemetry.py`, `test_tracing.py`)
 
 ______________________________________________________________________
@@ -189,6 +180,6 @@ Once verified functional:
 1. **Document Learnings**: Ensure this executed plan is completely filled out and saved as `plan.md` in the stack's directory (and update the files in `skills/stack-knowledge/references/` if new technical constraints were discovered).
 1. **Cleanup**: Remove all failed iterative stack directories from the `sparkstack-registry/stacks/` folder.
 1. **Standardize Name**: Rename the working stack directory to remove the iterative suffix (e.g., `core-upgrade-20260329-01` -> `core-upgrade-20260329`).
-1. **Reset Current**: Run `uv run sparkstack set-current --json sparkstack-registry/stacks/<clean_stack_name>` to finalize symlinks to the clean name.
+1. **Reset Current**: Run `uv run sparkstack set-current <clean_stack_name>` to finalize symlinks to the clean name.
 1. **Post-Rename Verification**: Re-run `uv run pytest -x tests/e2e/test_memory_law.py tests/e2e/test_system_health.py` to confirm the renamed stack is still functional.
 1. **Commit**: Stage and commit the finalized stack directory and updated symlink changes to the `sparkstack-registry`.

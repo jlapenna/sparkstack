@@ -17,7 +17,7 @@ async def test_layer_3_openclaw(ctx: E2EContext):
     unique_token = str(uuid.uuid4())
     session_id = f"verifier_{int(time.time())}_{unique_token[:8]}"
     tool_cmd = [
-        str(ctx.oc_bin),
+        str(ctx.openclaw_bin),
         "agent",
         "--agent",
         "verifier",

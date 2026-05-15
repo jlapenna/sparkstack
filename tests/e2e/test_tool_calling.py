@@ -24,7 +24,7 @@ async def test_tool_calling(ctx: E2EContext):
     )
 
     tool_cmd = [
-        str(ctx.oc_bin),
+        str(ctx.openclaw_bin),
         "agent",
         "--agent",
         "verifier",

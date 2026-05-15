@@ -110,6 +110,7 @@ async def launch_stack(stack_dir: Path, *, rebuild_images: bool = False) -> None
         str(stack_dir / compose_file),
         "up",
         "-d",
+        "--build",
         project_root=repo_root,
         project_name="current",
     )

@@ -20,7 +20,7 @@ async def test_agent_skills(ctx: E2EContext):
 
     # 1. Check skill list for a known personal skill (e.g., zustand-store-ts)
     # and a known built-in skill (e.g., mcporter)
-    result = await async_run_command([str(ctx.oc_bin), "skills", "list", "--json"])
+    result = await async_run_command([str(ctx.openclaw_bin), "skills", "list", "--json"])
     try:
         data = parse_cli_json(result.stdout)
         assert isinstance(data, dict)
