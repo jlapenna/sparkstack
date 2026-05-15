@@ -117,7 +117,7 @@ When returning to an active PR to address upstream feedback, fix CI, or perform 
 1. **Verify Scope (`pr-gutcheck`):** Before committing and pushing, load and execute the `pr-gutcheck` skill against your uncommitted changes to ensure you haven't introduced out-of-scope logic.
 1. **Commit & Push:** Commit your approved changes and push the updates up to the active fork PR branch (`git push fork <branch>`).
 1. **Resolve Conversations:** Formally address reviewer threads and run the thread resolution script.
-1. **Sync Back:** (Optional) If the fixes are needed locally, merge or cherry-pick the updated feature branch back into your primary `local-dev` branch.
+1. **Sync Back:** Merge or cherry-pick the updated feature branch back into your primary `local-dev` branch, as changes made to our source dependencies are always required locally.
 
 ### 3. Synchronizing the `local-dev` Branch
 

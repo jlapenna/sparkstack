@@ -68,7 +68,11 @@ def main():
     pr_details = []
 
     for sub in source_dependencys:
-        sub_dir = os.path.join(root_dir, sub)
+        parent_dir = os.path.dirname(os.path.dirname(root_dir))
+        if sub == "sparkstack-registry":
+            sub_dir = os.path.join(parent_dir, sub)
+        else:
+            sub_dir = os.path.join(os.path.dirname(parent_dir), sub)
         repo_name = repo_map.get(sub, "")
         prs = get_pr_status(sub_dir, repo_name)
         for pr in prs:
@@ -111,11 +115,11 @@ def main():
     print("| :--- | :--- | :--- |")
 
     for sub in source_dependencys:
+        parent_dir = os.path.dirname(os.path.dirname(root_dir))
         if sub == "sparkstack-registry":
-            sub_dir = os.path.join(root_dir, sub)
-        else:
-            parent_dir = os.path.dirname(root_dir)
             sub_dir = os.path.join(parent_dir, sub)
+        else:
+            sub_dir = os.path.join(os.path.dirname(parent_dir), sub)
 
         branch = run_cmd("git rev-parse --abbrev-ref HEAD", cwd=sub_dir)
 
