@@ -246,7 +246,7 @@ class OpenClawConfig(BaseSchema):
 
         if self.agents.defaults.compaction is None:
             self.agents.defaults.compaction = OpenClawCompactionConfig()
-            
+
         self.agents.defaults.compaction.mode = "safeguard"
         if max_gen_tokens > 0 and self.agents.defaults.compaction.reserveTokensFloor is None:
             # 8k headroom above max_tokens
