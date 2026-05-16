@@ -1,6 +1,7 @@
 # Gemma-4 (Google / NVIDIA)
 
 ## Primary Sources
+
 - **Official Recipes**: [vLLM Gemma-4 Recipe](https://docs.vllm.ai/projects/recipes/en/latest/Google/Gemma4.html#pip-amd-rocm-mi300x-mi325x-mi350x-mi355x)
 - **Draft Model Configuration**: [NVIDIA Dev Forum - Gemma4 Assistant Models](https://forums.developer.nvidia.com/t/how-to-run-the-gemma4-assistant-models-using-eugrs-custom-vllm-fork/370194)
 
@@ -9,7 +10,7 @@
 Native Blackwell (SM 12.1) optimization is required for stable 131k context.
 
 - **Mandatory ID**: `nvidia/Gemma-4-31B-it-NVFP4` (Base BF16 is too large for the 108GB aggregate budget).
-- **Backend Environment Variables**: 
+- **Backend Environment Variables**:
   We use `FLASHINFER` as our backend instead of TRITON. Key required environment variables for optimal performance on Blackwell hardware are:
   - `VLLM_ATTENTION_BACKEND: FLASHINFER`
   - `VLLM_FLASHINFER_MOE_BACKEND: latency`

@@ -598,8 +598,8 @@ ______________________________________________________________________
 - **Scenario**: Grafana dashboards showing no data or mislabeled units after AI-assisted dashboard refactoring in commits `2e4cd96` and `b8eb7ba`. GPU panels on the overview dashboard were blank, request-rate panels displayed "tok/s" instead of "req/s", and the GPU memory panel on the detailed dashboard was broken.
 - **Hypothesis**: The AI agent hallucinated metric names and applied incorrect unit labels during dashboard cleanup. Specifically:
   1. Commit `b8eb7ba` changed `nv_gpu_*` metrics to `DCGM_FI_DEV_*` on overview.json, but the actual GPU exporter (`nv-monitor`) exposes `nv_gpu_*` — DCGM metrics don't exist.
-  2. Commit `b8eb7ba` changed `nv_memory_used_bytes` → `nv_gpu_memory_used_bytes` on gpu.json — the correct metric is `nv_memory_used_bytes`.
-  3. Commit `2e4cd96` changed `"unit": "reqps"` → `"unit": "tok/s"` on gateway.json (Session State Transitions) and query_statistics.json (Successful Requests, Request Avg Rate) — these query `openclaw_session_state_total` and `vllm:request_success_total` which are request counters, not token counters.
+  1. Commit `b8eb7ba` changed `nv_memory_used_bytes` → `nv_gpu_memory_used_bytes` on gpu.json — the correct metric is `nv_memory_used_bytes`.
+  1. Commit `2e4cd96` changed `"unit": "reqps"` → `"unit": "tok/s"` on gateway.json (Session State Transitions) and query_statistics.json (Successful Requests, Request Avg Rate) — these query `openclaw_session_state_total` and `vllm:request_success_total` which are request counters, not token counters.
 - **Action**: Reverted all five metric/unit changes back to their original correct values across four dashboard files (overview.json, gpu.json, gateway.json, query_statistics.json).
 - **Result**: **Successful**. All panels now query the correct metric names matching the `nv-monitor` exporter and display the correct units.
 
