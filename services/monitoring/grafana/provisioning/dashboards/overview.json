@@ -89,7 +89,7 @@
       "gridPos": {
         "x": 0,
         "y": 6,
-        "w": 8,
+        "w": 6,
         "h": 4
       },
       "id": null,
@@ -154,9 +154,9 @@
         "overrides": []
       },
       "gridPos": {
-        "x": 8,
+        "x": 6,
         "y": 6,
-        "w": 8,
+        "w": 6,
         "h": 4
       },
       "id": null,
@@ -221,9 +221,9 @@
         "overrides": []
       },
       "gridPos": {
-        "x": 16,
+        "x": 12,
         "y": 6,
-        "w": 8,
+        "w": 6,
         "h": 4
       },
       "id": null,
@@ -253,6 +253,73 @@
       "title": "Time To First Token",
       "type": "stat",
       "description": "P95 and P50 Time to First Token (TTFT)",
+      "transparent": true
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 10.0
+              },
+              {
+                "color": "green",
+                "value": 50.0
+              }
+            ]
+          },
+          "unit": "tok/s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 6,
+        "w": 6,
+        "h": 4
+      },
+      "id": null,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(vllm:generation_tokens_total[$__rate_interval])) or vector(0)",
+          "legendFormat": "Gen",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(vllm:prompt_tokens_total[$__rate_interval])) or vector(0)",
+          "legendFormat": "Prompt",
+          "refId": "B"
+        }
+      ],
+      "title": "Tokens Per Second",
+      "type": "stat",
+      "description": "Generation and Prompt Tokens per Second (vLLM)",
       "transparent": true
     },
     {
@@ -571,7 +638,7 @@
       },
       "targets": [
         {
-          "expr": "nv_gpu_utilization_percent{instance=~\"$instance\"}",
+          "expr": "DCGM_FI_DEV_GPU_UTIL{instance=~\"$instance\"}",
           "legendFormat": "{{instance}} GPU {{gpu}}",
           "refId": "A"
         }
@@ -625,7 +692,7 @@
       },
       "targets": [
         {
-          "expr": "nv_gpu_power_watts{instance=~\"$instance\"}",
+          "expr": "DCGM_FI_DEV_POWER_USAGE{instance=~\"$instance\"}",
           "legendFormat": "{{instance}} GPU {{gpu}}",
           "refId": "A"
         }
@@ -680,7 +747,7 @@
       },
       "targets": [
         {
-          "expr": "nv_gpu_temperature_celsius{instance=~\"$instance\"}",
+          "expr": "DCGM_FI_DEV_GPU_TEMP{instance=~\"$instance\"}",
           "legendFormat": "{{instance}} GPU {{gpu}}",
           "refId": "A"
         }
@@ -826,7 +893,7 @@
       "id": null,
       "targets": [
         {
-          "expr": "avg by (instance) (nv_gpu_utilization_percent{instance=~\"$instance\"})",
+          "expr": "avg by (instance) (DCGM_FI_DEV_GPU_UTIL{instance=~\"$instance\"})",
           "legendFormat": "{{instance}}",
           "refId": "A"
         }

@@ -44,7 +44,7 @@ async def get_latest_gcr_tag(client: httpx.AsyncClient, repo: str) -> str | None
 async def get_latest_dockerhub_tag(
     client: httpx.AsyncClient, namespace: str, repo: str, suffix: str = ""
 ) -> str | None:
-    url = f"https://hub.docker.com/v2/repositories/{namespace}/{repo}/tags/?page_size=50"
+    url = f"https://hub.docker.com/v2/repositories/{namespace}/{repo}/tags/?page_size=100"
     try:
         response = await client.get(url, headers={"User-Agent": "Mozilla/5.0"})
         response.raise_for_status()
@@ -113,9 +113,9 @@ async def main():
 
         if match:
             current_image = match.group(0).split(":", 1)[1].strip()
-            if current_image != new_image.split(":", 1)[1]:
-                logger.info(f"  🚀 Updating: {current_image} -> {new_image.split(':', 1)[1]}")
-                content = re.sub(pattern, rf"\g<1>{new_image}", content)
+            if current_image != new_image:
+                logger.info(f"  🚀 Updating: {current_image} -> {new_image}")
+                content = re.sub(pattern, rf"image: {new_image}", content)
                 changes += 1
             else:
                 logger.info(f"  ✅ Already up to date: {current_image}")
