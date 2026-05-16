@@ -122,7 +122,7 @@ RUN set -ex; \
 RUN mkdir -p /var/lib/openclaw/plugin-runtime-deps && chown -R node:node /var/lib/openclaw
 
 # Setup OpenTelemetry preloading
-RUN pnpm add -w @opentelemetry/auto-instrumentations-node @opentelemetry/core @opentelemetry/exporter-trace-otlp-proto @opentelemetry/sdk-node @opentelemetry/semantic-conventions @opentelemetry/resources
+RUN npm install --no-save @opentelemetry/auto-instrumentations-node @opentelemetry/core @opentelemetry/exporter-trace-otlp-proto @opentelemetry/sdk-node @opentelemetry/semantic-conventions @opentelemetry/resources
 
 # Return to node user for execution
 USER node

@@ -121,6 +121,7 @@ class MonitorApp(App):
 
                 all_containers = set()
 
+                current_keys = set()
                 for svc in services:
                     container = svc.get("container") or svc.get("name", "")
                     svc_type = svc.get("type", "unknown")
@@ -175,9 +176,11 @@ class MonitorApp(App):
                             state = "[dim]Not Found[/]"
 
                     self._update_row(table, name, svc_type, state, status)
-                    self._service_containers[name] = container
+                    current_keys.add(name)
+                    actual_container = str(d_data.get("Names") if d_data else container)
+                    self._service_containers[name] = actual_container
                     if d_data:
-                        all_containers.add(d_data.get("Names"))
+                        all_containers.add(actual_container)
 
                 # Also include litellm, monitoring, openclaw stuff that we can identify globally
                 for cname, cdata in docker_status.items():
@@ -206,8 +209,19 @@ class MonitorApp(App):
                             status = f"API OK | {status}"
 
                         self._update_row(table, name, svc_type, state, status)
+                        current_keys.add(name)
                         self._service_containers[name] = name
                         all_containers.add(cname)
+                
+                # Remove stale rows
+                keys_to_remove = []
+                for row_key in table.rows:
+                    if row_key.value not in current_keys:
+                        keys_to_remove.append(row_key)
+                for row_key in keys_to_remove:
+                    table.remove_row(row_key)
+                    if row_key.value in self._service_containers:
+                        del self._service_containers[row_key.value]
 
             except Exception:
                 pass
@@ -299,12 +313,13 @@ class MonitorApp(App):
     def _update_row(
         self, table: DataTable, name: str, svc_type: str, state: str, status: str
     ) -> None:
-        if name in table.rows:
-            table.update_cell(name, "Type", svc_type)
-            table.update_cell(name, "State", state)
-            table.update_cell(name, "Status", status)
-        else:
-            table.add_row(name, svc_type, state, status, key=name)
+        for k in table.rows:
+            if k.value == name:
+                table.update_cell(k, "Type", svc_type)
+                table.update_cell(k, "State", state)
+                table.update_cell(k, "Status", status)
+                return
+        table.add_row(name, svc_type, state, status, key=name)
 
     async def _get_docker_status(self) -> dict[str, dict]:
         try:

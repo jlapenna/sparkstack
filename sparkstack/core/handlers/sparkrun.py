@@ -106,8 +106,12 @@ class SparkrunServiceHandler:
         max_len_val = vllm_cfg.get(
             "max_model_len", self.overrides.get("max_model_len", DEFAULT_KV_CACHE_CEILING)
         )
-        max_len = int(max_len_val) if max_len_val is not None else DEFAULT_KV_CACHE_CEILING
-        vllm_cfg["max_model_len"] = str(max_len)
+        if max_len_val == "auto":
+            vllm_cfg["max_model_len"] = "auto"
+            max_len = DEFAULT_KV_CACHE_CEILING
+        else:
+            max_len = int(max_len_val) if max_len_val is not None else DEFAULT_KV_CACHE_CEILING
+            vllm_cfg["max_model_len"] = str(max_len)
 
         if (
             "gpu_memory_utilization" not in vllm_cfg

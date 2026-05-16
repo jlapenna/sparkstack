@@ -6,7 +6,7 @@ RUN ARCH=$(uname -m) && \
     else \
         BIN_ARCH="arm64"; \
     fi && \
-    curl -sL "https://github.com/wentbackward/nv-monitor/releases/latest/download/nv-monitor-linux-${BIN_ARCH}" -o /usr/local/bin/nv-monitor && \
+    curl -sL "https://github.com/wentbackward/nv-monitor/releases/download/v1.12.0/nv-monitor-linux-${BIN_ARCH}" -o /usr/local/bin/nv-monitor && \
     chmod +x /usr/local/bin/nv-monitor
 COPY proxy.py /usr/local/bin/proxy.py
 CMD /usr/local/bin/nv-monitor -n -p 9102 & python3 /usr/local/bin/proxy.py

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import os
 
 import click
 from loguru import logger

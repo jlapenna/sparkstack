@@ -99,7 +99,7 @@ async def launch_stack(stack_dir: Path, *, rebuild_images: bool = False) -> None
         for lbl in backend.get("labels", []):
             cmd.extend(["--label", lbl])
 
-        await async_run_command(cmd, cwd=repo_root)
+        await async_run_command(cmd, cwd=repo_root, capture_output=False)
 
     # Launch compose services
     logger.info("📦 Starting gateway and monitoring via docker compose...")
