@@ -212,7 +212,7 @@ class MonitorApp(App):
                         current_keys.add(name)
                         self._service_containers[name] = name
                         all_containers.add(cname)
-                
+
                 # Remove stale rows
                 keys_to_remove = []
                 for row_key in table.rows:

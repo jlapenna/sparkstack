@@ -36,7 +36,7 @@ async def test_agent_skills(ctx: E2EContext):
     if builtin_skill not in skill_names:
         logger.error(f"❌ Built-in skill '{builtin_skill}' not found or not ready.")
         raise AssertionError()
-        
+
     if personal_skill not in skill_names:
         logger.error(f"❌ Personal skill '{personal_skill}' not found or not ready.")
         raise AssertionError()

@@ -99,9 +99,7 @@ class BackendProbe:
                 await asyncio.sleep(2)
 
 
-async def _smoke_test_direct(
-    container: str, port: int, model_id: str
-) -> bool | None:
+async def _smoke_test_direct(container: str, port: int, model_id: str) -> bool | None:
     """Test a backend directly via docker exec, bypassing the LiteLLM gateway.
 
     Returns ``True`` on success, ``None`` on failure (the caller treats
@@ -132,9 +130,7 @@ async def _smoke_test_direct(
     )
     cmd = ["docker", "exec", container, "python3", "-c", script]
     try:
-        result = await asyncio.wait_for(
-            async_run_command(cmd, check=False), timeout=200
-        )
+        result = await asyncio.wait_for(async_run_command(cmd, check=False), timeout=200)
         stdout = result.stdout.strip()
         if stdout == "200":
             logger.info(f"✅ Smoke test passed for {container} (direct)")
@@ -147,6 +143,7 @@ async def _smoke_test_direct(
     except Exception as e:
         logger.error(f"❌ Direct smoke test error for {container}: {e}")
         return None
+
 
 async def wait_for_backends_to_load(
     stack_dir: Path,
@@ -175,7 +172,9 @@ async def wait_for_backends_to_load(
         return True
 
     if not output_json:
-        logger.info(f"Waiting for {len(expected_containers)} backend containers to be fully loaded...")
+        logger.info(
+            f"Waiting for {len(expected_containers)} backend containers to be fully loaded..."
+        )
 
     probe = BackendProbe(expected_containers, fail_fast=fail_fast)
 
@@ -224,7 +223,9 @@ async def wait_for_backends_to_load(
                         )
                     if fail_fast:
                         if not output_json:
-                            print(f"\n❌ Failure: Fatal crash detected in backend {update.container}")
+                            print(
+                                f"\n❌ Failure: Fatal crash detected in backend {update.container}"
+                            )
                             progress.update(
                                 tasks[update.container],
                                 description=f"Loading [red]{update.container}[/] [FAILED]",
@@ -328,10 +329,7 @@ async def wait_for_backends_to_load(
                         # If LiteLLM has no DB, bearer auth fails with
                         # "no_db_connection".  Fall back to testing the backend
                         # directly via docker exec (ports are internal-only).
-                        if (
-                            res.status_code != 200
-                            and "no_db_connection" in res.text
-                        ):
+                        if res.status_code != 200 and "no_db_connection" in res.text:
                             logger.warning(
                                 f"Gateway has no DB for {container}, "
                                 "falling back to direct backend smoke test..."
