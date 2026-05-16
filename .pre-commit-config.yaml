@@ -8,7 +8,7 @@ repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.12
     hooks:
-      - id: ruff
+      - id: ruff-check
         verbose: true
         stages: [pre-push]
       - id: ruff-format
