@@ -9,10 +9,10 @@ repos:
     rev: v0.15.12
     hooks:
       - id: ruff-check
+        args: [ --fix ]
         verbose: true
         stages: [pre-push]
       - id: ruff-format
-        entry: bash -c 'ruff format --check "$@"' --
         verbose: true
         stages: [pre-push]
   - repo: https://github.com/executablebooks/mdformat
