@@ -231,7 +231,7 @@
           "color": {
             "mode": "palette-classic"
           },
-          "unit": "tok/s",
+          "unit": "reqps",
           "custom": {
             "spanNulls": true
           }

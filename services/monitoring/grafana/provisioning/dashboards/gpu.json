@@ -668,7 +668,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "nv_gpu_memory_used_bytes{instance=~\"${instance}\"}",
+          "expr": "nv_memory_used_bytes{instance=~\"${instance}\"}",
           "interval": "",
           "legendFormat": "GPU {{gpu}}",
           "refId": "A"

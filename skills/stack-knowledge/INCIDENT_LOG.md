@@ -592,3 +592,19 @@ ______________________________________________________________________
 - **OpenClaw's safety valve is insufficient for large contexts**: `MIN_PROMPT_BUDGET_TOKENS = 8,000` floors the prompt budget at only 3% of a 262k context, making it effectively useless as a guard against oversized reserves.
 - **Defense in depth requires independent guards**: Source values, schema validation, AND sync-time ratio checks must each independently prevent the poison pill. Any single layer can be bypassed by misconfiguration.
 - **Formula**: `reserveTokens = maxTokens + 8192 (headroom)`, hard-clamped to `contextWindow * 0.30`. For 262k context: `32768 + 8192 = 40960` (15.6% — well within the 30% safety limit).
+
+### 2026-05-16T15:00 — Grafana Dashboard Metric Regressions (Two Commits)
+
+- **Scenario**: Grafana dashboards showing no data or mislabeled units after AI-assisted dashboard refactoring in commits `2e4cd96` and `b8eb7ba`. GPU panels on the overview dashboard were blank, request-rate panels displayed "tok/s" instead of "req/s", and the GPU memory panel on the detailed dashboard was broken.
+- **Hypothesis**: The AI agent hallucinated metric names and applied incorrect unit labels during dashboard cleanup. Specifically:
+  1. Commit `b8eb7ba` changed `nv_gpu_*` metrics to `DCGM_FI_DEV_*` on overview.json, but the actual GPU exporter (`nv-monitor`) exposes `nv_gpu_*` — DCGM metrics don't exist.
+  2. Commit `b8eb7ba` changed `nv_memory_used_bytes` → `nv_gpu_memory_used_bytes` on gpu.json — the correct metric is `nv_memory_used_bytes`.
+  3. Commit `2e4cd96` changed `"unit": "reqps"` → `"unit": "tok/s"` on gateway.json (Session State Transitions) and query_statistics.json (Successful Requests, Request Avg Rate) — these query `openclaw_session_state_total` and `vllm:request_success_total` which are request counters, not token counters.
+- **Action**: Reverted all five metric/unit changes back to their original correct values across four dashboard files (overview.json, gpu.json, gateway.json, query_statistics.json).
+- **Result**: **Successful**. All panels now query the correct metric names matching the `nv-monitor` exporter and display the correct units.
+
+**Learnings:**
+
+- **Never rename metrics without verifying the exporter**: The AI assumed DCGM metrics existed because they're common in GPU monitoring docs, but this stack uses `nv-monitor` which exposes `nv_gpu_*` / `nv_memory_*` prefixed metrics. Always check the actual Prometheus scrape target before changing metric names.
+- **Units must match the underlying PromQL expression**: A panel querying `rate(request_success_total)` measures requests/sec, not tokens/sec. Unit labels should be derived from the query semantics, not applied speculatively.
+- **Dashboard changes are high-risk for silent failures**: Unlike code changes, broken PromQL queries don't produce errors — they silently return empty data. Dashboard changes need manual verification against live Prometheus data after deployment.
