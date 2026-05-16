@@ -2,6 +2,7 @@
 
 import asyncio
 import re
+import subprocess
 from pathlib import Path
 
 import httpx
@@ -89,6 +90,12 @@ async def fetch_updates() -> dict[str, str | None]:
 
 async def main():
     logger.info("🔍 Checking for latest monitoring container versions...\n")
+
+    logger.info("🛠️ Building overview dashboard from template...")
+    try:
+        subprocess.run(["python3", "services/monitoring/build_dashboards.py"], check=True)
+    except Exception as e:
+        logger.error(f"❌ Failed to build dashboards: {e}")
 
     if not COMPOSE_FILE.exists():
         logger.error(f"❌ Error: {COMPOSE_FILE} not found.")

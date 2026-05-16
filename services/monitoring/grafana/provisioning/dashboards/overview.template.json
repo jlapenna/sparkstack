@@ -29,7 +29,7 @@
         "w": 24,
         "h": 1
       },
-      "id": 100,
+      "id": null,
       "panels": [],
       "title": "FLEET OPERATIONS",
       "type": "row"
@@ -92,7 +92,7 @@
         "w": 6,
         "h": 4
       },
-      "id": 101,
+      "id": null,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -159,7 +159,7 @@
         "w": 6,
         "h": 4
       },
-      "id": 102,
+      "id": null,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -173,22 +173,26 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "rate(vllm:e2e_request_latency_seconds_sum[$__rate_interval]) / rate(vllm:e2e_request_latency_seconds_count[$__rate_interval])",
-          "format": "table",
-          "legendFormat": "E2E Latency",
-          "range": true,
+          "expr": "histogram_quantile(0.95, sum(rate(litellm_request_total_latency_metric_bucket[1m])) by (le))",
+          "legendFormat": "p95",
           "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(litellm_request_total_latency_metric_bucket[1m])) by (le))",
+          "legendFormat": "p50",
+          "refId": "B"
         }
       ],
       "title": "LLM Latency",
       "type": "stat",
       "description": "P95 and P50 End-to-End Response Latency (LiteLLM)",
-      "transparent": true
+      "transparent": true,
+      "__TEMPLATE_REF__": {
+        "source": "performance_statistics.json|E2E Latency over Time",
+        "extract": [
+          "targets"
+        ]
+      }
     },
     {
       "datasource": {
@@ -228,7 +232,7 @@
         "w": 6,
         "h": 4
       },
-      "id": 103,
+      "id": null,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -242,18 +246,26 @@
       },
       "targets": [
         {
-          "editorMode": "code",
-          "expr": "rate(vllm:time_to_first_token_seconds_sum[$__rate_interval]) / rate(vllm:time_to_first_token_seconds_count[$__rate_interval])",
-          "format": "table",
-          "legendFormat": "TTFT (Avg)",
-          "range": true,
+          "expr": "histogram_quantile(0.95, sum by(le) (rate(vllm:time_to_first_token_seconds_bucket[1m])))",
+          "legendFormat": "p95",
           "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.50, sum by(le) (rate(vllm:time_to_first_token_seconds_bucket[1m])))",
+          "legendFormat": "p50",
+          "refId": "B"
         }
       ],
       "title": "Time To First Token",
       "type": "stat",
       "description": "P95 and P50 Time to First Token (TTFT)",
-      "transparent": true
+      "transparent": true,
+      "__TEMPLATE_REF__": {
+        "source": "performance_statistics.json|TTFT Over Time",
+        "extract": [
+          "targets"
+        ]
+      }
     },
     {
       "datasource": {
@@ -293,7 +305,7 @@
         "w": 6,
         "h": 4
       },
-      "id": 104,
+      "id": null,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -307,43 +319,26 @@
       },
       "targets": [
         {
-          "editorMode": "code",
-          "expr": "rate(vllm:generation_tokens_total[$__rate_interval])",
-          "legendFormat": "Generation TPS",
-          "range": true,
+          "expr": "sum(rate(vllm:generation_tokens_total[$__rate_interval])) or vector(0)",
+          "legendFormat": "Gen",
           "refId": "A"
         },
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "rate(vllm:prompt_tokens_total[$__rate_interval])",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "Prompt TPS",
-          "range": true,
+          "expr": "sum(rate(vllm:prompt_tokens_total[$__rate_interval])) or vector(0)",
+          "legendFormat": "Prompt",
           "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "rate(vllm:iteration_tokens_total_count[$__rate_interval])",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "Overall Iteration TPS",
-          "range": true,
-          "refId": "C"
         }
       ],
       "title": "Tokens Per Second",
       "type": "stat",
       "description": "Generation and Prompt Tokens per Second (vLLM)",
-      "transparent": true
+      "transparent": true,
+      "__TEMPLATE_REF__": {
+        "source": "performance_statistics.json|TPS (Tokens Per Second) Over Time",
+        "extract": [
+          "targets"
+        ]
+      }
     },
     {
       "datasource": {
@@ -383,7 +378,7 @@
         "w": 16,
         "h": 6
       },
-      "id": 105,
+      "id": null,
       "options": {
         "legend": {
           "displayMode": "list",
@@ -400,14 +395,26 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(openclaw_session_state_total[5m])) by (openclaw_state)",
-          "legendFormat": "{{openclaw_state}}"
+          "expr": "sum by (model) (vllm:num_requests_running) or sum by (model) (sglang_num_running_reqs)",
+          "legendFormat": "{{model}} Active",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (model) (vllm:num_requests_waiting) or sum by (model) (sglang_num_queue_reqs)",
+          "legendFormat": "{{model}} Queued",
+          "refId": "B"
         }
       ],
       "title": "Active & Queued Requests",
       "type": "timeseries",
       "description": "Requests currently being actively processed or sitting in the backlog waiting for KV cache.",
-      "transparent": true
+      "transparent": true,
+      "__TEMPLATE_REF__": {
+        "source": "gateway.json|Session State Transitions",
+        "extract": [
+          "targets"
+        ]
+      }
     },
     {
       "gridPos": {
@@ -416,7 +423,7 @@
         "w": 24,
         "h": 1
       },
-      "id": 106,
+      "id": null,
       "panels": [
         {
           "datasource": {
@@ -588,7 +595,7 @@
         "w": 24,
         "h": 1
       },
-      "id": 107,
+      "id": null,
       "panels": [],
       "title": "NVIDIA DGX COMPUTE",
       "type": "row"
@@ -639,7 +646,7 @@
         "w": 12,
         "h": 8
       },
-      "id": 108,
+      "id": null,
       "options": {
         "legend": {
           "displayMode": "list",
@@ -655,16 +662,21 @@
       },
       "targets": [
         {
-          "expr": "nv_gpu_utilization_percent{instance=~\"${instance}\", gpu=~\"${gpu}\"}",
-          "interval": "",
-          "legendFormat": "GPU {{gpu}}",
+          "expr": "nv_gpu_utilization_percent{instance=~\"$instance\"}",
+          "legendFormat": "{{instance}} GPU {{gpu}}",
           "refId": "A"
         }
       ],
       "title": "GPU Utilization",
       "type": "timeseries",
       "description": "Hardware-level GPU compute utilization across the cluster (DCGM).",
-      "transparent": true
+      "transparent": true,
+      "__TEMPLATE_REF__": {
+        "source": "gpu.json|GPU Utilization",
+        "extract": [
+          "targets"
+        ]
+      }
     },
     {
       "datasource": {
@@ -694,7 +706,7 @@
         "w": 12,
         "h": 8
       },
-      "id": 109,
+      "id": null,
       "options": {
         "legend": {
           "displayMode": "list",
@@ -710,16 +722,21 @@
       },
       "targets": [
         {
-          "expr": "sum(nv_gpu_power_watts{instance=~\"${instance}\", gpu=~\"${gpu}\"})",
-          "interval": "",
-          "legendFormat": "",
+          "expr": "nv_gpu_power_watts{instance=~\"$instance\"}",
+          "legendFormat": "{{instance}} GPU {{gpu}}",
           "refId": "A"
         }
       ],
       "title": "GPU Power Draw",
       "type": "timeseries",
       "description": "Hardware-level GPU power consumption.",
-      "transparent": true
+      "transparent": true,
+      "__TEMPLATE_REF__": {
+        "source": "gpu.json|GPU Power Total",
+        "extract": [
+          "targets"
+        ]
+      }
     },
     {
       "datasource": {
@@ -749,7 +766,7 @@
         "w": 24,
         "h": 8
       },
-      "id": 110,
+      "id": null,
       "options": {
         "legend": {
           "displayMode": "list",
@@ -766,16 +783,21 @@
       },
       "targets": [
         {
-          "expr": "avg(nv_gpu_temperature_celsius{instance=~\"${instance}\", gpu=~\"${gpu}\"})",
-          "interval": "",
-          "legendFormat": "",
+          "expr": "nv_gpu_temperature_celsius{instance=~\"$instance\"}",
+          "legendFormat": "{{instance}} GPU {{gpu}}",
           "refId": "A"
         }
       ],
       "title": "GPU Thermals",
       "type": "timeseries",
       "description": "Hardware-level GPU temperatures.",
-      "transparent": true
+      "transparent": true,
+      "__TEMPLATE_REF__": {
+        "source": "gpu.json|GPU Avg. Temp",
+        "extract": [
+          "targets"
+        ]
+      }
     },
     {
       "collapsed": false,
@@ -785,7 +807,7 @@
         "w": 24,
         "h": 1
       },
-      "id": 111,
+      "id": null,
       "panels": [],
       "title": "HOST RESOURCES (PHYSICAL)",
       "type": "row"
@@ -816,7 +838,7 @@
         "w": 12,
         "h": 8
       },
-      "id": 112,
+      "id": null,
       "targets": [
         {
           "expr": "avg by (instance) (rate(node_cpu_seconds_total{mode!=\"idle\", instance=~\"$instance\"}[$__rate_interval])) * 100",
@@ -863,7 +885,7 @@
         "w": 12,
         "h": 8
       },
-      "id": 113,
+      "id": null,
       "targets": [
         {
           "expr": "(1 - (node_memory_MemAvailable_bytes{instance=~\"$instance\"} / node_memory_MemTotal_bytes{instance=~\"$instance\"})) * 100",
@@ -910,7 +932,7 @@
         "w": 24,
         "h": 8
       },
-      "id": 114,
+      "id": null,
       "targets": [
         {
           "expr": "avg by (instance) (nv_gpu_utilization_percent{instance=~\"$instance\"})",
@@ -937,7 +959,7 @@
         "w": 24,
         "h": 1
       },
-      "id": 115,
+      "id": null,
       "panels": [],
       "title": "CORE CONTAINER RESOURCES",
       "type": "row"
@@ -968,7 +990,7 @@
         "w": 12,
         "h": 8
       },
-      "id": 116,
+      "id": null,
       "targets": [
         {
           "expr": "sum(rate(container_cpu_usage_seconds_total{container_label_sparkrun_monitoring=\"true\"}[$__rate_interval])) by (name) * 100",
@@ -1013,7 +1035,7 @@
         "w": 12,
         "h": 8
       },
-      "id": 117,
+      "id": null,
       "targets": [
         {
           "expr": "sum(container_memory_usage_bytes{container_label_sparkrun_monitoring=\"true\"}) by (name)",
@@ -1040,7 +1062,7 @@
         "w": 24,
         "h": 1
       },
-      "id": 118,
+      "id": null,
       "panels": [],
       "title": "MODEL CONTAINER RESOURCES",
       "type": "row"
@@ -1071,7 +1093,7 @@
         "w": 12,
         "h": 8
       },
-      "id": 119,
+      "id": null,
       "targets": [
         {
           "expr": "(sum(rate(container_cpu_usage_seconds_total{container_label_sparkrun_monitoring=\"true\"}[$__rate_interval]) * 100) by (name) * on(name) group_left(model_id) topk by (name) (1, max by (name, model_id) (vllm_model_load_progress * 0 + 1))) or (sum(rate(container_cpu_usage_seconds_total{container_label_sparkrun_monitoring=\"true\"}[$__rate_interval]) * 100) by (name))",
@@ -1116,7 +1138,7 @@
         "w": 12,
         "h": 8
       },
-      "id": 120,
+      "id": null,
       "targets": [
         {
           "expr": "(sum(container_memory_usage_bytes{container_label_sparkrun_monitoring=\"true\"}) by (name) * on(name) group_left(model_id) topk by (name) (1, max by (name, model_id) (vllm_model_load_progress * 0 + 1))) or (sum(container_memory_usage_bytes{container_label_sparkrun_monitoring=\"true\"}) by (name))",
@@ -1143,7 +1165,7 @@
         "w": 24,
         "h": 1
       },
-      "id": 121,
+      "id": null,
       "panels": [],
       "title": "CLOUDFLARE",
       "type": "row"
@@ -1151,7 +1173,7 @@
     {
       "type": "stat",
       "title": "Cloudflare Endpoints",
-      "id": 122,
+      "id": null,
       "gridPos": {
         "x": 0,
         "y": 98,
