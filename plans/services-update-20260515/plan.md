@@ -46,19 +46,23 @@ ______________________________________________________________________
 ## 2. Detailed Implementation Steps
 
 ### Step 1: Model Registration (Registry Layer)
+
 - **Action (VRAM Validation)**: Already validated by current stack footprint.
 
 ### Step 2: Infrastructure Patching (Tooling Layer)
+
 - No new binary dependencies required.
 
 ### Step 3: Stack Orchestration (Building Layer)
+
 - **Action**: `uv run sparkstack build services-update-20260515-01 main=qwen3.6-35b-a3b embedding=jina-embeddings-v3`
 
 ### Step 4: Activation & Synchronization (Deployment Layer)
+
 1. **Launch & Switch**: `uv run sparkstack set-current services-update-20260515-01`
-2. **Backend Readiness Gate**: `uv run sparkstack wait --json --timeout 1800`
-3. **Post-Deploy Memory Compliance**: `uv run sparkstack check memory --json`
-4. **Sync**: `uv run sparkstack sync-registry --json`
+1. **Backend Readiness Gate**: `uv run sparkstack wait --json --timeout 1800`
+1. **Post-Deploy Memory Compliance**: `uv run sparkstack check memory --json`
+1. **Sync**: `uv run sparkstack sync-registry --json`
 
 ______________________________________________________________________
 
@@ -78,16 +82,19 @@ ______________________________________________________________________
 ______________________________________________________________________
 
 ## 5. Failure Recovery Protocol
+
 - Halt immediately on E2E failure and report logs.
 
 ______________________________________________________________________
 
 ## 6. Mandatory Proof of Execution (Receipts)
+
 - (To be filled after execution)
 
 ______________________________________________________________________
 
 ## 7. Finalization (Cleanup)
+
 - Standardize name to `services-update-20260515`.
 - Finalize symlinks via `uv run sparkstack set-current services-update-20260515`.
 - Commit to registry.

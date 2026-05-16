@@ -94,17 +94,17 @@ Generate the multi-container configuration using the iterative naming convention
 Atomically rotate the containers and sync configuration per the **stack-manager** protocol.
 
 1. **Launch & Switch**: Activate the new stack and switch the `current` symlink via `uv run sparkstack set-current [STACK_NAME]`. (This command handles stopping the previous stack and cleaning up orphaned containers).
-2. **Backend Readiness Gate**: Wait for all model backends to complete loading and pass post-load smoke tests.
+1. **Backend Readiness Gate**: Wait for all model backends to complete loading and pass post-load smoke tests.
    - **Action**: `uv run sparkstack wait --json --timeout 1800`
    - **Expect**: ✅ "Backend Readiness (All models loaded)" + passing smoke tests for each backend.
    - **Failure Mode**: If any backend reports `-1` (crash), HALT immediately. Tail `/tmp/sparkrun_serve.log` inside the crashed container and report findings to the user.
-3. **Post-Deploy Memory Compliance**:
+1. **Post-Deploy Memory Compliance**:
    - **Action**: `uv run sparkstack check memory --json`
    - **Expect**: ✅ "Memory Law compliant across both RAM and VRAM dimensions."
-4. **Sync**: Synchronize the Model Registry into the OpenClaw configuration.
+1. **Sync**: Synchronize the Model Registry into the OpenClaw configuration.
    - **Action**: `uv run sparkstack sync-registry --json`
-5. **Network Resolution**: Restart edge networking if necessary to clear tunnel IP caches.
-6. **Telemetry Verification**:
+1. **Network Resolution**: Restart edge networking if necessary to clear tunnel IP caches.
+1. **Telemetry Verification**:
    - **Metrics Pipeline**: Verify `vllm_model_load_progress` metrics are pushing through to Prometheus: `curl -s http://localhost:9102/metrics | rg vllm_model_load_progress` → Must return metric lines for all deployed models.
    - **Prometheus Targets**: Confirm all scrape targets are UP via the Prometheus `/targets` UI.
    - **Tracing**: Send a test request through the gateway and verify a linked trace appears in Grafana Tempo.

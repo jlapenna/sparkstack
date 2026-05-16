@@ -46,17 +46,21 @@ ______________________________________________________________________
 ## 2. Detailed Implementation Steps
 
 ### Step 1: Model Registration (Registry Layer)
+
 - Model Recipe updated: `sparkstack-registry/sparkrun/gemma4-31b-it-nvfp4.yaml`
 - Includes `litellm_overrides` for tool calling and reasoning support.
 - VRAM validation passed.
 
 ### Step 2: Infrastructure Patching (Tooling Layer)
+
 - Added `merge_reasoning_content_in_choices: true` to `services/litellm/litellm-settings.yaml`.
 
 ### Step 3: Stack Orchestration (Building Layer)
+
 - `uv run sparkstack build gemma-4-20260515-01 main=sparkstack-registry/sparkrun/gemma4-31b-it-nvfp4.yaml`
 
 ### Step 4: Activation & Synchronization (Deployment Layer)
+
 - `uv run sparkstack set-current gemma-4-20260515-01`
 - `uv run sparkstack wait --json --timeout 1800`
 - `uv run sparkstack check memory --json`
@@ -65,24 +69,29 @@ ______________________________________________________________________
 ______________________________________________________________________
 
 ## 3. Mandatory E2E Verification Suite
+
 - `uv run pytest -x tests/e2e/`
 
 ______________________________________________________________________
 
 ## 4. Formal Benchmarking
+
 - `export $(rg -v '^#' .env | xargs) && uv run sparkrun benchmark sparkstack-registry/sparkrun/gemma4-31b-it-nvfp4.yaml --skip-run --port 4000 -b served_model_name=main -b api_key=$LITELLM_MASTER_KEY --profile spark-arena-v1`
 
 ______________________________________________________________________
 
 ## 5. Failure Recovery Protocol
+
 - Halt and present error logs on failure.
 
 ______________________________________________________________________
 
 ## 6. Mandatory Proof of Execution (Receipts)
+
 - To be filled after execution.
 
 ______________________________________________________________________
 
 ## 7. Finalization (Cleanup)
+
 - Rename stack directory, remove suffix, commit changes.
