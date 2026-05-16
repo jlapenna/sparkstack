@@ -170,24 +170,43 @@ If a manual reset clears your `local-dev` patches, you must restore them.
 
 ### 5. Verify Clean Source Dependency State
 
-Before closing the process, you MUST verify that the git tree for the primary source dependency is entirely clean. Run `git status` inside the main source dependency directory. There must be **no** uncommitted modifications, **no** staged files, and **no** open indexed commits left unresolved. If any exist, you must either commit or revert them to ensure the source dependency protocol isn't violated.
+Before closing the process, you MUST verify that the git tree for the primary source dependency is entirely clean and that no commits have been left unpushed in any worktree.
 
-### 5. Output and Track the Integration State
+**Run these explicit commands to verify the state:**
+
+```bash
+# 1. Check the primary worktree is clean
+git status
+
+# 2. List all active worktrees
+git worktree list
+
+# 3. Check the status of ALL worktrees to find uncommitted or unpushed changes
+for wt in $(git worktree list | awk '{print $1}'); do
+  echo "--- Checking $wt ---"
+  git -C "$wt" status
+done
+```
+
+There must be **no** uncommitted modifications, **no** staged files, and **no** open indexed commits left unresolved in the primary repository or any worktree. If a worktree says `Your branch is ahead of 'origin/...' by N commits`, you MUST push it and ensure it has an active PR.
+
+### 6. Output and Track the Integration State
 
 After completing the source dependency process, you MUST verify and output the current integrated source dependency state to the user by running `git log --oneline -10` and `git status` in each source dependency directory.
 Do not embed dynamic markdown tables inside this skill document, as they become stale immediately. Depend entirely on live git state to generate contextual awareness for the user.
 
-### 6. Completion Condition
+### 7. Completion Condition
 
 The source dependency process is only considered complete when:
 
 1. All primary source dependencies are checked out to their `local-dev` branches.
-1. There are absolutely no dangling (untracked, modified, or staged) files left in the primary source dependencies or affecting the root workspace from the process.
+2. There are absolutely no dangling (untracked, modified, or staged) files left in the primary source dependencies or affecting the root workspace from the process.
+3. All feature worktrees are fully pushed to `origin` and have active PRs.
 
 ## Prerequisites
 
 1. Ensure the GitHub CLI default repository is correctly targeting upstream (`gh repo set-default <upstream-org>/<repo-name>`).
-1. Verify all local feature worktrees are cleanly rebased onto their upstream base branch (`origin/develop` or `origin/main`) prior to triggering large merges.
+2. Verify all local feature worktrees are cleanly rebased onto their upstream base branch (`origin/develop` or `origin/main`) prior to triggering large merges.
 
 ## When NOT to use this skill (Negative Triggers)
 
@@ -222,5 +241,5 @@ You MUST conclude your integration actions with this exact structure:
 *(Directly output the results from running `python3 util/source_dependency_status.py` here)*
 
 ### 3. Repo Health
-*(Confirm that the primary source dependency and the root `sparkstack` repo show zero dangling/untracked files)*
+*(Confirm that the primary source dependency and the root `sparkstack` repo show zero dangling/untracked files, and no unpushed commits exist in any worktree)*
 ```
