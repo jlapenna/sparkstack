@@ -231,7 +231,7 @@ class MonitorApp(App):
 
             await asyncio.sleep(self.interval)
 
-    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+    def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
         self.selected_service = str(event.row_key.value)
         self.query_one("#detail-log", RichLog).clear()
         self.run_worker(self._fetch_logs_impl(self.selected_service), exclusive=True)
