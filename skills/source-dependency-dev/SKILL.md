@@ -200,13 +200,13 @@ Do not embed dynamic markdown tables inside this skill document, as they become 
 The source dependency process is only considered complete when:
 
 1. All primary source dependencies are checked out to their `local-dev` branches.
-2. There are absolutely no dangling (untracked, modified, or staged) files left in the primary source dependencies or affecting the root workspace from the process.
-3. All feature worktrees are fully pushed to `origin` and have active PRs.
+1. There are absolutely no dangling (untracked, modified, or staged) files left in the primary source dependencies or affecting the root workspace from the process.
+1. All feature worktrees are fully pushed to `origin` and have active PRs.
 
 ## Prerequisites
 
 1. Ensure the GitHub CLI default repository is correctly targeting upstream (`gh repo set-default <upstream-org>/<repo-name>`).
-2. Verify all local feature worktrees are cleanly rebased onto their upstream base branch (`origin/develop` or `origin/main`) prior to triggering large merges.
+1. Verify all local feature worktrees are cleanly rebased onto their upstream base branch (`origin/develop` or `origin/main`) prior to triggering large merges.
 
 ## When NOT to use this skill (Negative Triggers)
 
