@@ -66,15 +66,17 @@ class HttpProbe(HealthProbe):
         url: str,
         timeout: float = 2.0,
         validator: AsyncValidator | None = None,
+        headers: dict[str, str] | None = None,
     ):
         self.url = url
         self.timeout = timeout
         self.validator = validator
+        self.headers = headers
 
     async def probe(self) -> HealthStatus:
         async with httpx.AsyncClient() as client:
             try:
-                response = await client.get(self.url, timeout=self.timeout)
+                response = await client.get(self.url, timeout=self.timeout, headers=self.headers)
                 if response.status_code == 200:
                     if self.validator and not await self.validator(response):
                         return HealthStatus.STARTING

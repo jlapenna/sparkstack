@@ -249,12 +249,12 @@ class CloudflareService(Service):
         )
 
 
-class VllmService(Service):
+class InferenceStackService(Service):
     dependencies = ["SparkRun", "Monitoring", "OpenClaw"]
 
     async def update(self) -> None:
-        vllm_current = (self.settings.project_root / "current").resolve()
-        if not vllm_current.exists():
+        current_stack = (self.settings.project_root / "current").resolve()
+        if not current_stack.exists():
             self.state.fail("No active stack found in 'current/'")
             return
 
@@ -262,15 +262,15 @@ class VllmService(Service):
         phase_num = 1
 
         phase_num = await self._pull_images(
-            vllm_current, phase_num, task_name="Pulling vLLM", project_name="current"
+            current_stack, phase_num, task_name="Pulling litellm gateway", project_name="current"
         )
 
         # Always rebuild configs from stack.yaml to pick up builder changes.
         self.progress.phase(phase_num, "Rebuilding configs")
         self.state.set_task("Rebuilding configs", 40)
-        stack_yaml = vllm_current / "stack.yaml"
+        stack_yaml = current_stack / "stack.yaml"
         if stack_yaml.exists():
-            await StackBuilder.rebuild_from_stack(vllm_current)
+            await StackBuilder.rebuild_from_stack(current_stack)
         self.progress.phase_end()
         phase_num += 1
 
@@ -278,23 +278,27 @@ class VllmService(Service):
         self.state.set_task("Restarting stack", 60)
 
         if stack_yaml.exists():
-            await launch_stack(vllm_current, rebuild_images=self.settings.pull_latest)
+            await launch_stack(current_stack, rebuild_images=self.settings.pull_latest)
         else:
-            compose_yaml = vllm_current / "docker-compose.yaml"
+            compose_yaml = current_stack / "docker-compose.yaml"
             if compose_yaml.exists():
                 await self.run_compose(
-                    vllm_current, "up", "-d", "--build", "--remove-orphans", project_name="current"
+                    current_stack, "up", "-d", "--build", "--remove-orphans", project_name="current"
                 )
         self.progress.phase_end()
         phase_num += 1
 
         # Use centralized health manager with explicit probes
+        litellm_key = os.getenv("LITELLM_MASTER_KEY", "sk-sparkstack-default-master-key")
         manager = ServiceHealthManager(
             "litellm",
             probes=[
                 DockerProbe("litellm"),
                 LogProbe("litellm"),
-                HttpProbe("http://localhost:4000/health"),
+                HttpProbe(
+                    "http://localhost:4000/health",
+                    headers={"Authorization": f"Bearer {litellm_key}"},
+                ),
             ],
         )
         await self._probe_health(phase_num, manager, timeout=60, fail_msg="Health check timed out")
@@ -337,7 +341,7 @@ class MonitoringService(Service):
 
 
 class RegistrySyncService(Service):
-    dependencies = ["vLLM"]
+    dependencies = ["InferenceStack"]
 
     async def update(self) -> None:
         self.state.set_task("Syncing models to gateway", 50)
