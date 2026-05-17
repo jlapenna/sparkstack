@@ -61,9 +61,7 @@ async def sync_dashboards(
 
     # Discover dashboard JSON files (skip templates and the provisioning YAML)
     dashboard_files = sorted(
-        p
-        for p in DASHBOARDS_DIR.glob("*.json")
-        if not p.name.endswith(".template.json")
+        p for p in DASHBOARDS_DIR.glob("*.json") if not p.name.endswith(".template.json")
     )
 
     if not dashboard_files:

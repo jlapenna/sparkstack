@@ -21,8 +21,7 @@ from ._common import json_option, run_async, setup_command_logging
     "--api-key",
     default=None,
     envvar="GRAFANA_API_KEY",
-    help="Grafana API key or service-account token. "
-    "Falls back to GRAFANA_API_KEY env var.",
+    help="Grafana API key or service-account token. Falls back to GRAFANA_API_KEY env var.",
 )
 @click.option(
     "--folder",

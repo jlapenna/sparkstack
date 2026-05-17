@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 from sparkstack.manager.update_services import Orchestrator, Settings
 
@@ -14,11 +15,11 @@ async def test_orchestrator_initialization():
     """
     mock_settings = Settings(pull_latest=False, project_root="/tmp")
     mock_ipc = MagicMock()
-    
+
     # Instantiating the Orchestrator will fail if imports are broken
     # or if the Service classes are not available.
     orchestrator = Orchestrator(settings=mock_settings, ipc=mock_ipc)
-    
+
     # Verify that the expected services are registered
     expected_services = {
         "SparkRun",
@@ -28,8 +29,8 @@ async def test_orchestrator_initialization():
         "Monitoring",
         "OpenClaw",
     }
-    
+
     registered_services = {s.name for s in orchestrator.services}
-    
+
     assert registered_services == expected_services
     assert set(orchestrator.states.keys()) == expected_services

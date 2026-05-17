@@ -130,4 +130,3 @@ class MonitoringBuilder:
 
         with (self.stack_dir / "prometheus.yml").open("w") as f:
             yaml.dump(config.model_dump(by_alias=True, exclude_none=True), f, sort_keys=False)
-
