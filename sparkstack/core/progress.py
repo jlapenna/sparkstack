@@ -67,10 +67,10 @@ class StackProgress:
         # explicitly register PROGRESS yet. Let's ensure it's registered
         # using stdlib's level int just in case, or we use loguru.log
         try:
-            self._log.log("PROGRESS", "[%d/%d] %s", num, max(self._total_phases, num), label)
+            self._log.log("PROGRESS", "[{}/{}] {}", num, max(self._total_phases, num), label)
         except ValueError:
             # Fallback if loguru level not added yet
-            self._log.log(PROGRESS, "[%d/%d] %s", num, max(self._total_phases, num), label)
+            self._log.log(PROGRESS, "[{}/{}] {}", num, max(self._total_phases, num), label)
 
     def phase_skip(self, num: int, label: str) -> None:
         """Log a phase that is being skipped."""
@@ -78,11 +78,11 @@ class StackProgress:
             self.phase_end()
         try:
             self._log.log(
-                "PROGRESS", "[%d/%d] %s (Skipped)", num, max(self._total_phases, num), label
+                "PROGRESS", "[{}/{}] {} (Skipped)", num, max(self._total_phases, num), label
             )
         except ValueError:
             self._log.log(
-                PROGRESS, "[%d/%d] %s (Skipped)", num, max(self._total_phases, num), label
+                PROGRESS, "[{}/{}] {} (Skipped)", num, max(self._total_phases, num), label
             )
 
     def phase_end(self, elapsed: float | None = None) -> None:
@@ -90,9 +90,9 @@ class StackProgress:
         if self._phase_t0 is not None:
             dt = elapsed if elapsed is not None else (time.monotonic() - self._phase_t0)
             try:
-                self._log.log("PROGRESS", "  done (%.1fs)", dt)
+                self._log.log("PROGRESS", "  done ({:.1f}s)", dt)
             except ValueError:
-                self._log.log(PROGRESS, "  done (%.1fs)", dt)
+                self._log.log(PROGRESS, "  done ({:.1f}s)", dt)
         self._current_phase = None
         self._phase_t0 = None
 
@@ -122,4 +122,4 @@ class StackProgress:
     def step_done(self, t0: float) -> None:
         """Log elapsed time for the most recent step (info level)."""
         dt = time.monotonic() - t0
-        self._log.info("  step done (%.1fs)", dt)
+        self._log.info("  step done ({:.1f}s)", dt)

@@ -66,7 +66,6 @@ async def launch_stack(stack_dir: Path, *, rebuild_images: bool = False) -> None
             backend["name"],
             "--container-name",
             backend["name"],
-            "--solo",
             "--no-follow",
             "-o",
             f"network={global_network}",

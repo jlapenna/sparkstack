@@ -312,7 +312,7 @@ class MonitoringService(Service):
         if not stack_dir.exists():
             target = stack_dir.resolve()
             target.mkdir(parents=True, exist_ok=True)
-        MonitoringBuilder(stack_dir).write()
+        MonitoringBuilder(stack_dir).write(preserve_targets=True)
 
         # Inject SPARKSTACK_DIR for compose
         os.environ["SPARKSTACK_DIR"] = str(stack_dir.resolve())

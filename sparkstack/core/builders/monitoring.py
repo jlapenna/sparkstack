@@ -25,7 +25,7 @@ class MonitoringBuilder:
             labels["instance"] = instance_name
         self.scrape_targets.append({"targets": [target], "labels": labels})
 
-    def write(self):
+    def write(self, preserve_targets: bool = False):
         base_configs = self.scrape_configs + [
             ScrapeConfig(
                 job_name="litellm-gateway",
@@ -94,14 +94,15 @@ class MonitoringBuilder:
             scrape_configs=base_configs,
         )
 
-        targets = []
-        for target in self.scrape_configs:
-            static_cfgs = getattr(target, "static_configs", []) or []
-            for static in static_cfgs:
-                targets.append({"targets": static.targets, "labels": static.labels})
-        targets.extend(self.scrape_targets)
-        with (self.stack_dir / "targets.json").open("w") as f:
-            json.dump(targets, f, indent=2)
+        if not preserve_targets:
+            targets = []
+            for target in self.scrape_configs:
+                static_cfgs = getattr(target, "static_configs", []) or []
+                for static in static_cfgs:
+                    targets.append({"targets": static.targets, "labels": static.labels})
+            targets.extend(self.scrape_targets)
+            with (self.stack_dir / "targets.json").open("w") as f:
+                json.dump(targets, f, indent=2)
 
         with (self.stack_dir / "prometheus.yml").open("w") as f:
             yaml.dump(config.model_dump(by_alias=True, exclude_none=True), f, sort_keys=False)
