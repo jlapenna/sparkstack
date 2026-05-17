@@ -15,29 +15,29 @@ otelcol.receiver.otlp "default" {
 
 otelcol.processor.batch "default" {
   output {
-    metrics = [otelcol.exporter.otlphttp.prometheus.input]
-    traces = [otelcol.exporter.otlp.tempo.input]
+    metrics = [otelcol.exporter.otlphttp.remote_prometheus.input]
+    traces = [otelcol.exporter.otlp.remote_tempo.input]
   }
 }
 
-otelcol.exporter.otlphttp "prometheus" {
+otelcol.exporter.otlphttp "remote_prometheus" {
   client {
-    endpoint = "http://prometheus:9090/api/v1/otlp"
+    endpoint = "${REMOTE_PROMETHEUS_URL}/api/v1/otlp"
     tls {
       insecure = true
     }
   }
 }
 
-prometheus.remote_write "prometheus" {
+prometheus.remote_write "remote" {
   endpoint {
-    url = "http://prometheus:9090/api/v1/write"
+    url = "${REMOTE_PROMETHEUS_URL}/api/v1/write"
   }
 }
 
-otelcol.exporter.otlp "tempo" {
+otelcol.exporter.otlp "remote_tempo" {
   client {
-    endpoint = "tempo:4317"
+    endpoint = "${REMOTE_TEMPO_URL}"
     tls {
       insecure = true
     }
@@ -74,7 +74,7 @@ prometheus.scrape "statsd" {
 }
 
 prometheus.relabel "statsd_labels" {
-  forward_to = [prometheus.remote_write.prometheus.receiver]
+  forward_to = [prometheus.remote_write.remote.receiver]
   rule {
     target_label = "instance"
     replacement  = "spark"
@@ -93,7 +93,7 @@ prometheus.scrape "unix" {
 }
 
 prometheus.relabel "unix_labels" {
-  forward_to = [prometheus.remote_write.prometheus.receiver]
+  forward_to = [prometheus.remote_write.remote.receiver]
   rule {
     target_label = "instance"
     replacement  = "spark"
@@ -112,7 +112,7 @@ prometheus.scrape "cadvisor" {
 }
 
 prometheus.relabel "cadvisor_labels" {
-  forward_to = [prometheus.remote_write.prometheus.receiver]
+  forward_to = [prometheus.remote_write.remote.receiver]
   rule {
     target_label = "instance"
     replacement  = "spark"
@@ -151,6 +151,6 @@ discovery.relabel "blackbox" {
 
 prometheus.scrape "blackbox" {
   targets    = discovery.relabel.blackbox.output
-  forward_to = [prometheus.remote_write.prometheus.receiver]
+  forward_to = [prometheus.remote_write.remote.receiver]
   scrape_interval = "15s"
 }

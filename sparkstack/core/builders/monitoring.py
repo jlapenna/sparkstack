@@ -1,9 +1,15 @@
 import json
 import os
 from pathlib import Path
+from string import Template
 
 import yaml
 
+from sparkstack.core.env import (
+    REMOTE_PROMETHEUS_URL,
+    REMOTE_TEMPO_URL,
+    is_monitoring_external,
+)
 from sparkstack.core.schemas import PrometheusConfig, ScrapeConfig, StaticConfig
 
 
@@ -24,6 +30,47 @@ class MonitoringBuilder:
         if instance_name:
             labels["instance"] = instance_name
         self.scrape_targets.append({"targets": [target], "labels": labels})
+
+    def _template_dir(self) -> Path:
+        return Path(__file__).parent.parent.parent.parent / "services" / "monitoring"
+
+    def _write_alloy_config(self):
+        """Generate the Alloy config from the appropriate template."""
+        template_name = (
+            "config.alloy.external.template"
+            if is_monitoring_external()
+            else "config.alloy.template"
+        )
+        template_path = self._template_dir() / template_name
+
+        if not template_path.exists():
+            return
+
+        # Build the blackbox target blocks
+        monitor_domains = [
+            d.strip() for d in os.getenv("SPARK_STACK_MONITOR_DOMAINS", "").split(",") if d.strip()
+        ]
+        target_blocks = []
+        for domain in monitor_domains:
+            if not domain.startswith("http"):
+                domain = f"https://{domain}"
+            target_blocks.append(f"""  target {{
+    name    = "{domain}"
+    address = "{domain}"
+    module  = "http_2xx"
+  }}""")
+
+        # Assemble template variables
+        variables: dict[str, str] = {
+            "BLACKBOX_TARGETS": "\n".join(target_blocks),
+        }
+        if is_monitoring_external():
+            variables["REMOTE_PROMETHEUS_URL"] = REMOTE_PROMETHEUS_URL
+            variables["REMOTE_TEMPO_URL"] = REMOTE_TEMPO_URL
+
+        alloy_content = Template(template_path.read_text()).substitute(variables)
+
+        (self.stack_dir / "config.alloy").write_text(alloy_content)
 
     def write(self, preserve_targets: bool = False):
         base_configs = self.scrape_configs + [
@@ -58,36 +105,13 @@ class MonitoringBuilder:
             ),
         ]
 
-        monitor_domains = [
-            d.strip() for d in os.getenv("SPARK_STACK_MONITOR_DOMAINS", "").split(",") if d.strip()
-        ]
+        # Generate the Alloy config from the appropriate template
+        self._write_alloy_config()
 
-        # Generate config.alloy from template
-        alloy_template_path = (
-            Path(__file__).parent.parent.parent.parent
-            / "services"
-            / "monitoring"
-            / "config.alloy.template"
-        )
-        if alloy_template_path.exists():
-            with open(alloy_template_path) as f:
-                alloy_content = f.read()
-
-            target_blocks = []
-            for domain in monitor_domains:
-                if not domain.startswith("http"):
-                    domain = f"https://{domain}"
-                target_blocks.append(f"""  target {{
-    name    = "{domain}"
-    address = "{domain}"
-    module  = "http_2xx"
-  }}""")
-
-            alloy_content = alloy_content.replace(
-                "{{ BLACKBOX_TARGETS }}", "\n".join(target_blocks)
-            )
-            with (self.stack_dir / "config.alloy").open("w") as f:
-                f.write(alloy_content)
+        # In external mode, skip prometheus.yml and targets.json generation
+        # since Prometheus won't be deployed locally.
+        if is_monitoring_external():
+            return
 
         config = PrometheusConfig(
             global_config={"scrape_interval": "15s"},
@@ -106,3 +130,4 @@ class MonitoringBuilder:
 
         with (self.stack_dir / "prometheus.yml").open("w") as f:
             yaml.dump(config.model_dump(by_alias=True, exclude_none=True), f, sort_keys=False)
+

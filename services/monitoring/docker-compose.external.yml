@@ -1,0 +1,95 @@
+# Agent-only compose for external monitoring mode.
+# Deploys only the local telemetry agents (Alloy, nv-monitor, vllm-progress-manager).
+# Prometheus, Grafana, and Tempo are expected to be running on SPARK_MONITORING_HOST.
+x-sparkstack-enforce: ${SPARKSTACK_DIR:?SPARKSTACK_DIR must be set}
+services:
+  alloy:
+    image: grafana/alloy:v1.16.1
+    container_name: alloy
+    ports:
+    - 12345:12345
+    - 8125:8125
+    - 4317:4317
+    - 4318:4318
+    command:
+    - run
+    - --server.http.listen-addr=0.0.0.0:12345
+    - /etc/alloy/config.alloy
+    volumes:
+    - ${SPARKSTACK_DIR:?SPARKSTACK_DIR must be set}/config.alloy:/etc/alloy/config.alloy:ro
+    - /proc:/host/proc:ro
+    - /sys:/host/sys:ro
+    - /:/rootfs:ro
+    - /var/run/docker.sock:/var/run/docker.sock:ro
+    - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    - /var/lib/docker/:/var/lib/docker:ro
+    - /dev/disk/:/dev/disk:ro
+    networks:
+      monitoring:
+        aliases:
+        - otel-collector
+      sparkstack-net:
+        aliases:
+        - otel-collector
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  nv-monitor:
+    build:
+      context: ./nv-monitor
+    container_name: nv-monitor
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - 9101:9101
+    pid: "host"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
+    volumes:
+      - /proc:/proc:ro
+      - /sys:/sys:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu, utility, compute, management, video]
+        limits:
+          memory: 128M
+    networks:
+      - monitoring
+
+  vllm-progress-manager:
+    build:
+      context: ../..
+      dockerfile: services/monitoring/vllm-progress/docker/Dockerfile.vllm-progress
+    container_name: vllm-progress-manager
+    extra_hosts:
+    - "host.docker.internal:host-gateway"
+    ports:
+    - 8126:8126
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+    - monitoring
+    - sparkstack-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    depends_on:
+    - alloy
+    environment:
+    - SPARKRUN_STATSD_HOST=alloy
+
+networks:
+  monitoring:
+    driver: bridge
+  sparkstack-net:
+    external: true

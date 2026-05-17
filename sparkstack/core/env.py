@@ -74,6 +74,31 @@ SPARK_STACK_OPENCLAW_SKILLS_DIR = Path(
     or str(PROJECT_ROOT / "services" / "openclaw" / "skills")
 ).absolute()
 
+# --- Monitoring Ownership ---
+# When set, sparkstack skips deploying Prometheus/Grafana/Tempo and configures
+# Alloy to push metrics and traces to the specified external host instead.
+SPARK_MONITORING_HOST = os.getenv("SPARK_MONITORING_HOST", "")
+
+# Derived endpoints (individually overridable for split deployments)
+REMOTE_PROMETHEUS_URL = os.getenv(
+    "REMOTE_PROMETHEUS_URL",
+    f"http://{SPARK_MONITORING_HOST}:9090" if SPARK_MONITORING_HOST else "",
+)
+REMOTE_TEMPO_URL = os.getenv(
+    "REMOTE_TEMPO_URL",
+    f"{SPARK_MONITORING_HOST}:4317" if SPARK_MONITORING_HOST else "",
+)
+REMOTE_GRAFANA_URL = os.getenv(
+    "REMOTE_GRAFANA_URL",
+    f"http://{SPARK_MONITORING_HOST}:3001" if SPARK_MONITORING_HOST else "",
+)
+
+
+def is_monitoring_external() -> bool:
+    """True when sparkstack should use external monitoring backends."""
+    return bool(SPARK_MONITORING_HOST)
+
+
 # --- vLLM Backend Configuration ---
 
 BACKEND_START_PORT = int(os.getenv("BACKEND_START_PORT", 8001))

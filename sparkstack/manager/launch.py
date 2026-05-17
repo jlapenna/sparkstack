@@ -5,6 +5,7 @@ from pathlib import Path
 import yaml
 from loguru import logger
 
+from sparkstack.core.env import is_monitoring_external
 from sparkstack.core.utils import async_run_command, async_run_compose
 
 
@@ -101,12 +102,23 @@ async def launch_stack(stack_dir: Path, *, rebuild_images: bool = False) -> None
         await async_run_command(cmd, cwd=repo_root, capture_output=False)
 
     # Launch compose services
-    logger.info("📦 Starting gateway and monitoring via docker compose...")
+    external = is_monitoring_external()
+    if external:
+        logger.info("📦 Starting gateway + monitoring agents (external mode) via docker compose...")
+    else:
+        logger.info("📦 Starting gateway and monitoring via docker compose...")
+
     compose_file = "docker-compose.yaml"
+    compose_args = ["-f", str(stack_dir / compose_file)]
+
+    # In external mode, layer the agent-only monitoring compose on top
+    monitoring_dir = repo_root / "services" / "monitoring"
+    if external:
+        compose_args.extend(["-f", str(monitoring_dir / "docker-compose.external.yml")])
+
     await async_run_compose(
         stack_dir,
-        "-f",
-        str(stack_dir / compose_file),
+        *compose_args,
         "up",
         "-d",
         "--build",

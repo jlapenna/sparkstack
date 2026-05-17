@@ -7,7 +7,7 @@ from pathlib import Path
 from loguru import logger
 
 from sparkstack.core.env import PROJECT_ROOT as ROOT_DIR
-from sparkstack.core.env import STACKS_DIR
+from sparkstack.core.env import STACKS_DIR, is_monitoring_external
 
 # Add root directory to path to allow importing core
 from sparkstack.core.utils import async_run_command, async_run_compose
@@ -92,11 +92,11 @@ async def main():
             ["systemctl", "--user", "start", "vllm-active.service"], check=False
         )
 
-    # Recreate Prometheus
     logger.info("🔄 Refreshing monitoring stack...")
     monitor_dir = ROOT_DIR / "services" / "monitoring"
+    compose_args = ["-f", "docker-compose.external.yml"] if is_monitoring_external() else []
     await async_run_compose(monitor_dir, "rm", "-fsv", "prometheus", check=False)
-    await async_run_compose(monitor_dir, "up", "-d", check=False)
+    await async_run_compose(monitor_dir, *compose_args, "up", "-d", check=False)
 
     # Recreate Cloudflare tunnel
     logger.info("🔄 Refreshing Cloudflare tunnel...")

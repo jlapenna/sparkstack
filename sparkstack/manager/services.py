@@ -168,17 +168,26 @@ class Service(ABC):
         phase_num: int,
         up_args: list[str],
         down_args: list[str] | None = None,
+        compose_args: list[str] | None = None,
         task_name: str = "Deploying stack",
         project_name: str | None = None,
     ) -> int:
-        """Helper to execute down (optional) then up for docker compose."""
+        """Helper to execute down (optional) then up for docker compose.
+
+        Args:
+            compose_args: Top-level compose flags (e.g. ``-f file.yml``) placed
+                          *before* the ``up``/``down`` subcommand.
+            up_args: Flags placed *after* the ``up`` subcommand.
+            down_args: Flags placed *after* the ``down`` subcommand.
+        """
+        prefix = compose_args or []
         self.progress.phase(phase_num, task_name)
         self.state.set_task(task_name, 60)
         if down_args:
             await self.run_compose(
-                directory, "down", *down_args, check=False, project_name=project_name
+                directory, *prefix, "down", *down_args, check=False, project_name=project_name
             )
-        await self.run_compose(directory, "up", *up_args, project_name=project_name)
+        await self.run_compose(directory, *prefix, "up", *up_args, project_name=project_name)
         self.progress.phase_end()
         return phase_num + 1
 
@@ -306,6 +315,8 @@ class InferenceStackService(Service):
 
 class MonitoringService(Service):
     async def update(self) -> None:
+        from sparkstack.core.env import is_monitoring_external
+
         mon_dir = self.settings.project_root / "services" / "monitoring"
         stack_dir = self.settings.project_root / "current"
 
@@ -321,6 +332,15 @@ class MonitoringService(Service):
         # Inject SPARKSTACK_DIR for compose
         os.environ["SPARKSTACK_DIR"] = str(stack_dir.resolve())
 
+        if is_monitoring_external():
+            compose_file = "docker-compose.external.yml"
+            mode_label = "agent-only (external monitoring)"
+        else:
+            compose_file = "docker-compose.yml"
+            mode_label = "full stack (managed monitoring)"
+
+        logger.info(f"Deploying monitoring in {mode_label} mode")
+
         self.progress.begin_phases(3 if self.settings.pull_latest else 2)
         phase_num = 1
 
@@ -329,6 +349,7 @@ class MonitoringService(Service):
         phase_num = await self._deploy_compose(
             mon_dir,
             phase_num,
+            compose_args=["-f", compose_file],
             up_args=["-d", "--build"],
         )
 
