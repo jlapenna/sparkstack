@@ -165,6 +165,7 @@ class SparkrunServiceHandler:
             backend["env"]["OTEL_EXPORTER_OTLP_ENDPOINT"] = "http://alloy:4318"
             backend["env"]["OTEL_EXPORTER_OTLP_PROTOCOL"] = "http/protobuf"
             backend["env"]["OTEL_EXPORTER_OTLP_TRACES_PROTOCOL"] = "http/protobuf"
+            backend["env"]["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] = "http://alloy:4318/v1/traces"
             backend["env"]["OTEL_ATTRIBUTE_VALUE_LENGTH_LIMIT"] = "131072"
 
             if "otlp_traces_endpoint" not in self.recipe_dict.get("defaults", {}):

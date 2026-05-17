@@ -1,24 +1,20 @@
-import pkgNodeSDK from "@opentelemetry/sdk-node";
-const { NodeSDK } = pkgNodeSDK;
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
 
-import pkgAutoInst from "@opentelemetry/auto-instrumentations-node";
-const { getNodeAutoInstrumentations } = pkgAutoInst;
-
-import pkgOTLP from "@opentelemetry/exporter-trace-otlp-proto";
-const { OTLPTraceExporter } = pkgOTLP;
-
-import pkgResources from "@opentelemetry/resources";
-const { resourceFromAttributes } = pkgResources;
-
-import pkgSemantic from "@opentelemetry/semantic-conventions";
-const { ATTR_SERVICE_NAME } = pkgSemantic;
-
-import pkgCore from "@opentelemetry/core";
+const { NodeSDK } = require("@opentelemetry/sdk-node");
+const { getNodeAutoInstrumentations } = require("@opentelemetry/auto-instrumentations-node");
+const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-proto");
+const { resourceFromAttributes } = require("@opentelemetry/resources");
+const { ATTR_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 const {
   CompositePropagator,
   W3CBaggagePropagator,
   W3CTraceContextPropagator,
-} = pkgCore;
+} = require("@opentelemetry/core");
+const { diag, DiagConsoleLogger, DiagLogLevel } = require("@opentelemetry/api");
+
+diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.DEBUG);
+
 
 const sdk = new NodeSDK({
   resource: resourceFromAttributes({
