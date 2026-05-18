@@ -28,6 +28,7 @@ from sparkstack.core.utils.locking import run_with_lock
 from sparkstack.manager.orchestration_utils import cleanup_zombies, pre_flight_checks
 from sparkstack.manager.services import (
     CloudflareService,
+    HeadscaleService,
     InferenceStackService,
     MonitoringService,
     OpenClawService,
@@ -67,6 +68,7 @@ class Orchestrator:
         self.states = {
             "SparkRun": ServiceState("SparkRun", ipc=ipc, statsd=statsd),
             "Cloudflare": ServiceState("Cloudflare", ipc=ipc, statsd=statsd),
+            "Headscale": ServiceState("Headscale", ipc=ipc, statsd=statsd),
             "InferenceStack": ServiceState("InferenceStack", ipc=ipc, statsd=statsd),
             "RegistrySync": ServiceState("RegistrySync", ipc=ipc, statsd=statsd),
             "Monitoring": ServiceState("Monitoring", ipc=ipc, statsd=statsd),
@@ -75,6 +77,7 @@ class Orchestrator:
         self.services = [
             SparkrunService("SparkRun", self.states["SparkRun"], settings),
             CloudflareService("Cloudflare", self.states["Cloudflare"], settings),
+            HeadscaleService("Headscale", self.states["Headscale"], settings),
             InferenceStackService("InferenceStack", self.states["InferenceStack"], settings),
             RegistrySyncService("RegistrySync", self.states["RegistrySync"], settings),
             MonitoringService("Monitoring", self.states["Monitoring"], settings),

@@ -159,7 +159,7 @@ class OpenClawUpdater(BaseUpdater):
         logger.info(
             f"Executing official OpenClaw Docker setup script in {self.settings.run_setup} mode..."
         )
-        env = os.environ.copy()
+        env = self._get_compose_env()
 
         env.update({"CI": "1"})
         if self.settings.run_setup == "sandbox":
@@ -214,6 +214,7 @@ class OpenClawUpdater(BaseUpdater):
                 ".",
             ],
             cwd=self.settings.project_root / "services/openclaw",
+            env=self._get_compose_env(),
             stream_output=self.verbose,
         )
 
@@ -235,6 +236,7 @@ class OpenClawUpdater(BaseUpdater):
                 ".",
             ],
             cwd=self.settings.openclaw_dir,
+            env=self._get_compose_env(),
             stream_output=self.verbose,
         )
 
@@ -250,6 +252,7 @@ class OpenClawUpdater(BaseUpdater):
                 ".",
             ],
             cwd=self.settings.project_root / "services/openclaw",
+            env=self._get_compose_env(),
             stream_output=self.verbose,
         )
 
@@ -265,6 +268,23 @@ class OpenClawUpdater(BaseUpdater):
         stack_dir = self.settings.project_root / "current"
         if stack_dir.exists():
             env["SPARKSTACK_DIR"] = str(stack_dir.resolve())
+
+        from sparkstack.core.env import (
+            OPENCLAW_NODE_TARGET,
+            SPARKSTACK_HEAD_TAILNET_IP,
+            WORKER_TAILNET_IP,
+        )
+
+        if SPARKSTACK_HEAD_TAILNET_IP:
+            env["SPARKSTACK_HEAD_TAILNET_IP"] = SPARKSTACK_HEAD_TAILNET_IP
+        if WORKER_TAILNET_IP:
+            env["WORKER_TAILNET_IP"] = WORKER_TAILNET_IP
+
+        if OPENCLAW_NODE_TARGET:
+            if "://" in OPENCLAW_NODE_TARGET:
+                env["DOCKER_HOST"] = OPENCLAW_NODE_TARGET
+            else:
+                env["DOCKER_CONTEXT"] = OPENCLAW_NODE_TARGET
 
         return env
 

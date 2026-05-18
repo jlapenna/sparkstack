@@ -9,6 +9,7 @@ from loguru import logger
 
 from sparkstack.core.builders.monitoring import MonitoringBuilder
 from sparkstack.core.builders.stack import StackBuilder
+from sparkstack.core.env import SPARK_NODE_TARGET, WORKER_TAILNET_IP
 from sparkstack.core.ipc_server import StateUpdateEvent
 from sparkstack.core.progress import StackProgress
 from sparkstack.core.schemas import ServiceStatus
@@ -117,7 +118,12 @@ class Service(ABC):
         """Run the full update lifecycle for this service."""
 
     async def run_compose(
-        self, directory: Path, *args: str, check: bool = True, project_name: str | None = None
+        self,
+        directory: Path,
+        *args: str,
+        check: bool = True,
+        project_name: str | None = None,
+        env: dict[str, str] | None = None,
     ):
         """Execute docker compose in a specific directory with shared env files."""
         try:
@@ -128,6 +134,7 @@ class Service(ABC):
                 project_name=project_name,
                 check=check,
                 capture_output=True,
+                env=env,
             )
             logger.debug(f"[SUCCESS] docker compose {' '.join(args)} in {directory}")
             if result.stdout:
@@ -150,13 +157,19 @@ class Service(ABC):
         phase_num: int,
         task_name: str = "Pulling images",
         project_name: str | None = None,
+        env: dict[str, str] | None = None,
     ) -> int:
         """Helper to pull docker images if settings.pull_latest is True."""
         if self.settings.pull_latest:
             self.progress.phase(phase_num, task_name)
             self.state.set_task(task_name, 20)
             await self.run_compose(
-                directory, "pull", "--ignore-pull-failures", check=False, project_name=project_name
+                directory,
+                "pull",
+                "--ignore-pull-failures",
+                check=False,
+                project_name=project_name,
+                env=env,
             )
             self.progress.phase_end()
             return phase_num + 1
@@ -171,6 +184,7 @@ class Service(ABC):
         compose_args: list[str] | None = None,
         task_name: str = "Deploying stack",
         project_name: str | None = None,
+        env: dict[str, str] | None = None,
     ) -> int:
         """Helper to execute down (optional) then up for docker compose.
 
@@ -185,9 +199,17 @@ class Service(ABC):
         self.state.set_task(task_name, 60)
         if down_args:
             await self.run_compose(
-                directory, *prefix, "down", *down_args, check=False, project_name=project_name
+                directory,
+                *prefix,
+                "down",
+                *down_args,
+                check=False,
+                project_name=project_name,
+                env=env,
             )
-        await self.run_compose(directory, *prefix, "up", *up_args, project_name=project_name)
+        await self.run_compose(
+            directory, *prefix, "up", *up_args, project_name=project_name, env=env
+        )
         self.progress.phase_end()
         return phase_num + 1
 
@@ -258,6 +280,85 @@ class CloudflareService(Service):
         )
 
 
+class HeadscaleService(Service):
+    """Deploys the Headscale control plane for the Tailscale overlay network.
+
+    This service is only activated when the overlay network is configured
+    (SPARKSTACK_HEADSCALE_SERVER and SPARKSTACK_HEADSCALE_AUTH_KEY are set).
+    It is a foundational service with no dependencies — Tailscale sidecars
+    cannot authenticate until Headscale is healthy.
+    """
+
+    dependencies = []
+
+    async def update(self) -> None:
+        from sparkstack.core.env import is_overlay_configured  # noqa: PLC0415
+
+        if not is_overlay_configured():
+            self.state.status = ServiceStatus.SKIPPED
+            self.state.note = "Overlay not configured (missing SPARKSTACK_HEADSCALE_* env vars)"
+            self.state.done_event.set()
+            self.state._broadcast()
+            return
+
+        hs_dir = self.settings.project_root / "services" / "headscale"
+        self.progress.begin_phases(3 if self.settings.pull_latest else 2)
+        phase_num = 1
+
+        phase_num = await self._pull_images(hs_dir, phase_num)
+
+        phase_num = await self._deploy_compose(
+            hs_dir,
+            phase_num,
+            up_args=["-d", "--force-recreate"],
+            task_name="Deploying Headscale control plane",
+        )
+
+        manager = ServiceHealthManager(
+            "sparkstack-headscale",
+            probes=[DockerProbe("sparkstack-headscale")],
+        )
+        await self._probe_health(
+            phase_num,
+            manager,
+            timeout=30,
+            fail_msg="Headscale health check timed out",
+        )
+
+        self.state.note = "Deploying head sidecar"
+        self.state._broadcast()
+
+        try:
+            from sparkstack.core.env import (  # noqa: PLC0415
+                SPARKSTACK_HEAD_TAILNET_IP,
+                SPARKSTACK_HEADSCALE_AUTH_KEY,
+                set_env,
+            )
+            from sparkstack.manager.remote import (  # noqa: PLC0415
+                deploy_head_sidecar,
+                get_headscale_auth_key,
+                resolve_tailnet_ip,
+            )
+
+            if not SPARKSTACK_HEADSCALE_AUTH_KEY:
+                self.state.note = "Generating Headscale auth key..."
+                self.state._broadcast()
+                auth_key = await get_headscale_auth_key()
+                set_env("SPARKSTACK_HEADSCALE_AUTH_KEY", auth_key)
+
+            await deploy_head_sidecar()
+
+            if not SPARKSTACK_HEAD_TAILNET_IP:
+                self.state.note = "Resolving Tailnet IP..."
+                self.state._broadcast()
+                ip = await resolve_tailnet_ip("sparkstack-head-sidecar")
+                set_env("SPARKSTACK_HEAD_TAILNET_IP", ip)
+
+        except Exception as e:
+            self.state.fail(f"Failed to deploy head sidecar: {e}")
+            raise
+
+
 class InferenceStackService(Service):
     dependencies = ["SparkRun", "Monitoring", "OpenClaw"]
 
@@ -267,11 +368,22 @@ class InferenceStackService(Service):
             self.state.fail("No active stack found in 'current/'")
             return
 
+        env = os.environ.copy()
+        if SPARK_NODE_TARGET:
+            if "://" in SPARK_NODE_TARGET:
+                env["DOCKER_HOST"] = SPARK_NODE_TARGET
+            else:
+                env["DOCKER_CONTEXT"] = SPARK_NODE_TARGET
+
         self.progress.begin_phases(4 if self.settings.pull_latest else 3)
         phase_num = 1
 
         phase_num = await self._pull_images(
-            current_stack, phase_num, task_name="Pulling litellm gateway", project_name="current"
+            current_stack,
+            phase_num,
+            task_name="Pulling litellm gateway",
+            project_name="current",
+            env=env,
         )
 
         # Always rebuild configs from stack.yaml to pick up builder changes.
@@ -287,25 +399,33 @@ class InferenceStackService(Service):
         self.state.set_task("Restarting stack", 60)
 
         if stack_yaml.exists():
-            await launch_stack(current_stack, rebuild_images=self.settings.pull_latest)
+            await launch_stack(current_stack, rebuild_images=self.settings.pull_latest, env=env)
         else:
             compose_yaml = current_stack / "docker-compose.yaml"
             if compose_yaml.exists():
                 await self.run_compose(
-                    current_stack, "up", "-d", "--build", "--remove-orphans", project_name="current"
+                    current_stack,
+                    "up",
+                    "-d",
+                    "--build",
+                    "--remove-orphans",
+                    project_name="current",
+                    env=env,
                 )
         self.progress.phase_end()
         phase_num += 1
 
         # Use centralized health manager with explicit probes
         litellm_key = os.getenv("LITELLM_MASTER_KEY", "sk-sparkstack-default-master-key")
+        target_host = WORKER_TAILNET_IP if WORKER_TAILNET_IP else "localhost"
         manager = ServiceHealthManager(
             "litellm",
+            env=env,
             probes=[
-                DockerProbe("litellm"),
-                LogProbe("litellm"),
+                DockerProbe("litellm", env=env),
+                LogProbe("litellm", env=env),
                 HttpProbe(
-                    "http://localhost:4000/health",
+                    f"http://{target_host}:4000/health",
                     headers={"Authorization": f"Bearer {litellm_key}"},
                 ),
             ],
@@ -315,7 +435,10 @@ class InferenceStackService(Service):
 
 class MonitoringService(Service):
     async def update(self) -> None:
-        from sparkstack.core.env import is_monitoring_external
+        from sparkstack.core.env import (  # noqa: PLC0415
+            MONITORING_NODE_TARGET,
+            is_monitoring_external,
+        )
 
         mon_dir = self.settings.project_root / "services" / "monitoring"
         stack_dir = self.settings.project_root / "current"
@@ -329,8 +452,15 @@ class MonitoringService(Service):
             target.mkdir(parents=True, exist_ok=True)
         MonitoringBuilder(stack_dir).write(preserve_targets=True)
 
+        env = os.environ.copy()
         # Inject SPARKSTACK_DIR for compose
-        os.environ["SPARKSTACK_DIR"] = str(stack_dir.resolve())
+        env["SPARKSTACK_DIR"] = str(stack_dir.resolve())
+
+        if MONITORING_NODE_TARGET:
+            if "://" in MONITORING_NODE_TARGET:
+                env["DOCKER_HOST"] = MONITORING_NODE_TARGET
+            else:
+                env["DOCKER_CONTEXT"] = MONITORING_NODE_TARGET
 
         if is_monitoring_external():
             compose_file = "docker-compose.external.yml"
@@ -344,13 +474,14 @@ class MonitoringService(Service):
         self.progress.begin_phases(3 if self.settings.pull_latest else 2)
         phase_num = 1
 
-        phase_num = await self._pull_images(mon_dir, phase_num)
+        phase_num = await self._pull_images(mon_dir, phase_num, env=env)
 
         phase_num = await self._deploy_compose(
             mon_dir,
             phase_num,
             compose_args=["-f", compose_file],
             up_args=["-d", "--build"],
+            env=env,
         )
 
         manager = ServiceHealthManager(

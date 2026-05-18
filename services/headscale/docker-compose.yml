@@ -1,0 +1,30 @@
+# Headscale Control Plane for sparkstack multi-node overlay.
+# Manages Tailscale node identities, IP allocation, and pre-auth keys.
+# MagicDNS is disabled — all routing uses raw Tailnet IPs.
+
+networks:
+  sparkstack-net:
+    external: true
+
+volumes:
+  headscale-data:
+
+services:
+  headscale:
+    container_name: sparkstack-headscale
+    image: headscale/headscale:0.28.0
+    restart: unless-stopped
+    command: serve
+    networks:
+      - sparkstack-net
+    ports:
+      - "${SPARKSTACK_HEADSCALE_PORT:-8080}:8080"
+    volumes:
+      - headscale-data:/var/lib/headscale
+      - ./config/config.yaml:/etc/headscale/config.yaml:ro
+    healthcheck:
+      test: ["CMD", "headscale", "nodes", "list", "--output", "json"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s

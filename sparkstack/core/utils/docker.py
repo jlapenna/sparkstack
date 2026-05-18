@@ -5,7 +5,7 @@ class DockerClient:
     """Generic wrapper for Docker CLI operations."""
 
     @staticmethod
-    async def get_status(container: str) -> tuple[str, str]:
+    async def get_status(container: str, env: dict[str, str] | None = None) -> tuple[str, str]:
         """Returns (state, health) for a container."""
         try:
             result = await async_run_command(
@@ -17,6 +17,7 @@ class DockerClient:
                     container,
                 ],
                 check=False,
+                env=env,
             )
             if result.returncode != 0:
                 return "not_found", "none"

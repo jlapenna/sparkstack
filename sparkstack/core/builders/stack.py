@@ -66,6 +66,7 @@ class StackBuilder:
                 ModelRequest(
                     role=backend["name"],
                     recipe=backend["recipe"],
+                    target=backend.get("target"),
                     overrides=overrides,
                 )
             )
@@ -93,8 +94,8 @@ class StackBuilder:
         self.stack_dir = STACKS_DIR / stack_name
         self.registry = ModelRegistry(REGISTRY_DIR)
 
-        self.total_vram = 0.0
-        self.total_memory_gb = 0.0
+        self.host_vram: dict[str, float] = {}
+        self.host_memory_gb: dict[str, float] = {}
         self.stack_backends = []
 
         self.port_to_recipe = {}
@@ -104,38 +105,49 @@ class StackBuilder:
     # Prometheus (2G) + Grafana (0.5G) + Alloy (0.5G) + Tempo (1G) + misc (1G).
     _MONITORING_OVERHEAD_GB = 5.0
 
+    @property
+    def is_remote(self) -> bool:
+        return any(req.is_remote for req in self.requested_models)
+
     def _check_constraints(self):
-        vram_pct = self.total_vram * 100
-        total_declared = self.total_memory_gb + self._MONITORING_OVERHEAD_GB
-        logger.info(
-            f"📊 Resource Budget:\n"
-            f"   VRAM: {vram_pct:.1f}% (ceiling: {MAX_VRAM_UTILIZATION * 100:.0f}%)\n"
-            f"   RAM (backends): {self.total_memory_gb:.1f}GB\n"
-            f"   RAM (monitoring overhead): {self._MONITORING_OVERHEAD_GB:.1f}GB\n"
-            f"   RAM (total declared): {total_declared:.1f}GB\n"
-            f"   RAM ceiling: {MAX_DOCKER_MEMORY_GB:.1f}GB "
-            f"({USABLE_SPARK_MEMORY_GB:.0f}GB usable - {SYSTEM_RESERVED_MEMORY_GB:.0f}GB system reserve)"
-        )
+        logger.info("📊 Resource Budget:")
 
-        if total_declared > MAX_DOCKER_MEMORY_GB:
-            raise ValueError(
-                f"Total declared memory ({total_declared:.1f}GB) exceeds "
-                f"MAX_DOCKER_MEMORY_GB ({MAX_DOCKER_MEMORY_GB:.1f}GB). "
-                f"Reduce backend memory_limit values or lower SYSTEM_RESERVED_MEMORY_GB."
+        for host in self.host_vram:
+            vram_pct = self.host_vram[host] * 100
+            mem_gb = self.host_memory_gb[host]
+            # Fixed overhead for monitoring/gateway containers not tracked by handlers.
+            # Applied only to localhost. Remote hosts only run the vLLM container.
+            overhead = self._MONITORING_OVERHEAD_GB if host == "localhost" else 0.0
+            total_declared = mem_gb + overhead
+
+            logger.info(
+                f"   [{host}] VRAM: {vram_pct:.1f}% (ceiling: {MAX_VRAM_UTILIZATION * 100:.0f}%)\n"
+                f"   [{host}] RAM (backends): {mem_gb:.1f}GB\n"
+                f"   [{host}] RAM (monitoring): {overhead:.1f}GB\n"
+                f"   [{host}] RAM (total): {total_declared:.1f}GB\n"
+                f"   [{host}] RAM ceiling: {MAX_DOCKER_MEMORY_GB:.1f}GB "
+                f"({USABLE_SPARK_MEMORY_GB:.0f}GB usable - {SYSTEM_RESERVED_MEMORY_GB:.0f}GB system reserve)"
             )
 
-        # Small tolerance for IEEE-754 accumulation (e.g. 0.90+0.05 → 0.9500…01).
-        if self.total_vram > MAX_VRAM_UTILIZATION + 1e-3:
-            raise ValueError(
-                f"Total VRAM utilization ({vram_pct:.1f}%) exceeds "
-                f"ceiling ({MAX_VRAM_UTILIZATION * 100:.0f}%)."
-            )
+            if total_declared > MAX_DOCKER_MEMORY_GB:
+                raise ValueError(
+                    f"[{host}] Total declared memory ({total_declared:.1f}GB) exceeds "
+                    f"MAX_DOCKER_MEMORY_GB ({MAX_DOCKER_MEMORY_GB:.1f}GB). "
+                    f"Reduce backend memory_limit values or lower SYSTEM_RESERVED_MEMORY_GB."
+                )
 
-        if self.total_vram < 0.85:
-            logger.warning(
-                f"⚠️ VRAM under-utilized: {vram_pct:.1f}%. "
-                f"Consider increasing gpu_memory_utilization to maximize KV cache."
-            )
+            # Small tolerance for IEEE-754 accumulation (e.g. 0.90+0.05 → 0.9500…01).
+            if self.host_vram[host] > MAX_VRAM_UTILIZATION + 1e-3:
+                raise ValueError(
+                    f"[{host}] Total VRAM utilization ({vram_pct:.1f}%) exceeds "
+                    f"ceiling ({MAX_VRAM_UTILIZATION * 100:.0f}%)."
+                )
+
+            if self.host_vram[host] < 0.85:
+                logger.warning(
+                    f"⚠️ [{host}] VRAM under-utilized: {vram_pct:.1f}%. "
+                    f"Consider increasing gpu_memory_utilization to maximize KV cache."
+                )
 
         logger.info("✅ Memory Law constraints verified.")
 
@@ -242,9 +254,14 @@ class StackBuilder:
             container_hostname = f"{target_role}_solo"
             self.recipe_to_container[recipe_name] = container_hostname
 
+        target_host = req.target if req.is_remote and req.target else "localhost"
+
         context = {
             "target_role": target_role,
             "recipe_name": recipe_name,
+            "target": req.target,
+            "target_host": target_host,
+            "is_remote": req.is_remote,
             "port": port,
             "container_hostname": container_hostname,
             "routing_ids": routing_ids,
@@ -262,9 +279,11 @@ class StackBuilder:
             self.docker_builder, self.gateway_builder, self.monitoring_builder
         )
 
+        target_host = req.target if req.is_remote and req.target else "localhost"
+
         if not existing_port:
-            self.total_vram += vram
-            self.total_memory_gb += mem_gb
+            self.host_vram[target_host] = self.host_vram.get(target_host, 0.0) + vram
+            self.host_memory_gb[target_host] = self.host_memory_gb.get(target_host, 0.0) + mem_gb
 
         if backend_dict:
             self.stack_backends.append(backend_dict)

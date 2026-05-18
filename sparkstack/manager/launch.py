@@ -9,7 +9,9 @@ from sparkstack.core.env import is_monitoring_external
 from sparkstack.core.utils import async_run_command, async_run_compose
 
 
-async def launch_stack(stack_dir: Path, *, rebuild_images: bool = False) -> None:
+async def launch_stack(
+    stack_dir: Path, *, rebuild_images: bool = False, env: dict[str, str] | None = None
+) -> None:
     repo_root = Path(__file__).parent.parent.parent.resolve()
     stack_yaml_path = stack_dir / "stack.yaml"
 
@@ -29,12 +31,14 @@ async def launch_stack(stack_dir: Path, *, rebuild_images: bool = False) -> None
             ["docker", "ps", "-aq", "--filter", "label=sparkstack-backend=true"],
             check=False,
             capture_output=True,
+            env=env,
         )
         stale_containers = result.stdout.strip().split() if result.stdout else []
         if stale_containers:
             await async_run_command(
                 ["docker", "rm", "-f"] + stale_containers,
                 check=False,
+                env=env,
             )
     except Exception as e:
         logger.warning(f"Failed to query or remove stale backends: {e}")
@@ -99,7 +103,7 @@ async def launch_stack(stack_dir: Path, *, rebuild_images: bool = False) -> None
         for lbl in backend.get("labels", []):
             cmd.extend(["--label", lbl])
 
-        await async_run_command(cmd, cwd=repo_root, capture_output=False)
+        await async_run_command(cmd, cwd=repo_root, capture_output=False, env=env)
 
     # Launch compose services
     external = is_monitoring_external()
@@ -124,6 +128,7 @@ async def launch_stack(stack_dir: Path, *, rebuild_images: bool = False) -> None
         "--build",
         project_root=repo_root,
         project_name="current",
+        env=env,
     )
     logger.info("✅ Stack is operational.")
 

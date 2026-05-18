@@ -1,3 +1,4 @@
+import os
 import re
 from typing import Any
 
@@ -125,10 +126,14 @@ class SparkrunServiceHandler:
 
         recipe_out = self.model_config.recipe_path
 
+        target_host = self.context.get("target_host", "localhost")
+        is_remote = self.context.get("is_remote", False)
+
         backend = {
             "name": self.target_role,
             "recipe": recipe_out,
-            "target": "localhost",
+            "target": target_host,
+            "is_remote": is_remote,
             "port": self.port,
             "env": {},
             "overrides": {},
@@ -162,14 +167,21 @@ class SparkrunServiceHandler:
                 backend["env"]["OTEL_SERVICE_NAME"] = f"vllm-{self.target_role}"
 
             backend["env"]["OTEL_TRACES_EXPORTER"] = "otlp"
-            backend["env"]["OTEL_EXPORTER_OTLP_ENDPOINT"] = "http://alloy:4318"
+
+            if is_remote:
+                head_ip = os.getenv("SPARKSTACK_HEAD_TAILNET_IP", "")
+                otel_endpoint = f"http://{head_ip}:4318" if head_ip else "http://alloy:4318"
+            else:
+                otel_endpoint = "http://alloy:4318"
+
+            backend["env"]["OTEL_EXPORTER_OTLP_ENDPOINT"] = otel_endpoint
             backend["env"]["OTEL_EXPORTER_OTLP_PROTOCOL"] = "http/protobuf"
             backend["env"]["OTEL_EXPORTER_OTLP_TRACES_PROTOCOL"] = "http/protobuf"
-            backend["env"]["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] = "http://alloy:4318/v1/traces"
+            backend["env"]["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] = f"{otel_endpoint}/v1/traces"
             backend["env"]["OTEL_ATTRIBUTE_VALUE_LENGTH_LIMIT"] = "131072"
 
             if "otlp_traces_endpoint" not in self.recipe_dict.get("defaults", {}):
-                backend["overrides"]["otlp_traces_endpoint"] = "http://alloy:4318/v1/traces"
+                backend["overrides"]["otlp_traces_endpoint"] = f"{otel_endpoint}/v1/traces"
 
         # Only promote explicitly allowed keys from vllm_cfg into overrides.
         # Recipe defaults should stay in the recipe — sparkrun reads them directly.
@@ -220,10 +232,17 @@ class SparkrunServiceHandler:
             model_info["reasoning"] = str(litellm_overrides.pop("reasoning")).lower()
 
         for rid in self.context["routing_ids"]:
+            if is_remote:
+                tailnet_ip_map = self.context.get("tailnet_ip_map", {})
+                ip = tailnet_ip_map.get(self.target_role, "127.0.0.1")
+                backend_url = f"http://{ip}:{self.port}/v1"
+            else:
+                backend_url = f"http://{self.container_hostname}:{self.port}/v1"
+
             gateway_builder.add_model(
                 role_id=rid,
                 backend_model=self.target_role,
-                backend_url=f"http://{self.container_hostname}:{self.port}/v1",
+                backend_url=backend_url,
                 context_window=max_len,
                 human_name=str(human_name) if human_name else "",
                 thinking_format=thinking_format,

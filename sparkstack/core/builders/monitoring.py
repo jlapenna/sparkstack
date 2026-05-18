@@ -1,8 +1,8 @@
 import json
 import os
 from pathlib import Path
-from string import Template
 
+import jinja2
 import yaml
 
 from sparkstack.core.env import (
@@ -46,29 +46,25 @@ class MonitoringBuilder:
         if not template_path.exists():
             return
 
-        # Build the blackbox target blocks
-        monitor_domains = [
+        # Prepare monitor domains
+        raw_domains = [
             d.strip() for d in os.getenv("SPARK_STACK_MONITOR_DOMAINS", "").split(",") if d.strip()
         ]
-        target_blocks = []
-        for domain in monitor_domains:
+        monitor_domains = []
+        for domain in raw_domains:
             if not domain.startswith("http"):
                 domain = f"https://{domain}"
-            target_blocks.append(f"""  target {{
-    name    = "{domain}"
-    address = "{domain}"
-    module  = "http_2xx"
-  }}""")
+            monitor_domains.append(domain)
 
-        # Assemble template variables
-        variables: dict[str, str] = {
-            "BLACKBOX_TARGETS": "\n".join(target_blocks),
+        variables: dict[str, str | list[str]] = {
+            "monitor_domains": monitor_domains,
         }
         if is_monitoring_external():
             variables["REMOTE_PROMETHEUS_URL"] = REMOTE_PROMETHEUS_URL
             variables["REMOTE_TEMPO_URL"] = REMOTE_TEMPO_URL
 
-        alloy_content = Template(template_path.read_text()).substitute(variables)
+        # Generate the Alloy config from the template using Jinja2
+        alloy_content = jinja2.Template(template_path.read_text()).render(**variables)
 
         (self.stack_dir / "config.alloy").write_text(alloy_content)
 
@@ -79,7 +75,12 @@ class MonitoringBuilder:
                 metrics_path="/metrics",
                 static_configs=[
                     StaticConfig(
-                        targets=[os.getenv("VLLM_GATEWAY_HOST", "litellm:4000")],
+                        targets=[
+                            os.getenv(
+                                "VLLM_GATEWAY_HOST",
+                                f"{os.getenv('WORKER_TAILNET_IP', 'litellm')}:4000"
+                            )
+                        ],
                         labels={"instance": "spark"},
                     )
                 ],
@@ -108,11 +109,6 @@ class MonitoringBuilder:
         # Generate the Alloy config from the appropriate template
         self._write_alloy_config()
 
-        # In external mode, skip prometheus.yml and targets.json generation
-        # since Prometheus won't be deployed locally.
-        if is_monitoring_external():
-            return
-
         config = PrometheusConfig(
             global_config={"scrape_interval": "15s"},
             scrape_configs=base_configs,
@@ -127,6 +123,11 @@ class MonitoringBuilder:
             targets.extend(self.scrape_targets)
             with (self.stack_dir / "targets.json").open("w") as f:
                 json.dump(targets, f, indent=2)
+
+        # In external mode, skip prometheus.yml generation
+        # since Prometheus won't be deployed locally.
+        if is_monitoring_external():
+            return
 
         with (self.stack_dir / "prometheus.yml").open("w") as f:
             yaml.dump(config.model_dump(by_alias=True, exclude_none=True), f, sort_keys=False)

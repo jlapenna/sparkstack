@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import os
+
 import click
 
+from sparkstack.core.env import SPARK_NODE_TARGET
 from sparkstack.manager.launch import launch_stack
 
 from . import main
@@ -31,8 +34,15 @@ def launch(ctx: click.Context, stack_name: str, rebuild: bool, output_json: bool
 
     setup_command_logging(output_json, ctx.obj.get("verbose", 0))
 
-    run_async(_launch_async(stack_dir, rebuild_images=rebuild))
+    env = os.environ.copy()
+    if SPARK_NODE_TARGET:
+        if "://" in SPARK_NODE_TARGET:
+            env["DOCKER_HOST"] = SPARK_NODE_TARGET
+        else:
+            env["DOCKER_CONTEXT"] = SPARK_NODE_TARGET
+
+    run_async(_launch_async(stack_dir, rebuild_images=rebuild, env=env))
 
 
-async def _launch_async(stack_dir, *, rebuild_images: bool = False) -> None:
-    await launch_stack(stack_dir, rebuild_images=rebuild_images)
+async def _launch_async(stack_dir, *, rebuild_images: bool = False, env: dict[str, str] | None = None) -> None:
+    await launch_stack(stack_dir, rebuild_images=rebuild_images, env=env)

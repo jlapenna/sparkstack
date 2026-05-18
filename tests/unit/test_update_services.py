@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -13,7 +14,7 @@ async def test_orchestrator_initialization():
     correctly, preventing regressions where a service is renamed but its
     reference in update_services.py is not updated.
     """
-    mock_settings = Settings(pull_latest=False, project_root="/tmp")
+    mock_settings = Settings(pull_latest=False, project_root=Path("/tmp"))
     mock_ipc = MagicMock()
 
     # Instantiating the Orchestrator will fail if imports are broken
@@ -28,6 +29,7 @@ async def test_orchestrator_initialization():
         "RegistrySync",
         "Monitoring",
         "OpenClaw",
+        "Headscale",
     }
 
     registered_services = {s.name for s in orchestrator.services}

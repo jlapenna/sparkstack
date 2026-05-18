@@ -41,9 +41,8 @@ async def async_run_command(
 ) -> CommandResult:
     """Run a shell command asynchronously."""
     cwd_path = Path(cwd) if cwd else Path.cwd()
-    cmd_str = [str(c) for c in cmd]
 
-    logger.debug(f"Running command: {' '.join(cmd_str)} (cwd: {cwd_path})")
+    logger.debug(f"Running command: {' '.join(cmd)} (cwd: {cwd_path})")
 
     # If stream_output is True, pipe stdout and stderr to the process's standard streams instead of capturing
     stdout_dest = (
@@ -54,7 +53,7 @@ async def async_run_command(
     )
 
     process = await asyncio.create_subprocess_exec(
-        *cmd_str,
+        *cmd,
         stdout=stdout_dest,
         stderr=stderr_dest,
         cwd=str(cwd_path),
@@ -78,7 +77,7 @@ async def async_run_command(
         returncode=process.returncode or 0,
         stdout=stdout,
         stderr=stderr,
-        cmd=cmd_str,
+        cmd=cmd,
     )
 
     if check and result.returncode != 0:
@@ -100,6 +99,7 @@ async def async_run_compose(
     check: bool = True,
     capture_output: bool = True,
     stream_output: bool = False,
+    env: dict[str, str] | None = None,
 ) -> CommandResult:
     """Execute docker compose in a specific directory with shared env files automatically included."""
     directory = Path(directory)
@@ -122,6 +122,7 @@ async def async_run_compose(
     return await async_run_command(
         cmd,
         cwd=directory,
+        env=env,
         check=check,
         capture_output=capture_output,
         stream_output=stream_output,

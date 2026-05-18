@@ -21,6 +21,7 @@ from rich.progress import (
 )
 
 from sparkstack.core.discovery import get_active_services
+from sparkstack.core.env import SPARK_NODE_TARGET, WORKER_TAILNET_IP
 from sparkstack.core.ipc_server import IPCServer, StateUpdateEvent
 from sparkstack.core.utils import async_run_command
 
@@ -36,16 +37,18 @@ class BackendStatusUpdate:
 
 
 class BackendProbe:
-    def __init__(self, expected_containers: set[str], fail_fast: bool = True):
+    def __init__(self, expected_containers: set[str], fail_fast: bool = True, target_host: str = "localhost", env: dict[str, str] | None = None):
         self.expected_containers = expected_containers
         self.fail_fast = fail_fast
+        self.target_host = target_host
+        self.env = env
 
     async def poll(self) -> AsyncIterator[BackendStatusUpdate]:
         all_ready = False
         async with httpx.AsyncClient() as client:
             while not all_ready:
                 try:
-                    res = await client.get("http://localhost:8126/status", timeout=2.0)
+                    res = await client.get(f"http://{self.target_host}:8126/status", timeout=2.0)
                     if res.status_code == 200:
                         status_data = res.json()
                         all_ready = True
@@ -74,6 +77,7 @@ class BackendProbe:
                                     res = await async_run_command(
                                         ["docker", "logs", "--tail", "20", c],
                                         check=False,
+                                        env=self.env,
                                     )
                                     logs = res.stdout + res.stderr
                                 except Exception as e:
@@ -99,7 +103,7 @@ class BackendProbe:
                 await asyncio.sleep(2)
 
 
-async def _smoke_test_direct(container: str, port: int, model_id: str) -> bool | None:
+async def _smoke_test_direct(container: str, port: int, model_id: str, env: dict[str, str] | None = None) -> bool | None:
     """Test a backend directly via docker exec, bypassing the LiteLLM gateway.
 
     Returns ``True`` on success, ``None`` on failure (the caller treats
@@ -130,7 +134,7 @@ async def _smoke_test_direct(container: str, port: int, model_id: str) -> bool |
     )
     cmd = ["docker", "exec", container, "python3", "-c", script]
     try:
-        result = await asyncio.wait_for(async_run_command(cmd, check=False), timeout=200)
+        result = await asyncio.wait_for(async_run_command(cmd, check=False, env=env), timeout=200)
         stdout = result.stdout.strip()
         if stdout == "200":
             logger.info(f"✅ Smoke test passed for {container} (direct)")
@@ -176,7 +180,16 @@ async def wait_for_backends_to_load(
             f"Waiting for {len(expected_containers)} backend containers to be fully loaded..."
         )
 
-    probe = BackendProbe(expected_containers, fail_fast=fail_fast)
+    env = os.environ.copy()
+    if SPARK_NODE_TARGET:
+        if "://" in SPARK_NODE_TARGET:
+            env["DOCKER_HOST"] = SPARK_NODE_TARGET
+        else:
+            env["DOCKER_CONTEXT"] = SPARK_NODE_TARGET
+
+    target_host = WORKER_TAILNET_IP if WORKER_TAILNET_IP else "localhost"
+
+    probe = BackendProbe(expected_containers, fail_fast=fail_fast, target_host=target_host, env=env)
 
     # Use a dummy Progress context if output_json is True to keep the code clean
     with Progress(
@@ -309,14 +322,14 @@ async def wait_for_backends_to_load(
 
                         if "embedding" in model_id:
                             res = await client.post(
-                                f"http://localhost:{litellm_port}/v1/embeddings",
+                                f"http://{target_host}:{litellm_port}/v1/embeddings",
                                 headers=headers,
                                 json={"model": model_id, "input": "Say hi"},
                                 timeout=180.0,
                             )
                         else:
                             res = await client.post(
-                                f"http://localhost:{litellm_port}/v1/chat/completions",
+                                f"http://{target_host}:{litellm_port}/v1/chat/completions",
                                 headers=headers,
                                 json={
                                     "model": model_id,
@@ -334,7 +347,7 @@ async def wait_for_backends_to_load(
                                 f"Gateway has no DB for {container}, "
                                 "falling back to direct backend smoke test..."
                             )
-                            res = await _smoke_test_direct(container, port, model_id)
+                            res = await _smoke_test_direct(container, port, model_id, env=env)
                             if res is None:
                                 return False
                             continue

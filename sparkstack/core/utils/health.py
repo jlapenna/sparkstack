@@ -39,11 +39,12 @@ class HealthProbe:
 class DockerProbe(HealthProbe):
     """Probes container status and health label."""
 
-    def __init__(self, container_name: str):
+    def __init__(self, container_name: str, env: dict[str, str] | None = None):
         self.container = container_name
+        self.env = env
 
     async def probe(self) -> HealthStatus:
-        state, health = await DockerClient.get_status(self.container)
+        state, health = await DockerClient.get_status(self.container, env=self.env)
 
         if health == "healthy":
             return HealthStatus.HEALTHY
@@ -101,17 +102,18 @@ class LogProbe(HealthProbe):
     """Scans docker logs for crash patterns."""
 
     def __init__(
-        self, container_name: str, tail: int = 50, extra_patterns: list[str] | None = None
+        self, container_name: str, tail: int = 50, extra_patterns: list[str] | None = None, env: dict[str, str] | None = None
     ):
         self.container = container_name
         self.tail = tail
         self.patterns = CRASH_PATTERNS + (extra_patterns or [])
+        self.env = env
         self._last_crash_pattern: str | None = None
 
     async def probe(self) -> HealthStatus:
         cmd = ["docker", "logs", "--tail", str(self.tail), self.container]
         try:
-            result = await async_run_command(cmd, check=False)
+            result = await async_run_command(cmd, check=False, env=self.env)
             full_logs = f"{result.stdout}\n{result.stderr}"
             for pattern in self.patterns:
                 if re.search(pattern, full_logs, re.IGNORECASE):
@@ -130,7 +132,7 @@ class LogProbe(HealthProbe):
     async def stream_crashes(self) -> AsyncIterator[str]:
         cmd = self.get_stream_cmd()
         process = await asyncio.create_subprocess_exec(
-            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT, env=self.env
         )
         try:
             assert process.stdout is not None
@@ -172,14 +174,14 @@ class SparkrunLogProbe(LogProbe):
 class ServiceHealthManager:
     """Orchestrates health probes for a service."""
 
-    def __init__(self, container_name: str, probes: list[HealthProbe] | None = None):
+    def __init__(self, container_name: str, probes: list[HealthProbe] | None = None, env: dict[str, str] | None = None):
         self.container = container_name
         if probes is None:
             self.probes = [
-                DockerProbe(container_name),
-                SparkrunLogProbe(container_name)
+                DockerProbe(container_name, env=env),
+                SparkrunLogProbe(container_name, env=env)
                 if "sparkrun" in container_name
-                else LogProbe(container_name),
+                else LogProbe(container_name, env=env),
             ]
         else:
             self.probes = probes

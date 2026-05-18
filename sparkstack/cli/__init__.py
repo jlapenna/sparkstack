@@ -30,6 +30,7 @@ from ._launch import launch  # noqa: E402, F401
 from ._monitor import monitor  # noqa: E402, F401
 from ._monitoring import update_monitoring  # noqa: E402, F401
 from ._set_current import set_current  # noqa: E402, F401
+from ._setup import setup  # noqa: E402, F401
 from ._status import status  # noqa: E402, F401
 from ._sync import sync_registry_cmd  # noqa: E402, F401
 from ._sync_dashboards import sync_dashboards_cmd  # noqa: E402, F401

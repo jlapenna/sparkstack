@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 
 import click
@@ -22,12 +23,23 @@ from ._common import json_option, run_async, with_process_lock
 
 @main.command("update")
 @click.option("--pull-latest", is_flag=True, default=False, help="Pull latest container images.")
+@click.option(
+    "--spark-node", help="Target remote node for Inference workers (Docker Context/SSH URI)."
+)
+@click.option("--openclaw-node", help="Target remote node for OpenClaw Gateway.")
+@click.option("--monitoring-node", help="Target remote node for Monitoring stack.")
 @click.argument("services", nargs=-1)
 @json_option()
 @with_process_lock("update-services")
 @click.pass_context
 def update(
-    ctx: click.Context, pull_latest: bool, output_json: bool, services: tuple[str, ...]
+    ctx: click.Context,
+    pull_latest: bool,
+    spark_node: str | None,
+    openclaw_node: str | None,
+    monitoring_node: str | None,
+    output_json: bool,
+    services: tuple[str, ...],
 ) -> None:
     """Run the full service update orchestration.
 
@@ -38,6 +50,13 @@ def update(
 
     Use --json for structured output suitable for piping into scripts.
     """
+    if spark_node is not None:
+        os.environ["SPARK_NODE_TARGET"] = spark_node
+    if openclaw_node is not None:
+        os.environ["OPENCLAW_NODE_TARGET"] = openclaw_node
+    if monitoring_node is not None:
+        os.environ["MONITORING_NODE_TARGET"] = monitoring_node
+
     run_async(_update_async(pull_latest=pull_latest, output_json=output_json, services=services))
 
 

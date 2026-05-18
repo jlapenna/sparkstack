@@ -35,7 +35,7 @@ async def test_sparkrun_service_update():
 
     service = SparkrunService("SparkRun", mock_state, mock_settings)
 
-    with patch("sparkstack.manager.services.SparkrunUpdater") as mock_updater_cls:
+    with patch("sparkstack.manager.services.SparkrunService.updater_class") as mock_updater_cls:
         mock_updater = mock_updater_cls.return_value
 
         async def mock_events():

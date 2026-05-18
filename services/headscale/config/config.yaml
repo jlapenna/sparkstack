@@ -1,0 +1,59 @@
+# Headscale v0.28 configuration for sparkstack overlay network.
+# Reference: https://github.com/juanfont/headscale/blob/main/config-example.yaml
+
+# The server URL is overridden at deploy time via the CLI or env var.
+# This default is a placeholder; sparkstack auto-detects the host LAN IP.
+server_url: http://127.0.0.1:8080
+
+listen_addr: 0.0.0.0:8080
+metrics_listen_addr: 0.0.0.0:9090
+
+# GRPC is not used in v0.28; kept disabled.
+grpc_listen_addr: 0.0.0.0:50443
+grpc_allow_insecure: false
+
+# --- Tailnet IP Prefixes ---
+# sparkstack uses the 100.64.0.0/10 range (CGNAT space reserved for Tailscale).
+prefixes:
+  v4: 100.64.0.0/10
+  v6: fd7a:115c:a1e0::/48
+
+# --- DERP ---
+# Disable external DERP relay servers since all nodes are on the same LAN.
+# Direct WireGuard connections are preferred for minimum latency.
+derp:
+  server:
+    enabled: false
+  urls: []
+  paths: []
+  auto_update_enabled: false
+  update_frequency: 24h
+
+# --- DNS ---
+# MagicDNS is disabled. All routing uses raw Tailnet IPs (100.64.x.y).
+# TS_HOSTNAME is set on sidecars for human-readable `tailscale status` only.
+dns:
+  magic_dns: false
+  base_domain: sparkstack.local
+  nameservers:
+    global:
+      - 1.1.1.1
+      - 8.8.8.8
+
+# --- Database ---
+# SQLite is sufficient for the small node counts in a sparkstack cluster.
+database:
+  type: sqlite
+  sqlite:
+    path: /var/lib/headscale/db.sqlite
+
+# --- Misc ---
+# Disable open registration; nodes must use pre-auth keys.
+disable_check_updates: true
+
+# Node updates and ephemeral node cleanup.
+ephemeral_node_inactivity_timeout: 30m
+
+# Log level for operational debugging.
+log:
+  level: info

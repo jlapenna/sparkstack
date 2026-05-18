@@ -22,7 +22,7 @@ otelcol.processor.batch "default" {
 
 otelcol.exporter.otlphttp "remote_prometheus" {
   client {
-    endpoint = "${REMOTE_PROMETHEUS_URL}/api/v1/otlp"
+    endpoint = "{{ REMOTE_PROMETHEUS_URL }}/api/v1/otlp"
     tls {
       insecure = true
     }
@@ -31,13 +31,13 @@ otelcol.exporter.otlphttp "remote_prometheus" {
 
 prometheus.remote_write "remote" {
   endpoint {
-    url = "${REMOTE_PROMETHEUS_URL}/api/v1/write"
+    url = "{{ REMOTE_PROMETHEUS_URL }}/api/v1/write"
   }
 }
 
 otelcol.exporter.otlp "remote_tempo" {
   client {
-    endpoint = "${REMOTE_TEMPO_URL}"
+    endpoint = "{{ REMOTE_TEMPO_URL }}"
     tls {
       insecure = true
     }
@@ -126,7 +126,13 @@ prometheus.relabel "cadvisor_labels" {
 // Blackbox Exporter Integration (replaces blackbox-exporter container)
 prometheus.exporter.blackbox "default" {
   config = "{ modules: { http_2xx: { prober: http, timeout: 5s, http: { preferred_ip_protocol: ip4 } } } }"
-${BLACKBOX_TARGETS}
+{% for domain in monitor_domains %}
+  target {
+    name    = "{{ domain }}"
+    address = "{{ domain }}"
+    module  = "http_2xx"
+  }
+{% endfor %}
 }
 
 discovery.relabel "blackbox" {
@@ -151,6 +157,17 @@ discovery.relabel "blackbox" {
 
 prometheus.scrape "blackbox" {
   targets    = discovery.relabel.blackbox.output
+  forward_to = [prometheus.remote_write.remote.receiver]
+  scrape_interval = "15s"
+}
+
+// Dynamic File Service Discovery (vLLM, LiteLLM, monitoring components)
+discovery.file "targets" {
+  files = ["/etc/alloy/targets.json"]
+}
+
+prometheus.scrape "targets" {
+  targets    = discovery.file.targets.targets
   forward_to = [prometheus.remote_write.remote.receiver]
   scrape_interval = "15s"
 }

@@ -14,26 +14,38 @@ from pydantic.alias_generators import to_camel
 
 @dataclass
 class ModelRequest:
-    """A parsed model request with role, recipe identity, and optional overrides."""
+    """A parsed model request with role, recipe identity, optional target, and optional overrides."""
 
     role: str | None
     recipe: str
+    target: str | None = None
     overrides: dict[str, str] = field(default_factory=dict)
+
+    @property
+    def is_remote(self) -> bool:
+        return bool(self.target and self.target != "localhost")
 
     @classmethod
     def from_cli_arg(cls, arg: str) -> "ModelRequest":
-        """Parse the ``role=recipe:k=v,k=v`` CLI shorthand."""
+        """Parse the ``role=recipe@target:k=v,k=v`` CLI shorthand."""
         overrides: dict[str, str] = {}
+        target: str | None = None
+
         if ":" in arg:
             arg, overrides_str = arg.split(":", 1)
             for item in overrides_str.split(","):
                 if "=" in item:
                     k, v = item.split("=", 1)
                     overrides[k] = v
+
+        if "@" in arg:
+            arg, target = arg.split("@", 1)
+
         if "=" in arg:
             role, recipe = arg.split("=", 1)
-            return cls(role=role, recipe=recipe, overrides=overrides)
-        return cls(role=None, recipe=arg, overrides=overrides)
+            return cls(role=role, recipe=recipe, target=target, overrides=overrides)
+
+        return cls(role=None, recipe=arg, target=target, overrides=overrides)
 
 
 class ServiceStatus(Enum):
@@ -297,7 +309,10 @@ class SparkProvider(BaseSchema):
     """
 
     base_url: str = Field(
-        default_factory=lambda: os.getenv("VLLM_GATEWAY_URL", "http://litellm:4000/v1"),
+        default_factory=lambda: os.getenv(
+            "VLLM_GATEWAY_URL",
+            f"http://{os.getenv('WORKER_TAILNET_IP', 'litellm')}:4000/v1"
+        ),
         alias="baseUrl",
     )
     api_key: ApiKeyConfig | str = Field(default_factory=ApiKeyConfig)

@@ -1,6 +1,6 @@
 # Agent-only compose for external monitoring mode.
 # Deploys only the local telemetry agents (Alloy, nv-monitor, vllm-progress-manager).
-# Prometheus, Grafana, and Tempo are expected to be running on SPARK_MONITORING_HOST.
+# Prometheus, Grafana, and Tempo are expected to be running externally.
 x-sparkstack-enforce: ${SPARKSTACK_DIR:?SPARKSTACK_DIR must be set}
 services:
   alloy:
@@ -17,6 +17,7 @@ services:
     - /etc/alloy/config.alloy
     volumes:
     - ${SPARKSTACK_DIR:?SPARKSTACK_DIR must be set}/config.alloy:/etc/alloy/config.alloy:ro
+    - ${SPARKSTACK_DIR:?SPARKSTACK_DIR must be set}/targets.json:/etc/alloy/targets.json:ro
     - /proc:/host/proc:ro
     - /sys:/host/sys:ro
     - /:/rootfs:ro

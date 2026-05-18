@@ -7,6 +7,7 @@ from pathlib import Path
 
 import httpx
 from loguru import logger
+from ruamel.yaml import YAML
 
 from sparkstack.core.utils import run_with_lock
 
@@ -101,10 +102,16 @@ async def main():
         logger.error(f"❌ Error: {COMPOSE_FILE} not found.")
         exit(1)
 
-    content = COMPOSE_FILE.read_text()
+    yaml = YAML()
+    yaml.preserve_quotes = True
+
+    with open(COMPOSE_FILE) as f:
+        data = yaml.load(f)
 
     # We need to swap out docker hub images for quay.io versions where applicable before processing
-    content = content.replace("image: prom/prometheus", "image: quay.io/prometheus/prometheus")
+    for _, svc_config in data.get("services", {}).items():
+        if "image" in svc_config and svc_config["image"].startswith("prom/prometheus"):
+            svc_config["image"] = svc_config["image"].replace("prom/prometheus", "quay.io/prometheus/prometheus")
 
     updates = await fetch_updates()
 
@@ -115,23 +122,27 @@ async def main():
             logger.warning("  ❌ Failed to resolve latest version.")
             continue
 
-        pattern = rf"(image:\s*){image_base}:[a-zA-Z0-9_.-]+"
-        match = re.search(pattern, content)
+        found = False
+        for _, svc_config in data.get("services", {}).items():
+            if "image" not in svc_config:
+                continue
 
-        if match:
-            current_image = match.group(0).split(":", 1)[1].strip()
-            if current_image != new_image:
-                logger.info(f"  🚀 Updating: {current_image} -> {new_image}")
-                content = re.sub(pattern, rf"image: {new_image}", content)
-                changes += 1
-            else:
-                logger.info(f"  ✅ Already up to date: {current_image}")
-        else:
+            current_image = svc_config["image"]
+            if current_image.startswith(f"{image_base}:"):
+                found = True
+                if current_image != new_image:
+                    logger.info(f"  🚀 Updating: {current_image} -> {new_image}")
+                    svc_config["image"] = new_image
+                    changes += 1
+                else:
+                    logger.info(f"  ✅ Already up to date: {current_image}")
+
+        if not found:
             logger.warning("  ⚠️ Not found in compose file.")
 
-    # Force write if we just swapped to quay.io, even if versions didn't change
-    if changes > 0 or "quay.io" in content:
-        COMPOSE_FILE.write_text(content)
+    if changes > 0:
+        with open(COMPOSE_FILE, "w") as f:
+            yaml.dump(data, f)
         logger.info(f"\n🎉 Updated dependencies and registries in {COMPOSE_FILE}.")
         logger.info("👉 Run 'cd services/monitoring && docker compose up -d' to apply the updates.")
     else:

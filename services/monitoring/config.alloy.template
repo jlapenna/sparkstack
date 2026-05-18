@@ -126,7 +126,13 @@ prometheus.relabel "cadvisor_labels" {
 // Blackbox Exporter Integration (replaces blackbox-exporter container)
 prometheus.exporter.blackbox "default" {
   config = "{ modules: { http_2xx: { prober: http, timeout: 5s, http: { preferred_ip_protocol: ip4 } } } }"
-${BLACKBOX_TARGETS}
+{% for domain in monitor_domains %}
+  target {
+    name    = "{{ domain }}"
+    address = "{{ domain }}"
+    module  = "http_2xx"
+  }
+{% endfor %}
 }
 
 discovery.relabel "blackbox" {
