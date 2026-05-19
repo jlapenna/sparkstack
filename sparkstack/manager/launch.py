@@ -53,6 +53,30 @@ async def launch_stack(
             recipe_path = recipe
         else:
             recipe_path = repo_root / "sparkstack-registry" / recipe
+
+        # Resolve the backend host for sparkrun's --hosts flag.
+        # When targeting a remote node over the Tailnet overlay, prefer the
+        # resolved WORKER_TAILNET_IP so sparkrun reaches the backend over the
+        # encrypted mesh — not via the raw SSH target or localhost.
+        raw_target = backend.get("target", "localhost")
+        if raw_target != "localhost":
+            from sparkstack.core.env import WORKER_TAILNET_IP, is_overlay_configured  # noqa: PLC0415
+
+            if is_overlay_configured() and WORKER_TAILNET_IP:
+                hosts_value = WORKER_TAILNET_IP
+                logger.info(
+                    f"  🌐 Backend '{backend['name']}' → Tailnet IP {hosts_value} "
+                    f"(raw target: {raw_target})"
+                )
+            else:
+                hosts_value = raw_target
+                logger.info(
+                    f"  📡 Backend '{backend['name']}' → raw target {hosts_value} "
+                    f"(overlay not configured or WORKER_TAILNET_IP unset)"
+                )
+        else:
+            hosts_value = "localhost"
+
         cmd = [
             "uv",
             "run",
@@ -60,7 +84,7 @@ async def launch_stack(
             "run",
             str(recipe_path),
             "--hosts",
-            backend.get("target", "localhost"),
+            hosts_value,
             "--port",
             str(backend.get("port", 8000)),
             "--tp",

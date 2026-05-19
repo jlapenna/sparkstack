@@ -336,11 +336,15 @@ class HeadscaleService(Service):
             )
             from sparkstack.manager.remote import (  # noqa: PLC0415
                 deploy_head_sidecar,
+                deploy_worker_sidecar,
                 get_headscale_auth_key,
+                poll_sidecar_health,
                 resolve_tailnet_ip,
             )
 
-            if not SPARKSTACK_HEADSCALE_AUTH_KEY:
+            # --- Head sidecar ---
+            auth_key = SPARKSTACK_HEADSCALE_AUTH_KEY
+            if not auth_key:
                 self.state.note = "Generating Headscale auth key..."
                 self.state._broadcast()
                 auth_key = await get_headscale_auth_key()
@@ -349,13 +353,61 @@ class HeadscaleService(Service):
             await deploy_head_sidecar()
 
             if not SPARKSTACK_HEAD_TAILNET_IP:
-                self.state.note = "Resolving Tailnet IP..."
+                self.state.note = "Resolving head Tailnet IP..."
                 self.state._broadcast()
                 ip = await resolve_tailnet_ip("sparkstack-head-sidecar")
                 set_env("SPARKSTACK_HEAD_TAILNET_IP", ip)
 
+            # --- Worker sidecars ---
+            from sparkstack.core.env import (  # noqa: PLC0415
+                SPARK_NODE_TARGET,
+                WORKER_TAILNET_IP,
+                get_headscale_url,
+            )
+
+            headscale_url = get_headscale_url()
+            worker_targets = [
+                (SPARK_NODE_TARGET, "WORKER_TAILNET_IP", "Spark Worker"),
+            ]
+
+            for target, ip_env_key, label in worker_targets:
+                if not target:
+                    continue
+                ssh_target = target.replace("ssh://", "")
+                self.state.note = f"Deploying worker sidecar on {label}..."
+                self.state._broadcast()
+
+                try:
+                    await deploy_worker_sidecar(ssh_target, auth_key, headscale_url)
+                except RuntimeError as e:
+                    # Non-fatal: sidecar may already be running and authenticated
+                    logger.warning(f"Worker sidecar deployment note for {label}: {e}")
+
+                # Verify health
+                healthy = await poll_sidecar_health(ssh_target)
+                if healthy:
+                    logger.info(f"  ✅ Worker sidecar on {label} is healthy.")
+                else:
+                    logger.warning(
+                        f"  ⚠️ Worker sidecar on {label} may need manual attention."
+                    )
+
+                # Resolve and persist the worker's Tailnet IP
+                if not WORKER_TAILNET_IP:
+                    self.state.note = f"Resolving Tailnet IP for {label}..."
+                    self.state._broadcast()
+                    try:
+                        worker_ip = await resolve_tailnet_ip(ssh_target)
+                        set_env(ip_env_key, worker_ip)
+                        logger.info(f"  📍 {label} Tailnet IP: {worker_ip}")
+                    except Exception as e:
+                        logger.warning(
+                            f"Could not resolve Tailnet IP for {label}: {e}. "
+                            f"Set {ip_env_key} manually in .env."
+                        )
+
         except Exception as e:
-            self.state.fail(f"Failed to deploy head sidecar: {e}")
+            self.state.fail(f"Failed to deploy sidecars: {e}")
             raise
 
 

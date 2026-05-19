@@ -11,6 +11,8 @@ from typing import Annotated, Any, ClassVar, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
 
+from sparkstack.core.env import OPENCLAW_NODE_TARGET, WORKER_TAILNET_IP
+
 
 @dataclass
 class ModelRequest:
@@ -318,6 +320,22 @@ class SparkProvider(BaseSchema):
     api_key: ApiKeyConfig | str = Field(default_factory=ApiKeyConfig)
     auth: str = "api-key"
     api: str | None = None
+
+    @model_validator(mode="after")
+    def _rewrite_base_url_for_remote(self) -> "SparkProvider":
+        # If OpenClaw is deployed remotely, litellm and localhost won't resolve
+        # to the worker node from its perspective, so rewrite to the tailnet IP.
+        if OPENCLAW_NODE_TARGET and ("localhost" in self.base_url or "litellm" in self.base_url):
+            if not WORKER_TAILNET_IP:
+                warnings.warn(
+                    "OPENCLAW_NODE_TARGET is set but WORKER_TAILNET_IP is missing. "
+                    f"The base_url '{self.base_url}' may not resolve from the remote node.",
+                    stacklevel=2
+                )
+            else:
+                self.base_url = self.base_url.replace("localhost", WORKER_TAILNET_IP).replace("litellm", WORKER_TAILNET_IP)
+        return self
+
     timeout_seconds: int = 300
     request: RequestConfig = Field(default_factory=RequestConfig)
     models: list[OpenClawModel] = Field(default_factory=list)

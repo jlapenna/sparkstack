@@ -6,6 +6,44 @@ from sparkstack.core.env import OPENCLAW_CONFIG_DIR
 from sparkstack.core.utils import async_run_command
 
 
+async def _check_remote_node(target: str, label: str) -> None:
+    """Verify SSH reachability of a remote node target.
+
+    Strips protocol prefixes (``ssh://``) so the target is a bare
+    ``user@host`` suitable for an SSH connectivity test.
+    """
+    from sparkstack.manager.remote import run_ssh_command  # noqa: PLC0415
+
+    ssh_target = target.replace("ssh://", "")
+    logger.info(f"Verifying SSH connectivity to {label} ({ssh_target})...")
+    try:
+        await run_ssh_command(ssh_target, "echo ok", timeout=15)
+        logger.info(f"  ✅ {label} ({ssh_target}) is reachable via SSH.")
+    except Exception as e:
+        logger.error(
+            f"  ❌ {label} ({ssh_target}) is unreachable via SSH: {e}\n"
+            f"     Ensure the node is online, SSH is configured for key-based "
+            f"auth (BatchMode=yes), and the target is correct."
+        )
+        sys.exit(1)
+
+
+async def _check_sidecar_health(target: str, label: str) -> None:
+    """Verify a remote Tailscale sidecar is authenticated and running."""
+    from sparkstack.manager.remote import poll_sidecar_health  # noqa: PLC0415
+
+    ssh_target = target.replace("ssh://", "")
+    logger.info(f"Verifying Tailscale sidecar on {label} ({ssh_target})...")
+    healthy = await poll_sidecar_health(ssh_target)
+    if healthy:
+        logger.info(f"  ✅ Tailscale sidecar on {label} is healthy.")
+    else:
+        logger.warning(
+            f"  ⚠️ Tailscale sidecar on {label} is not healthy or not running. "
+            f"It will be deployed/reconnected during the HeadscaleService phase."
+        )
+
+
 async def pre_flight_checks(settings):
     logger.info("Checking system readiness...")
 
@@ -30,6 +68,32 @@ async def pre_flight_checks(settings):
     except Exception:
         logger.info("Creating external network sparkstack-net")
         await async_run_command(["docker", "network", "create", "sparkstack-net"], check=True)
+
+    # --- Remote node pre-flight checks ---
+    from sparkstack.core.env import (  # noqa: PLC0415
+        MONITORING_NODE_TARGET,
+        OPENCLAW_NODE_TARGET,
+        SPARK_NODE_TARGET,
+        is_overlay_configured,
+    )
+
+    remote_targets = [
+        (SPARK_NODE_TARGET, "Spark Worker"),
+        (OPENCLAW_NODE_TARGET, "OpenClaw Node"),
+        (MONITORING_NODE_TARGET, "Monitoring Node"),
+    ]
+
+    active_targets = [(t, label) for t, label in remote_targets if t]
+
+    if active_targets:
+        logger.info(f"Remote node targets detected ({len(active_targets)}). Validating...")
+        for target, label in active_targets:
+            await _check_remote_node(target, label)
+
+        # If overlay is configured, also check sidecar health (non-fatal)
+        if is_overlay_configured():
+            for target, label in active_targets:
+                await _check_sidecar_health(target, label)
 
     logger.info("Pre-flight complete.")
 

@@ -46,7 +46,9 @@ class OpenClawUpdater(BaseUpdater):
         project_root: Path | None = None,
         config_path: Path | None = None,
         verbose: bool = False,
+        env: dict[str, str] | None = None,
     ):
+        self.env = env
         self.settings = UpdaterSettings(
             pull_latest=pull_latest,
             run_setup=run_setup,
@@ -55,6 +57,11 @@ class OpenClawUpdater(BaseUpdater):
         )
         self.config_path = self.settings.config_path
         self.verbose = verbose
+
+    async def _run_cmd(self, *args, **kwargs):
+        if "env" not in kwargs:
+            kwargs["env"] = self.env if self.env is not None else os.environ.copy()
+        return await async_run_command(*args, **kwargs)
 
     async def update_source(self) -> None:
         if not self.settings.pull_latest:
@@ -65,7 +72,7 @@ class OpenClawUpdater(BaseUpdater):
 
         # 1. Ensure the repo exists
         if not self.settings.openclaw_dir.exists():
-            await async_run_command(
+            await self._run_cmd(
                 ["git", "clone", OPENCLAW_REPO, "openclaw"],
                 cwd=self.settings.openclaw_dir.parent,
                 stream_output=True,
@@ -73,17 +80,17 @@ class OpenClawUpdater(BaseUpdater):
 
         if self.settings.openclaw_branch:
             logger.info(f"Updating to branch: {self.settings.openclaw_branch}")
-            await async_run_command(
+            await self._run_cmd(
                 ["git", "fetch", "origin", self.settings.openclaw_branch],
                 cwd=self.settings.openclaw_dir,
                 stream_output=True,
             )
-            await async_run_command(
+            await self._run_cmd(
                 ["git", "checkout", self.settings.openclaw_branch],
                 cwd=self.settings.openclaw_dir,
                 stream_output=True,
             )
-            await async_run_command(
+            await self._run_cmd(
                 ["git", "reset", "--hard", f"origin/{self.settings.openclaw_branch}"],
                 cwd=self.settings.openclaw_dir,
                 stream_output=True,
@@ -92,7 +99,7 @@ class OpenClawUpdater(BaseUpdater):
 
         # 2. Get the latest stable release tag using git ls-remote
         try:
-            result = await async_run_command(
+            result = await self._run_cmd(
                 [
                     "git",
                     "ls-remote",
@@ -120,20 +127,20 @@ class OpenClawUpdater(BaseUpdater):
             raise
 
         # 3. Fetch tags
-        await async_run_command(
+        await self._run_cmd(
             ["git", "fetch", "--tags", "--force"],
             cwd=self.settings.openclaw_dir,
             stream_output=True,
         )
 
         # 4. Preserve in-development changes: if we're on a local branch, rebase onto the latest stable tag instead of forcing checkout
-        branch_result = await async_run_command(
+        branch_result = await self._run_cmd(
             ["git", "branch", "--show-current"], cwd=self.settings.openclaw_dir
         )
         current_branch = branch_result.stdout.strip()
         if current_branch:
             # Find the old base tag
-            base_tag_result = await async_run_command(
+            base_tag_result = await self._run_cmd(
                 ["git", "describe", "--tags", "--abbrev=0", current_branch],
                 cwd=self.settings.openclaw_dir,
             )
@@ -142,7 +149,7 @@ class OpenClawUpdater(BaseUpdater):
             logger.info(
                 f"OpenClaw is on active branch '{current_branch}' (based on {base_tag}). Rebasing onto {latest_tag}."
             )
-            await async_run_command(
+            await self._run_cmd(
                 ["git", "rebase", "--onto", latest_tag, base_tag, current_branch],
                 cwd=self.settings.openclaw_dir,
                 stream_output=True,
@@ -150,7 +157,7 @@ class OpenClawUpdater(BaseUpdater):
             return
 
         # 5. Otherwise checkout the specific stable release
-        await async_run_command(
+        await self._run_cmd(
             ["git", "checkout", latest_tag], cwd=self.settings.openclaw_dir, stream_output=True
         )
 
@@ -166,7 +173,7 @@ class OpenClawUpdater(BaseUpdater):
             # We invoke setup.sh to seamlessly validate and compile the CLI docker socket boundaries natively.
             env.update({"OPENCLAW_SANDBOX": "1"})
 
-        await async_run_command(
+        await self._run_cmd(
             ["bash", "-c", "bash scripts/docker/setup.sh < /dev/null"],
             cwd=self.settings.openclaw_dir,
             env=env,
@@ -184,9 +191,10 @@ class OpenClawUpdater(BaseUpdater):
         logger.info("Building custom OpenClaw Sandbox image (openclaw-sandbox-custom)...")
 
         # First ensure the un-customized sandbox base image exists
-        await async_run_command(
+        await self._run_cmd(
             ["bash", "scripts/sandbox-setup.sh"],
             cwd=self.settings.openclaw_dir,
+            env=self._get_compose_env(),
             stream_output=self.verbose,
         )
 
@@ -203,7 +211,7 @@ class OpenClawUpdater(BaseUpdater):
             await asyncio.to_thread(build_skills_dir.mkdir, parents=True, exist_ok=True)
 
         # Compile our custom override layers for agent usage
-        await async_run_command(
+        await self._run_cmd(
             [
                 "docker",
                 "build",
@@ -225,7 +233,7 @@ class OpenClawUpdater(BaseUpdater):
         # image explicitly, our custom Dockerfile (which uses FROM openclaw:local) will
         # fail to pull the latest source code updates.
         logger.info("Building base OpenClaw image (openclaw:local)...")
-        await async_run_command(
+        await self._run_cmd(
             [
                 "docker",
                 "build",
@@ -241,7 +249,7 @@ class OpenClawUpdater(BaseUpdater):
         )
 
         logger.info("Building custom OpenClaw Gateway image (openclaw-gateway-custom)...")
-        await async_run_command(
+        await self._run_cmd(
             [
                 "docker",
                 "build",
@@ -257,7 +265,7 @@ class OpenClawUpdater(BaseUpdater):
         )
 
     def _get_compose_env(self) -> dict:
-        env = os.environ.copy()
+        env = self.env.copy() if self.env is not None else os.environ.copy()
 
         # Load .env from openclaw config dir so docker compose interpolates correctly
         env.update({k: str(v) for k, v in OPENCLAW_ENV.items() if v is not None})
@@ -319,7 +327,7 @@ class OpenClawUpdater(BaseUpdater):
         # overwriting the custom image we just built in `build_gateway_image()`.
         cmd.extend(["up", "-d", "--force-recreate", "openclaw-gateway"])
 
-        await async_run_command(
+        await self._run_cmd(
             cmd, cwd=self.settings.openclaw_dir, env=env, stream_output=self.verbose
         )
 
@@ -330,7 +338,7 @@ class OpenClawUpdater(BaseUpdater):
         # 1. Discover actual container name for openclaw-gateway service
         container_name = "openclaw-openclaw-gateway-1"  # Default fallback
         try:
-            result = await async_run_command(
+            result = await self._run_cmd(
                 ["docker", "compose", "ps", "openclaw-gateway", "--format", "{{.Name}}"],
                 cwd=self.settings.openclaw_dir,
                 env=self._get_compose_env(),
@@ -353,7 +361,7 @@ class OpenClawUpdater(BaseUpdater):
         logger.info("Checking OpenClaw internal status...")
         try:
             # We run 'status --all' to verify core services
-            result = await async_run_command(
+            result = await self._run_cmd(
                 [
                     "docker",
                     "compose",
@@ -380,7 +388,7 @@ class OpenClawUpdater(BaseUpdater):
         # 3. Verify models are synced
         logger.info("Verifying model synchronization...")
         try:
-            result = await async_run_command(
+            result = await self._run_cmd(
                 [
                     "docker",
                     "compose",
@@ -431,7 +439,7 @@ class OpenClawUpdater(BaseUpdater):
         """
         logger.info("Running OpenClaw doctor --fix --non-interactive...")
         try:
-            result = await async_run_command(
+            result = await self._run_cmd(
                 [
                     "docker",
                     "compose",
@@ -473,7 +481,7 @@ class OpenClawUpdater(BaseUpdater):
                 # -a: archive mode (preserves permissions, times, etc)
                 # We don't use --delete so custom local skills remain.
                 # Trailing slash ensures we copy contents into the target directory.
-                await async_run_command(
+                await self._run_cmd(
                     ["rsync", "-a", f"{upstream_skills_dir}/", f"{local_skills_dir}/"], check=False
                 )
             except Exception as e:
