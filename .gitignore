@@ -65,7 +65,9 @@ scratch/
 tmp/
 
 .gemini/
+.antigravitycli/
 gha-creds-*.json
 
 # Lock files
 .sparkstack*.lock
+

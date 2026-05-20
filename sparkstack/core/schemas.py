@@ -312,8 +312,7 @@ class SparkProvider(BaseSchema):
 
     base_url: str = Field(
         default_factory=lambda: os.getenv(
-            "VLLM_GATEWAY_URL",
-            f"http://{os.getenv('WORKER_TAILNET_IP', 'litellm')}:4000/v1"
+            "VLLM_GATEWAY_URL", f"http://{os.getenv('WORKER_TAILNET_IP', 'litellm')}:4000/v1"
         ),
         alias="baseUrl",
     )
@@ -330,10 +329,12 @@ class SparkProvider(BaseSchema):
                 warnings.warn(
                     "OPENCLAW_NODE_TARGET is set but WORKER_TAILNET_IP is missing. "
                     f"The base_url '{self.base_url}' may not resolve from the remote node.",
-                    stacklevel=2
+                    stacklevel=2,
                 )
             else:
-                self.base_url = self.base_url.replace("localhost", WORKER_TAILNET_IP).replace("litellm", WORKER_TAILNET_IP)
+                self.base_url = self.base_url.replace("localhost", WORKER_TAILNET_IP).replace(
+                    "litellm", WORKER_TAILNET_IP
+                )
         return self
 
     timeout_seconds: int = 300

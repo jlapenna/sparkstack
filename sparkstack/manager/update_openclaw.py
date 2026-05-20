@@ -277,7 +277,7 @@ class OpenClawUpdater(BaseUpdater):
         if stack_dir.exists():
             env["SPARKSTACK_DIR"] = str(stack_dir.resolve())
 
-        from sparkstack.core.env import (
+        from sparkstack.core.env import (  # noqa: PLC0415
             OPENCLAW_NODE_TARGET,
             SPARKSTACK_HEAD_TAILNET_IP,
             WORKER_TAILNET_IP,

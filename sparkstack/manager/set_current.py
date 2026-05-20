@@ -46,12 +46,39 @@ async def main():
         logger.error(f"❌ Error: Directory {full_target} does not exist.")
         sys.exit(1)
 
-    # Stop existing stack
-    logger.info("Stopping existing stack...")
-    await async_run_command(["systemctl", "--user", "stop", "vllm-active.service"], check=False)
+    # --- Two-tier remote teardown ---
+    # Must happen before local container cleanup so sparkrun can update its own
+    # metadata before we touch any containers.
+    current_stack = ROOT_DIR / "current"
+    if current_stack.is_symlink() or current_stack.exists():
+        outgoing_stack = current_stack.resolve()
+        if outgoing_stack.is_dir():
+            from sparkstack.core.env import SPARKRUN_CMD  # noqa: PLC0415
+            from sparkstack.manager.remote import (  # noqa: PLC0415
+                read_sidecar_state,
+                teardown_sidecars,
+            )
+
+            state = read_sidecar_state(outgoing_stack)
+            cluster_name = state.get("cluster_name", "")
+
+            # Tier 1: Let sparkrun stop all backends and clean its own metadata.
+            if cluster_name:
+                logger.info(
+                    f"🧹 Tier 1: Stopping remote sparkrun backends (cluster: {cluster_name})..."
+                )
+                await async_run_command(
+                    [*SPARKRUN_CMD, "stop", "--all", "--cluster", cluster_name],
+                    check=False,
+                )
+
+            # Tier 2: Remove Tailscale sidecars for hosts no longer needed.
+            if state.get("sidecars"):
+                logger.info("🧹 Tier 2: Tearing down remote Tailscale sidecars...")
+                await teardown_sidecars(outgoing_stack, hosts_to_keep=set())
 
     # Kill orphaned sparkrun and vllm containers explicitly to prevent OOM
-    logger.info("Cleaning up lingering containers...")
+    logger.info("Cleaning up lingering local containers...")
     ps_result = await async_run_command(
         ["docker", "ps", "-a", "-q", "-f", "name=sparkrun|vllm|nemotron|llama|qwen"], check=False
     )

@@ -44,5 +44,7 @@ def launch(ctx: click.Context, stack_name: str, rebuild: bool, output_json: bool
     run_async(_launch_async(stack_dir, rebuild_images=rebuild, env=env))
 
 
-async def _launch_async(stack_dir, *, rebuild_images: bool = False, env: dict[str, str] | None = None) -> None:
+async def _launch_async(
+    stack_dir, *, rebuild_images: bool = False, env: dict[str, str] | None = None
+) -> None:
     await launch_stack(stack_dir, rebuild_images=rebuild_images, env=env)

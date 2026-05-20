@@ -101,6 +101,10 @@ class StackBuilder:
         self.port_to_recipe = {}
         self.recipe_to_container = {}
 
+        # Populated during build() from .state.json when available.
+        # Maps SSH hostname → Tailnet IP (e.g. {"spark": "100.64.0.2"}).
+        self.tailnet_ip_map: dict[str, str] = {}
+
     # Fixed overhead for monitoring/gateway containers not tracked by handlers.
     # Prometheus (2G) + Grafana (0.5G) + Alloy (0.5G) + Tempo (1G) + misc (1G).
     _MONITORING_OVERHEAD_GB = 5.0
@@ -167,6 +171,22 @@ class StackBuilder:
 
         logger.info(f"🏗️  Building stack '{self.stack_name}'...")
         self.stack_dir.mkdir(parents=True, exist_ok=True)
+
+        # Load Tailnet IP mappings from a previous sidecar deployment if available.
+        # This allows LiteLLM backend_url and monitoring targets to use resolved
+        # Tailnet IPs even when rebuilding an existing stack.
+        try:
+            from sparkstack.manager.remote import read_sidecar_state  # noqa: PLC0415
+
+            state = read_sidecar_state(self.stack_dir)
+            self.tailnet_ip_map = {
+                hostname: info.get("tailnet_ip", "")
+                for hostname, info in state.get("sidecars", {}).items()
+            }
+            if self.tailnet_ip_map:
+                logger.debug(f"📍 Loaded Tailnet IP map from state: {self.tailnet_ip_map}")
+        except Exception as e:
+            logger.debug(f"Could not load sidecar state (non-fatal): {e}")
 
         if OPENCLAW_CONFIG_PATH.exists():
             dest_name = (
@@ -268,6 +288,7 @@ class StackBuilder:
             "overrides": req.overrides,
             "vllm_env": VLLM_ENV,
             "blackwell_env": BLACKWELL_MANDATORY_ENV,
+            "tailnet_ip_map": self.tailnet_ip_map,
         }
 
         if isinstance(model_config, SparkrunRegistryModel):

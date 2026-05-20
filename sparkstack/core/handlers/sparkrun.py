@@ -196,10 +196,20 @@ class SparkrunServiceHandler:
             backend["overrides"]["enable_metrics"] = "true"
             backend["overrides"]["mem_fraction_static"] = "0.8"
 
+        tailnet_ip_map: dict[str, str] = self.context.get("tailnet_ip_map", {})
+        tailnet_ip = tailnet_ip_map.get(target_host, "") if is_remote else ""
+
+        # Monitoring scrape target: use Tailnet IP for remote backends so that
+        # Prometheus/Alloy can reach them over the overlay mesh.
+        mon_target = (
+            f"{tailnet_ip}:{self.port}"
+            if (is_remote and tailnet_ip)
+            else f"{self.container_hostname}:{self.port}"
+        )
         monitoring_builder.add_target(
-            f"{self.container_hostname}:{self.port}",
+            mon_target,
             self.target_role,
-            instance_name=f"{self.container_hostname}:{self.port}",
+            instance_name=mon_target,
         )
 
         human_name = self.recipe_dict.get(
@@ -234,8 +244,12 @@ class SparkrunServiceHandler:
         for rid in self.context["routing_ids"]:
             if is_remote:
                 tailnet_ip_map = self.context.get("tailnet_ip_map", {})
-                ip = tailnet_ip_map.get(self.target_role, "127.0.0.1")
-                backend_url = f"http://{ip}:{self.port}/v1"
+                ip = tailnet_ip_map.get(target_host, "")
+                backend_url = (
+                    f"http://{ip}:{self.port}/v1"
+                    if ip
+                    else f"http://{self.container_hostname}:{self.port}/v1"
+                )
             else:
                 backend_url = f"http://{self.container_hostname}:{self.port}/v1"
 

@@ -102,7 +102,11 @@ class LogProbe(HealthProbe):
     """Scans docker logs for crash patterns."""
 
     def __init__(
-        self, container_name: str, tail: int = 50, extra_patterns: list[str] | None = None, env: dict[str, str] | None = None
+        self,
+        container_name: str,
+        tail: int = 50,
+        extra_patterns: list[str] | None = None,
+        env: dict[str, str] | None = None,
     ):
         self.container = container_name
         self.tail = tail
@@ -174,7 +178,12 @@ class SparkrunLogProbe(LogProbe):
 class ServiceHealthManager:
     """Orchestrates health probes for a service."""
 
-    def __init__(self, container_name: str, probes: list[HealthProbe] | None = None, env: dict[str, str] | None = None):
+    def __init__(
+        self,
+        container_name: str,
+        probes: list[HealthProbe] | None = None,
+        env: dict[str, str] | None = None,
+    ):
         self.container = container_name
         if probes is None:
             self.probes = [

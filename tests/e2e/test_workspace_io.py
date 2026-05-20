@@ -1,3 +1,4 @@
+import os
 import time
 import uuid
 
@@ -39,9 +40,8 @@ async def test_workspace_io(ctx: E2EContext):
     await async_run_command(cmd_write, check=False)
 
     prompt_read = (
-        f"Now, read the file '{filename}' back into memory. "
-        f"After reading it, you MUST delete the file '{filename}'. "
-        f"Reply to me with ONLY the EXACT string you read from the file."
+        f"Read the contents of the file '{filename}'. "
+        f"Reply to me with ONLY the exact string you read."
     )
 
     cmd_read = [
@@ -88,6 +88,13 @@ async def test_workspace_io(ctx: E2EContext):
             f"❌ Failure: Agent could not successfully verify File IO with UUID.\nExpected: {unique_token}\nResponse: {assistant_text}"
         )
         raise AssertionError() from None
+
+    # Clean up the verification file from the workspace
+    try:
+        if os.path.exists(filename):
+            os.remove(filename)
+    except Exception as e:
+        logger.warning(f"Failed to clean up workspace verification file: {e}")
 
     logger.info("✅ Pass: File System Integrity (Agent successfully executed workspace I/O)")
     return

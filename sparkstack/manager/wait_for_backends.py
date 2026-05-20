@@ -37,11 +37,20 @@ class BackendStatusUpdate:
 
 
 class BackendProbe:
-    def __init__(self, expected_containers: set[str], fail_fast: bool = True, target_host: str = "localhost", env: dict[str, str] | None = None):
+    def __init__(
+        self,
+        expected_containers: set[str],
+        fail_fast: bool = True,
+        target_host: str = "localhost",
+        env: dict[str, str] | None = None,
+        services_by_container: dict[str, dict] | None = None,
+    ):
         self.expected_containers = expected_containers
         self.fail_fast = fail_fast
         self.target_host = target_host
         self.env = env
+        # Maps container name → service info dict (includes is_remote, target_host).
+        self.services_by_container: dict[str, dict] = services_by_container or {}
 
     async def poll(self) -> AsyncIterator[BackendStatusUpdate]:
         all_ready = False
@@ -73,15 +82,33 @@ class BackendProbe:
 
                             if is_crash:
                                 logs = ""
-                                try:
-                                    res = await async_run_command(
-                                        ["docker", "logs", "--tail", "20", c],
-                                        check=False,
-                                        env=self.env,
+                                svc_info = self.services_by_container.get(c, {})
+                                if svc_info.get("is_remote") and svc_info.get("target_host"):
+                                    # Remote backend: fetch logs via SSH.
+                                    from sparkstack.manager.remote import (  # noqa: PLC0415
+                                        run_ssh_command,
                                     )
-                                    logs = res.stdout + res.stderr
-                                except Exception as e:
-                                    logs = f"Failed to fetch logs: {e}"
+
+                                    ssh_target = svc_info["target_host"]
+                                    try:
+                                        logs = await run_ssh_command(
+                                            ssh_target,
+                                            f"docker logs --tail 20 {c}",
+                                            timeout=15,
+                                        )
+                                    except Exception as e:
+                                        logs = f"Failed to fetch remote logs from {ssh_target}: {e}"
+                                else:
+                                    # Local backend: use local docker logs.
+                                    try:
+                                        res = await async_run_command(
+                                            ["docker", "logs", "--tail", "20", c],
+                                            check=False,
+                                            env=self.env,
+                                        )
+                                        logs = res.stdout + res.stderr
+                                    except Exception as e:
+                                        logs = f"Failed to fetch logs: {e}"
                                 yield BackendStatusUpdate(
                                     container=c, pct=-1, phase="Crash", is_crash=True, logs=logs
                                 )
@@ -103,7 +130,9 @@ class BackendProbe:
                 await asyncio.sleep(2)
 
 
-async def _smoke_test_direct(container: str, port: int, model_id: str, env: dict[str, str] | None = None) -> bool | None:
+async def _smoke_test_direct(
+    container: str, port: int, model_id: str, env: dict[str, str] | None = None
+) -> bool | None:
     """Test a backend directly via docker exec, bypassing the LiteLLM gateway.
 
     Returns ``True`` on success, ``None`` on failure (the caller treats
@@ -189,7 +218,20 @@ async def wait_for_backends_to_load(
 
     target_host = WORKER_TAILNET_IP if WORKER_TAILNET_IP else "localhost"
 
-    probe = BackendProbe(expected_containers, fail_fast=fail_fast, target_host=target_host, env=env)
+    # Build a map of container → service info for remote-aware crash log retrieval.
+    services_by_container: dict[str, dict] = {
+        svc.get("container", svc["name"]): svc
+        for svc in services
+        if svc.get("container") or svc.get("name")
+    }
+
+    probe = BackendProbe(
+        expected_containers,
+        fail_fast=fail_fast,
+        target_host=target_host,
+        env=env,
+        services_by_container=services_by_container,
+    )
 
     # Use a dummy Progress context if output_json is True to keep the code clean
     with Progress(

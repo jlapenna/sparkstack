@@ -78,7 +78,7 @@ class MonitoringBuilder:
                         targets=[
                             os.getenv(
                                 "VLLM_GATEWAY_HOST",
-                                f"{os.getenv('WORKER_TAILNET_IP', 'litellm')}:4000"
+                                f"{os.getenv('WORKER_TAILNET_IP', 'litellm')}:4000",
                             )
                         ],
                         labels={"instance": "spark"},

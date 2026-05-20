@@ -111,7 +111,9 @@ async def main():
     # We need to swap out docker hub images for quay.io versions where applicable before processing
     for _, svc_config in data.get("services", {}).items():
         if "image" in svc_config and svc_config["image"].startswith("prom/prometheus"):
-            svc_config["image"] = svc_config["image"].replace("prom/prometheus", "quay.io/prometheus/prometheus")
+            svc_config["image"] = svc_config["image"].replace(
+                "prom/prometheus", "quay.io/prometheus/prometheus"
+            )
 
     updates = await fetch_updates()
 

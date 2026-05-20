@@ -10,7 +10,7 @@ from sparkstack.core.env import (
     is_overlay_configured,
     set_env,
 )
-from sparkstack.manager.remote import get_headscale_auth_key, resolve_tailnet_ip
+from sparkstack.manager.remote import get_headscale_auth_key, resolve_head_tailnet_ip
 
 from . import main
 from ._common import run_async
@@ -105,12 +105,14 @@ async def _setup_overlay_async() -> None:
         click.echo("Saved SPARKSTACK_HEADSCALE_AUTH_KEY to .env")
     except Exception as e:
         click.secho(f"Failed to generate auth key: {e}", fg="red")
-        click.echo("Make sure the sparkstack-headscale container is running (e.g. sparkstack update headscale).")
+        click.echo(
+            "Make sure the sparkstack-headscale container is running (e.g. sparkstack update headscale)."
+        )
         return
 
     try:
         click.echo("Resolving Head sidecar Tailnet IP...")
-        ip = await resolve_tailnet_ip("sparkstack-head-sidecar")
+        ip = await resolve_head_tailnet_ip()
         set_env("SPARKSTACK_HEAD_TAILNET_IP", ip)
         click.echo(f"Saved SPARKSTACK_HEAD_TAILNET_IP ({ip}) to .env")
     except Exception as e:

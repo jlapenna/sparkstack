@@ -33,7 +33,6 @@ def set_env(key: str, value: str) -> None:
         logging.getLogger(__name__).warning(f"Failed to persist {key} to .env: {e}")
 
 
-
 OPENCLAW_REPO = os.getenv("OPENCLAW_REPO", "https://github.com/openclaw/openclaw")
 
 _openclaw_config_dir = os.getenv("OPENCLAW_CONFIG_DIR")
@@ -124,7 +123,6 @@ def is_monitoring_external() -> bool:
 SPARK_NODE_TARGET = os.getenv("SPARK_NODE_TARGET", "")
 OPENCLAW_NODE_TARGET = os.getenv("OPENCLAW_NODE_TARGET", "")
 MONITORING_NODE_TARGET = os.getenv("MONITORING_NODE_TARGET", "")
-
 
 
 # --- Headscale / Tailscale Overlay Network ---

@@ -280,6 +280,35 @@ class CloudflareService(Service):
         )
 
 
+def _render_headscale_config(hs_dir: Path) -> None:
+    """Render ``services/headscale/config/config.yaml.template`` → ``config.yaml``.
+
+    Substitutes ``{{ headscale_server_url }}`` with the value of
+    ``SPARKSTACK_HEADSCALE_SERVER`` from the environment so the Headscale
+    control plane advertises a URL that remote Tailscale sidecars can reach.
+
+    Falls back to ``http://127.0.0.1:8080`` if the env var is not set.
+    """
+    from sparkstack.core.env import SPARKSTACK_HEADSCALE_SERVER  # noqa: PLC0415
+
+    server = SPARKSTACK_HEADSCALE_SERVER or "127.0.0.1"
+    # Ensure the URL includes the scheme and port.
+    server_url = f"http://{server}:8080" if not server.startswith("http") else server
+
+    template_path = hs_dir / "config" / "config.yaml.template"
+    config_path = hs_dir / "config" / "config.yaml"
+
+    if not template_path.exists():
+        # Template hasn't been created yet — leave the existing config as-is.
+        logger.debug("Headscale config template not found at %s; skipping render.", template_path)
+        return
+
+    template_text = template_path.read_text()
+    rendered = template_text.replace("{{ headscale_server_url }}", server_url)
+    config_path.write_text(rendered)
+    logger.debug("Headscale config rendered with server_url=%s", server_url)
+
+
 class HeadscaleService(Service):
     """Deploys the Headscale control plane for the Tailscale overlay network.
 
@@ -304,6 +333,12 @@ class HeadscaleService(Service):
         hs_dir = self.settings.project_root / "services" / "headscale"
         self.progress.begin_phases(3 if self.settings.pull_latest else 2)
         phase_num = 1
+
+        # Render the Headscale config template with the routable server URL.
+        # This must happen before compose up so the mounted config.yaml is current.
+        self.state.note = "Rendering Headscale config..."
+        self.state._broadcast()
+        _render_headscale_config(hs_dir)
 
         phase_num = await self._pull_images(hs_dir, phase_num)
 
@@ -339,7 +374,8 @@ class HeadscaleService(Service):
                 deploy_worker_sidecar,
                 get_headscale_auth_key,
                 poll_sidecar_health,
-                resolve_tailnet_ip,
+                resolve_head_tailnet_ip,
+                resolve_worker_tailnet_ip,
             )
 
             # --- Head sidecar ---
@@ -355,7 +391,7 @@ class HeadscaleService(Service):
             if not SPARKSTACK_HEAD_TAILNET_IP:
                 self.state.note = "Resolving head Tailnet IP..."
                 self.state._broadcast()
-                ip = await resolve_tailnet_ip("sparkstack-head-sidecar")
+                ip = await resolve_head_tailnet_ip()
                 set_env("SPARKSTACK_HEAD_TAILNET_IP", ip)
 
             # --- Worker sidecars ---
@@ -373,31 +409,32 @@ class HeadscaleService(Service):
             for target, ip_env_key, label in worker_targets:
                 if not target:
                     continue
+                # Strip scheme; extract bare SSH target and short hostname.
                 ssh_target = target.replace("ssh://", "")
+                hostname = ssh_target.split("@", 1)[-1].split(":")[0]
+
                 self.state.note = f"Deploying worker sidecar on {label}..."
                 self.state._broadcast()
 
                 try:
-                    await deploy_worker_sidecar(ssh_target, auth_key, headscale_url)
+                    await deploy_worker_sidecar(ssh_target, hostname, auth_key, headscale_url)
                 except RuntimeError as e:
-                    # Non-fatal: sidecar may already be running and authenticated
+                    # Non-fatal: sidecar may already be running and authenticated.
                     logger.warning(f"Worker sidecar deployment note for {label}: {e}")
 
-                # Verify health
-                healthy = await poll_sidecar_health(ssh_target)
+                # Verify health.
+                healthy = await poll_sidecar_health(ssh_target, hostname)
                 if healthy:
                     logger.info(f"  ✅ Worker sidecar on {label} is healthy.")
                 else:
-                    logger.warning(
-                        f"  ⚠️ Worker sidecar on {label} may need manual attention."
-                    )
+                    logger.warning(f"  ⚠️ Worker sidecar on {label} may need manual attention.")
 
-                # Resolve and persist the worker's Tailnet IP
+                # Resolve and persist the worker's Tailnet IP.
                 if not WORKER_TAILNET_IP:
                     self.state.note = f"Resolving Tailnet IP for {label}..."
                     self.state._broadcast()
                     try:
-                        worker_ip = await resolve_tailnet_ip(ssh_target)
+                        worker_ip = await resolve_worker_tailnet_ip(ssh_target, hostname)
                         set_env(ip_env_key, worker_ip)
                         logger.info(f"  📍 {label} Tailnet IP: {worker_ip}")
                     except Exception as e:
