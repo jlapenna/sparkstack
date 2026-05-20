@@ -91,17 +91,27 @@ async def test_get_headscale_auth_key():
     mock_proc_user.communicate.return_value = (b"", b"")
     mock_proc_user.returncode = 0
 
+    mock_proc_list = AsyncMock()
+    mock_proc_list.communicate.return_value = (b'[{"id": 42, "name": "test-user"}]', b"")
+    mock_proc_list.returncode = 0
+
     mock_proc_key = AsyncMock()
     mock_proc_key.communicate.return_value = (b"some-auth-key\n", b"")
     mock_proc_key.returncode = 0
 
-    # Mocking create_subprocess_exec side effect for the two sequential commands
+    # Mocking create_subprocess_exec side effect for the three sequential commands
     with patch("asyncio.create_subprocess_exec") as mock_exec:
-        mock_exec.side_effect = [mock_proc_user, mock_proc_key]
+        mock_exec.side_effect = [mock_proc_user, mock_proc_list, mock_proc_key]
 
         key = await get_headscale_auth_key("test-user")
         assert key == "some-auth-key"
-        assert mock_exec.call_count == 2
+        assert mock_exec.call_count == 3
+
+        # Verify the key generation command used the correct resolved User ID "42"
+        call_args = mock_exec.call_args_list[2][0]
+        assert "--user" in call_args
+        idx = call_args.index("--user")
+        assert call_args[idx + 1] == "42"
 
 
 @pytest.mark.asyncio
@@ -426,8 +436,10 @@ async def test_get_sidecar_ip_local_failure():
     mock_proc.communicate.return_value = (b"", b"container not found\n")
     mock_proc.returncode = 1
 
-    with patch("asyncio.create_subprocess_exec", return_value=mock_proc), \
-         pytest.raises(RuntimeError, match="Failed to get Tailnet IP for 'test-container'"):
+    with (
+        patch("asyncio.create_subprocess_exec", return_value=mock_proc),
+        pytest.raises(RuntimeError, match="Failed to get Tailnet IP for 'test-container'"),
+    ):
         await _get_sidecar_ip_local("test-container")
 
 
@@ -437,6 +449,8 @@ async def test_get_sidecar_ip_local_empty():
     mock_proc.communicate.return_value = (b"\n", b"")
     mock_proc.returncode = 0
 
-    with patch("asyncio.create_subprocess_exec", return_value=mock_proc), \
-         pytest.raises(ValueError, match="Empty Tailnet IP for 'test-container'"):
+    with (
+        patch("asyncio.create_subprocess_exec", return_value=mock_proc),
+        pytest.raises(ValueError, match="Empty Tailnet IP for 'test-container'"),
+    ):
         await _get_sidecar_ip_local("test-container")

@@ -120,6 +120,38 @@ async def get_headscale_auth_key(user: str = "sparkstack") -> str:
     )
     await proc.communicate()  # Intentionally ignore exit code.
 
+    # Resolve user ID by parsing the users list.
+    user_id = None
+    list_cmd = [
+        "docker",
+        "exec",
+        HEADSCALE_CONTAINER,
+        "headscale",
+        "users",
+        "list",
+        "--output",
+        "json",
+    ]
+    proc = await asyncio.create_subprocess_exec(
+        *list_cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await proc.communicate()
+    if proc.returncode == 0:
+        try:
+            users_list = json.loads(stdout.decode())
+            for u in users_list:
+                if u.get("name") == user:
+                    user_id = str(u.get("id"))
+                    break
+        except Exception as e:
+            logger.warning("Failed to parse headscale users list JSON: %s", e)
+
+    if not user_id:
+        logger.warning("Could not resolve user ID for user '%s', falling back to '1'", user)
+        user_id = "1"
+
     # Generate a reusable 10-year key (87600h).
     key_cmd = [
         "docker",
@@ -129,7 +161,7 @@ async def get_headscale_auth_key(user: str = "sparkstack") -> str:
         "preauthkeys",
         "create",
         "--user",
-        user,
+        user_id,
         "--reusable",
         "--expiration",
         "87600h",

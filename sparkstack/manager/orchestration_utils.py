@@ -33,8 +33,9 @@ async def _check_sidecar_health(target: str, label: str) -> None:
     from sparkstack.manager.remote import poll_sidecar_health  # noqa: PLC0415
 
     ssh_target = target.replace("ssh://", "")
+    hostname = ssh_target.split("@")[-1]
     logger.info(f"Verifying Tailscale sidecar on {label} ({ssh_target})...")
-    healthy = await poll_sidecar_health(ssh_target)
+    healthy = await poll_sidecar_health(ssh_target, hostname)
     if healthy:
         logger.info(f"  ✅ Tailscale sidecar on {label} is healthy.")
     else:

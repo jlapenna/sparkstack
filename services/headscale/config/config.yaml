@@ -1,9 +1,13 @@
-# Headscale v0.28 configuration for sparkstack overlay network.
+# Headscale v0.28 configuration template for sparkstack overlay network.
 # Reference: https://github.com/juanfont/headscale/blob/main/config-example.yaml
+#
+# IMPORTANT: This is a Jinja2 template.  sparkstack renders it into
+# config.yaml at deploy time, substituting http://192.168.68.215:8080.
+# Do NOT set server_url here — edit this file and let the deployer fill it in.
 
-# The server URL is overridden at deploy time via the CLI or env var.
-# This default is a placeholder; sparkstack auto-detects the host LAN IP.
-server_url: http://127.0.0.1:8080
+# server_url must be reachable from all Tailscale sidecar containers (head +
+# workers).  sparkstack auto-detects the host LAN IP and fills this in.
+server_url: "http://192.168.68.215:8080"
 
 listen_addr: 0.0.0.0:8080
 metrics_listen_addr: 0.0.0.0:9090
@@ -24,10 +28,12 @@ prefixes:
 derp:
   server:
     enabled: false
-  urls: []
+  urls:
+    - https://controlplane.tailscale.com/derpmap/default
   paths: []
-  auto_update_enabled: false
+  auto_update_enabled: true
   update_frequency: 24h
+
 
 # --- DNS ---
 # MagicDNS is disabled. All routing uses raw Tailnet IPs (100.64.x.y).
@@ -57,3 +63,10 @@ ephemeral_node_inactivity_timeout: 30m
 # Log level for operational debugging.
 log:
   level: info
+
+# --- Security & Keys ---
+# Private keys used for node communication encryption.
+private_key_path: /var/lib/headscale/private_key.pem
+noise:
+  private_key_path: /var/lib/headscale/noise_private.key
+

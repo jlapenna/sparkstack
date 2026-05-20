@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-import pytest
+
 from sparkstack.manager.update_services import Settings
 
 
@@ -11,7 +11,12 @@ def test_settings_default_no_enabled_services():
     old_val = os.environ.pop(env_key, None)
 
     try:
-        settings = Settings(pull_latest=False, project_root=Path("/tmp"), target_services=None, _env_file=None)
+        settings = Settings(
+            pull_latest=False,
+            project_root=Path("/tmp"),
+            target_services=None,
+            _env_file=None,  # type: ignore
+        )
         assert settings.target_services is None
     finally:
         if old_val is not None:
@@ -25,7 +30,12 @@ def test_settings_enabled_services_parsing():
     os.environ[env_key] = "OpenClaw,InferenceStack,RegistrySync"
 
     try:
-        settings = Settings(pull_latest=False, project_root=Path("/tmp"), target_services=None, _env_file=None)
+        settings = Settings(
+            pull_latest=False,
+            project_root=Path("/tmp"),
+            target_services=None,
+            _env_file=None,  # type: ignore
+        )
         assert settings.target_services == ("OpenClaw", "InferenceStack", "RegistrySync")
     finally:
         os.environ.pop(env_key, None)
@@ -44,11 +54,10 @@ def test_settings_explicit_target_services_overrides_env():
             pull_latest=False,
             project_root=Path("/tmp"),
             target_services=("Monitoring", "Cloudflare"),
-            _env_file=None
+            _env_file=None,  # type: ignore
         )
         assert settings.target_services == ("Monitoring", "Cloudflare")
     finally:
         os.environ.pop(env_key, None)
         if old_val is not None:
             os.environ[env_key] = old_val
-

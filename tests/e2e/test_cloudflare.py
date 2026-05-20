@@ -1,3 +1,4 @@
+import os
 import pytest
 from loguru import logger
 
@@ -8,6 +9,11 @@ from tests.e2e.context import E2EContext
 @pytest.mark.order(5)
 @pytest.mark.asyncio
 async def test_cloudflare(ctx: E2EContext):
+    enabled_services = os.environ.get("SPARKSTACK_ENABLED_SERVICES", "")
+    enabled_keys = {s.strip().lower() for s in enabled_services.split(",") if s.strip()}
+    if "cloudflare" not in enabled_keys:
+        pytest.skip("Cloudflare service is disabled in SPARKSTACK_ENABLED_SERVICES")
+
     logger.info("Checking Cloudflare tunnel container status...")
 
     # 1. Check if container is running
