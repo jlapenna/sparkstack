@@ -9,7 +9,7 @@ from tests.e2e.context import E2EContext
 from tests.e2e.session_cleanup import wipe_all_sessions
 
 # Automatically load environment variables from the project root .env file
-load_dotenv(Path(__file__).parent.parent / ".env")
+load_dotenv(Path(__file__).parent.parent / ".env", override=True)
 
 _test_lock = None
 

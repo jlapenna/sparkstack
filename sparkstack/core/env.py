@@ -17,7 +17,7 @@ REGISTRY_DIR = Path(
 SECRETS_DIR = PROJECT_ROOT / "secrets"
 
 # Ensure .env is loaded (if exists) so these helpers return current values
-dotenv.load_dotenv(PROJECT_ROOT / ".env")
+dotenv.load_dotenv(PROJECT_ROOT / ".env", override=True)
 
 BASE_DIR = PROJECT_ROOT / "services"
 STACKS_DIR = REGISTRY_DIR / "stacks"

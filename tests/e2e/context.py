@@ -18,7 +18,7 @@ class E2EContext:
 
     def gateway_client(self) -> httpx.AsyncClient:
         """Return an httpx.AsyncClient pre-configured for the LiteLLM gateway."""
-        load_dotenv(self.root_dir / ".env")
+        load_dotenv(self.root_dir / ".env", override=True)
         api_key = os.getenv("LITELLM_MASTER_KEY", "")
         if not api_key:
             raise AssertionError("LITELLM_MASTER_KEY not found in .env")
