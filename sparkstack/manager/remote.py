@@ -240,6 +240,7 @@ async def deploy_head_sidecar(
     logger.info("Deploying head sidecar (image: tailscale/tailscale:%s)...", ts_version)
 
     import os  # noqa: PLC0415
+
     from sparkstack.core.env import MONITORING_NODE_TARGET  # noqa: PLC0415
 
     enabled_services_str = os.getenv("SPARKSTACK_ENABLED_SERVICES")
@@ -261,42 +262,52 @@ async def deploy_head_sidecar(
         "4000:4000",  # LiteLLM
     ]
     if not local_monitoring_enabled:
-        port_args.extend([
-            "-p", "4318:4318",  # OTLP HTTP
-            "-p", "9090:9090",  # Prometheus
-        ])
+        port_args.extend(
+            [
+                "-p",
+                "4318:4318",  # OTLP HTTP
+                "-p",
+                "9090:9090",  # Prometheus
+            ]
+        )
 
-    run_cmd = [
-        "docker",
-        "run",
-        "-d",
-        "--name",
-        HEAD_SIDECAR_NAME,
-        "--cap-add",
-        "NET_ADMIN",
-        "--cap-add",
-        "NET_RAW",
-        "--device",
-        "/dev/net/tun:/dev/net/tun",
-        "--network",
-        network,
-        "--restart",
-        "unless-stopped",
-    ] + port_args + [
-        "-v",
-        "sparkstack-ts-state-head:/var/lib/tailscale",
-        "-e",
-        f"TS_AUTHKEY={auth_key}",
-        "-e",
-        "TS_STATE_DIR=/var/lib/tailscale",
-        "-e",
-        "TS_ACCEPT_DNS=false",
-        "-e",
-        f"TS_EXTRA_ARGS=--login-server={headscale_url}",
-        "-e",
-        "TS_HOSTNAME=sparkstack-head",
-        f"tailscale/tailscale:{ts_version}",
-    ]
+    run_cmd = (
+        [
+            "docker",
+            "run",
+            "-d",
+            "--name",
+            HEAD_SIDECAR_NAME,
+            "--cap-add",
+            "NET_ADMIN",
+            "--cap-add",
+            "NET_RAW",
+            "--device",
+            "/dev/net/tun:/dev/net/tun",
+            "--network",
+            network,
+            "--restart",
+            "unless-stopped",
+        ]
+        + port_args
+        + [
+            "-v",
+            "sparkstack-ts-state-head:/var/lib/tailscale",
+            "-e",
+            f"TS_AUTHKEY={auth_key}",
+            "-e",
+            "TS_STATE_DIR=/var/lib/tailscale",
+            "-e",
+            "TS_ACCEPT_DNS=false",
+            "-e",
+            "TS_USERSPACE=false",
+            "-e",
+            f"TS_EXTRA_ARGS=--login-server={headscale_url}",
+            "-e",
+            "TS_HOSTNAME=sparkstack-head",
+            f"tailscale/tailscale:{ts_version}",
+        ]
+    )
 
     proc = await asyncio.create_subprocess_exec(
         *run_cmd,
@@ -402,6 +413,7 @@ async def deploy_worker_sidecar(
         f" -e TS_AUTHKEY={auth_key}"
         f" -e TS_STATE_DIR=/var/lib/tailscale"
         f" -e TS_ACCEPT_DNS=false"
+        f" -e TS_USERSPACE=false"
         f" -e 'TS_EXTRA_ARGS=--login-server={headscale_url}'"
         f" -e TS_HOSTNAME={ts_hostname}"
         f" tailscale/tailscale:{ts_version}"

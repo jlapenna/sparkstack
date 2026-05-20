@@ -9,7 +9,7 @@ from loguru import logger
 
 from sparkstack.core.builders.monitoring import MonitoringBuilder
 from sparkstack.core.builders.stack import StackBuilder
-from sparkstack.core.env import SPARK_NODE_TARGET, WORKER_TAILNET_IP
+from sparkstack.core.env import SPARK_NODE_TARGET
 from sparkstack.core.ipc_server import StateUpdateEvent
 from sparkstack.core.progress import StackProgress
 from sparkstack.core.schemas import ServiceStatus

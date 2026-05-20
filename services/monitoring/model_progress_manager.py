@@ -213,7 +213,10 @@ class DockerHostMonitor:
                     )
                     if model_match:
                         model_id = model_match.group(1).lower().split("/")[-1]
-                    if "--enforce-eager" in content.lower() or "cuda_graph=false" in content.lower():
+                    if (
+                        "--enforce-eager" in content.lower()
+                        or "cuda_graph=false" in content.lower()
+                    ):
                         enforce_eager = True
             except Exception as e:
                 logger.debug(f"[{self.host_id}] Error reading sparkrun_serve.sh: {e}")

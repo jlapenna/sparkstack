@@ -21,7 +21,7 @@ from rich.progress import (
 )
 
 from sparkstack.core.discovery import get_active_services
-from sparkstack.core.env import SPARK_NODE_TARGET, WORKER_TAILNET_IP
+from sparkstack.core.env import SPARK_NODE_TARGET
 from sparkstack.core.ipc_server import IPCServer, StateUpdateEvent
 from sparkstack.core.utils import async_run_command
 
