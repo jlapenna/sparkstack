@@ -276,6 +276,8 @@ async def deploy_head_sidecar(
         "NET_ADMIN",
         "--cap-add",
         "NET_RAW",
+        "--device",
+        "/dev/net/tun:/dev/net/tun",
         "--network",
         network,
         "--restart",
@@ -394,6 +396,7 @@ async def deploy_worker_sidecar(
         f" --name {name}"
         f" --cap-add NET_ADMIN"
         f" --cap-add NET_RAW"
+        f" --device /dev/net/tun:/dev/net/tun"
         f" --restart unless-stopped"
         f" -v sparkstack-ts-state-{hostname}:/var/lib/tailscale"
         f" -e TS_AUTHKEY={auth_key}"
