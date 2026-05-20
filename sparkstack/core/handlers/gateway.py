@@ -36,6 +36,8 @@ class ApiGatewayServiceConfigurator:
             # both ``sparkstack-net`` and ``vllm-network``, so OpenClaw can still
             # reach LiteLLM via ``http://sparkstack-head-sidecar:4000``.
             gw.pop("networks", None)
+            gw.pop("ports", None)
+            gw.pop("extra_hosts", None)
             gw["network_mode"] = f"container:{ApiGatewayServiceConfigurator.HEAD_SIDECAR_NAME}"
             # Remove any top-level network declarations for this service —
             # they are incompatible with network_mode.

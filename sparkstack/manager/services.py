@@ -506,7 +506,8 @@ class InferenceStackService(Service):
 
         # Use centralized health manager with explicit probes
         litellm_key = os.getenv("LITELLM_MASTER_KEY", "sk-sparkstack-default-master-key")
-        target_host = WORKER_TAILNET_IP if WORKER_TAILNET_IP else "localhost"
+        # Since LiteLLM runs on the Head node, the probe should target the Head's localhost mapped port, never the worker IP
+        target_host = "localhost"
         manager = ServiceHealthManager(
             "litellm",
             env=env,

@@ -239,6 +239,33 @@ async def deploy_head_sidecar(
     ts_version = SPARKSTACK_TAILSCALE_VERSION
     logger.info("Deploying head sidecar (image: tailscale/tailscale:%s)...", ts_version)
 
+    import os  # noqa: PLC0415
+    from sparkstack.core.env import MONITORING_NODE_TARGET  # noqa: PLC0415
+
+    enabled_services_str = os.getenv("SPARKSTACK_ENABLED_SERVICES")
+    if enabled_services_str is not None:
+        enabled_services = [s.strip().lower() for s in enabled_services_str.split(",") if s.strip()]
+        has_monitoring = "monitoring" in enabled_services
+    else:
+        has_monitoring = True
+
+    is_monitoring_local = (
+        not MONITORING_NODE_TARGET
+        or "localhost" in MONITORING_NODE_TARGET
+        or "127.0.0.1" in MONITORING_NODE_TARGET
+    )
+    local_monitoring_enabled = has_monitoring and is_monitoring_local
+
+    port_args = [
+        "-p",
+        "4000:4000",  # LiteLLM
+    ]
+    if not local_monitoring_enabled:
+        port_args.extend([
+            "-p", "4318:4318",  # OTLP HTTP
+            "-p", "9090:9090",  # Prometheus
+        ])
+
     run_cmd = [
         "docker",
         "run",
@@ -253,13 +280,7 @@ async def deploy_head_sidecar(
         network,
         "--restart",
         "unless-stopped",
-        # Expose gateway ports so local tooling can reach them at localhost:*
-        "-p",
-        "4000:4000",  # LiteLLM
-        "-p",
-        "4318:4318",  # OTLP HTTP
-        "-p",
-        "9090:9090",  # Prometheus
+    ] + port_args + [
         "-v",
         "sparkstack-ts-state-head:/var/lib/tailscale",
         "-e",

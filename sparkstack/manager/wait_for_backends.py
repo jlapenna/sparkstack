@@ -216,7 +216,8 @@ async def wait_for_backends_to_load(
         else:
             env["DOCKER_CONTEXT"] = SPARK_NODE_TARGET
 
-    target_host = WORKER_TAILNET_IP if WORKER_TAILNET_IP else "localhost"
+    # The vllm-progress-manager always runs on the Head node, mapping port 8126 locally
+    target_host = "localhost"
 
     # Build a map of container → service info for remote-aware crash log retrieval.
     services_by_container: dict[str, dict] = {

@@ -187,6 +187,37 @@ class DockerHostMonitor:
                 if "--enforce-eager" in cmd_str.lower() or "cuda_graph=false" in cmd_str.lower():
                     enforce_eager = True
 
+            # If the container uses an internal sparkrun script, extract port & options from it
+            try:
+                status, data = await self.docker_api_post(
+                    f"/containers/{container_name}/exec",
+                    json_data={
+                        "Cmd": ["cat", "/tmp/sparkrun_serve.sh"],
+                        "AttachStdout": True,
+                    },
+                )
+                if status == 201 and self.session is not None:
+                    exec_id = data["Id"]
+                    async with self.session.post(
+                        f"{self.base_url}/exec/{exec_id}/start",
+                        json={"Detach": False},
+                        timeout=aiohttp.ClientTimeout(total=5.0),
+                    ) as resp:
+                        content = await resp.text()
+                    # Parse port and model ID from content
+                    port_match = re.search(r"--port\s+(\d+)", content)
+                    if port_match:
+                        port = int(port_match.group(1))
+                    model_match = re.search(
+                        r"(?:vllm serve|sglang\.launch_server\s+--model-path)\s+(\S+)", content
+                    )
+                    if model_match:
+                        model_id = model_match.group(1).lower().split("/")[-1]
+                    if "--enforce-eager" in content.lower() or "cuda_graph=false" in content.lower():
+                        enforce_eager = True
+            except Exception as e:
+                logger.debug(f"[{self.host_id}] Error reading sparkrun_serve.sh: {e}")
+
         except Exception as e:
             logger.exception(f"[{self.host_id}] Error fetching info for {container_name}: {e}")
 
