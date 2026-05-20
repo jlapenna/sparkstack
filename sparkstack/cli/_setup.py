@@ -1,8 +1,12 @@
-"""Setup and configuration commands."""
-
+import os
 import socket
 
 import click
+from rich.console import Console
+from rich.panel import Panel
+from rich.prompt import Prompt
+from rich.table import Table
+from rich.text import Text
 
 from sparkstack.core.env import (
     SPARKSTACK_HEADSCALE_AUTH_KEY,
@@ -79,6 +83,157 @@ async def _setup_wizard_async() -> None:
         if click.confirm("Regenerate auth key?", default=False):
             await _setup_overlay_async()
 
+    # Phase 2: Service & Feature Selection
+    click.echo("\nPhase 2: Service & Feature Selection")
+    click.echo("-" * 30)
+
+    console = Console()
+
+    services = [
+        {"key": "SparkRun", "desc": "Base automated orchestration and evaluation framework."},
+        {"key": "Cloudflare", "desc": "Secure external tunnel mapping (for WAN access)."},
+        {"key": "Headscale", "desc": "Encrypted multi-node WireGuard overlay mesh network."},
+        {
+            "key": "InferenceStack",
+            "desc": "High-throughput LLM inference engines (vLLM + LiteLLM).",
+        },
+        {
+            "key": "RegistrySync",
+            "desc": "Syncing model configurations and stacks into OpenClaw/LiteLLM.",
+        },
+        {
+            "key": "Monitoring",
+            "desc": "Real-time stack telemetry (Prometheus, Grafana, Alloy, Tempo).",
+        },
+        {"key": "OpenClaw", "desc": "AI Gateway and secure sandbox routing engine."},
+    ]
+
+    enabled_str = os.environ.get("SPARKSTACK_ENABLED_SERVICES")
+    if enabled_str is not None:
+        enabled_keys = {s.strip().lower() for s in enabled_str.split(",") if s.strip()}
+    else:
+        # Default all to enabled if not configured yet
+        enabled_keys = {s["key"].lower() for s in services}
+
+    while True:
+        table = Table(
+            title="Select Stack Services to Enable/Disable",
+            show_header=True,
+            header_style="bold magenta",
+        )
+        table.add_column("Index", style="cyan", justify="right")
+        table.add_column("Status", justify="center")
+        table.add_column("Service", style="bold green")
+        table.add_column("Description", style="white")
+
+        for idx, svc in enumerate(services, 1):
+            is_enabled = svc["key"].lower() in enabled_keys
+            status_text = (
+                Text("✔", style="bold green") if is_enabled else Text("☐", style="dim red")
+            )
+            table.add_row(
+                str(idx), status_text, svc["key"], svc["desc"], style=None if is_enabled else "dim"
+            )
+
+        console.print(table)
+        console.print(
+            "[dim]Enter index numbers separated by spaces/commas to toggle services (e.g. '2 6'), or press [bold green]Enter[/bold green] to confirm and proceed.[/dim]"
+        )
+
+        choice = Prompt.ask(
+            "Selection (indices or Enter to confirm)", default="", show_default=False
+        )
+        if not choice.strip():
+            break
+
+        try:
+            indices = [int(x.strip()) for x in choice.replace(",", " ").split() if x.strip()]
+            for index in indices:
+                if 1 <= index <= len(services):
+                    svc_key = services[index - 1]["key"].lower()
+                    if svc_key in enabled_keys:
+                        enabled_keys.remove(svc_key)
+                    else:
+                        enabled_keys.add(svc_key)
+                else:
+                    console.print(f"[bold red]Invalid index: {index}[/bold red]")
+        except ValueError:
+            console.print(
+                "[bold red]Please enter valid numbers (e.g. 2, 6) or press Enter.[/bold red]"
+            )
+
+    chosen_services = [svc["key"] for svc in services if svc["key"].lower() in enabled_keys]
+    set_env("SPARKSTACK_ENABLED_SERVICES", ",".join(chosen_services))
+    console.print(
+        Panel(
+            f"[bold green]Saved active services to .env:[/bold green]\n"
+            f"[cyan]SPARKSTACK_ENABLED_SERVICES={','.join(chosen_services)}[/cyan]",
+            title="Configuration Saved",
+            border_style="green",
+        )
+    )
+
+    # Feature configuration - External Monitoring
+    is_mon_enabled = any(s.lower() == "monitoring" for s in chosen_services)
+    if is_mon_enabled:
+        console.print("\n[bold cyan]Feature Configuration: Telemetry & Monitoring[/bold cyan]")
+        use_external = click.confirm(
+            "Do you want to use an external monitoring backend (Grafana/Prometheus/Tempo) instead of local deployment?",
+            default=False,
+        )
+        if use_external:
+            ext_host = click.prompt(
+                "Enter external monitoring host IP or domain",
+                default=os.environ.get("SPARK_MONITORING_HOST", ""),
+            )
+            set_env("SPARK_MONITORING_HOST", ext_host)
+            console.print(
+                f"[bold green]Saved SPARK_MONITORING_HOST={ext_host} to .env[/bold green]"
+            )
+        else:
+            set_env("SPARK_MONITORING_HOST", "")
+            console.print("[bold green]Configured monitoring to use local deployment.[/bold green]")
+
+    # Feature configuration - Multi-Node Deployments
+    console.print("\n[bold cyan]Feature Configuration: Multi-Node Remote Deployments[/bold cyan]")
+    multi_node = click.confirm(
+        "Do you want to configure remote node targets for multi-node deployment?", default=False
+    )
+    if multi_node:
+        spark_node = click.prompt(
+            "Enter Target remote node for Inference workers (Docker Context or SSH URI)",
+            default=os.environ.get("SPARK_NODE_TARGET", ""),
+        )
+        openclaw_node = click.prompt(
+            "Enter Target remote node for OpenClaw Gateway",
+            default=os.environ.get("OPENCLAW_NODE_TARGET", ""),
+        )
+        monitoring_node = click.prompt(
+            "Enter Target remote node for Monitoring stack",
+            default=os.environ.get("MONITORING_NODE_TARGET", ""),
+        )
+
+        set_env("SPARK_NODE_TARGET", spark_node)
+        set_env("OPENCLAW_NODE_TARGET", openclaw_node)
+        set_env("MONITORING_NODE_TARGET", monitoring_node)
+
+        console.print("[bold green]Multi-node targets persisted to .env[/bold green]")
+
+        if (spark_node or openclaw_node or monitoring_node) and "Headscale" not in chosen_services:
+            console.print(
+                "[bold yellow]Multi-node deployment configured. Automatically enabling Headscale dependency...[/bold yellow]"
+            )
+            chosen_services.append("Headscale")
+            set_env("SPARKSTACK_ENABLED_SERVICES", ",".join(chosen_services))
+    else:
+        # Clear them if they don't want remote
+        set_env("SPARK_NODE_TARGET", "")
+        set_env("OPENCLAW_NODE_TARGET", "")
+        set_env("MONITORING_NODE_TARGET", "")
+        console.print(
+            "[bold green]Configured all services to deploy locally on the Head node.[/bold green]"
+        )
+
     click.echo("\nSetup complete!")
 
 
@@ -95,8 +250,81 @@ def setup_overlay(ctx: click.Context) -> None:
 
 
 async def _setup_overlay_async() -> None:
+    import asyncio  # noqa: PLC0415
+
+    from sparkstack.core.env import PROJECT_ROOT  # noqa: PLC0415
+    from sparkstack.core.utils import async_run_command  # noqa: PLC0415
+    from sparkstack.manager.remote import deploy_head_sidecar  # noqa: PLC0415
+    from sparkstack.manager.services import _render_headscale_config  # noqa: PLC0415
+
     click.echo("Configuring Headscale overlay network...")
 
+    # 1. Ensure docker network sparkstack-net exists
+    try:
+        await async_run_command(
+            ["docker", "network", "inspect", "sparkstack-net"],
+            check=True,
+            capture_output=True,
+        )
+    except Exception:
+        click.echo("Creating external Docker network sparkstack-net...")
+        try:
+            await async_run_command(
+                ["docker", "network", "create", "sparkstack-net"],
+                check=True,
+            )
+        except Exception as e:
+            click.secho(f"Failed to create sparkstack-net network: {e}", fg="red")
+            return
+
+    # 2. Render headscale configuration template
+    hs_dir = PROJECT_ROOT / "services" / "headscale"
+    click.echo("Rendering Headscale control plane configuration...")
+    try:
+        _render_headscale_config(hs_dir)
+    except Exception as e:
+        click.secho(f"Failed to render headscale configuration: {e}", fg="red")
+        return
+
+    # 3. Start headscale container
+    click.echo("Deploying sparkstack-headscale container...")
+    try:
+        compose_cmd = [
+            "docker",
+            "compose",
+            "-f",
+            str(hs_dir / "docker-compose.yml"),
+            "up",
+            "-d",
+            "--force-recreate",
+        ]
+        await async_run_command(compose_cmd, check=True)
+    except Exception as e:
+        click.secho(f"Failed to start headscale container: {e}", fg="red")
+        return
+
+    # 4. Wait for headscale container to become healthy
+    click.echo("Waiting for Headscale control plane to become healthy...")
+    for _ in range(30):
+        try:
+            res = await async_run_command(
+                ["docker", "inspect", "-f", "{{.State.Health.Status}}", "sparkstack-headscale"],
+                check=False,
+                capture_output=True,
+            )
+            status = res.stdout.strip()
+            if status == "healthy":
+                click.echo("✅ Headscale control plane is healthy.")
+                break
+        except Exception:
+            pass
+        await asyncio.sleep(1)
+    else:
+        click.secho(
+            "⚠️ Headscale health check timed out, attempting to proceed anyway...", fg="yellow"
+        )
+
+    # 5. Generate pre-auth key
     try:
         click.echo("Generating Headscale auth key...")
         auth_key = await get_headscale_auth_key()
@@ -105,16 +333,21 @@ async def _setup_overlay_async() -> None:
         click.echo("Saved SPARKSTACK_HEADSCALE_AUTH_KEY to .env")
     except Exception as e:
         click.secho(f"Failed to generate auth key: {e}", fg="red")
-        click.echo(
-            "Make sure the sparkstack-headscale container is running (e.g. sparkstack update headscale)."
-        )
         return
 
+    # 6. Deploy head sidecar
+    try:
+        click.echo("Deploying local Head sidecar (sparkstack-head-sidecar)...")
+        await deploy_head_sidecar()
+    except Exception as e:
+        click.secho(f"Failed to deploy Head sidecar: {e}", fg="red")
+        return
+
+    # 7. Resolve Tailnet IP
     try:
         click.echo("Resolving Head sidecar Tailnet IP...")
         ip = await resolve_head_tailnet_ip()
         set_env("SPARKSTACK_HEAD_TAILNET_IP", ip)
         click.echo(f"Saved SPARKSTACK_HEAD_TAILNET_IP ({ip}) to .env")
     except Exception as e:
-        click.secho(f"Failed to resolve Tailnet IP: {e}", fg="yellow")
-        click.echo("Make sure the sparkstack-head-sidecar container is running.")
+        click.secho(f"Failed to resolve Tailnet IP: {e}", fg="red")

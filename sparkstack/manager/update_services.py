@@ -56,6 +56,15 @@ class Settings(BaseSettings):
     project_root: Path = Field(default_factory=lambda: PROJECT_ROOT)
     pull_latest: bool = False
     target_services: tuple[str, ...] | None = None
+    sparkstack_enabled_services: str | None = Field(
+        default=None, validation_alias="SPARKSTACK_ENABLED_SERVICES"
+    )
+
+    def model_post_init(self, __context) -> None:
+        if self.target_services is None and self.sparkstack_enabled_services:
+            svcs = [s.strip() for s in self.sparkstack_enabled_services.split(",") if s.strip()]
+            if svcs:
+                self.target_services = tuple(svcs)
 
 
 SOCKET_PATH = "/tmp/sparkstack.sock"

@@ -27,6 +27,8 @@ def set_env(key: str, value: str) -> None:
     """Set an environment variable and persist it in .env."""
     env_path = PROJECT_ROOT / ".env"
     os.environ[key] = value
+    if key in globals():
+        globals()[key] = value
     try:
         dotenv.set_key(str(env_path), key, value)
     except Exception as e:
