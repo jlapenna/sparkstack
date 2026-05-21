@@ -15,6 +15,7 @@ from sparkstack.core.env import (
     OPENCLAW_NODE_TARGET,
     SPARKSTACK_HEAD_TAILNET_IP,
     WORKER_TAILNET_IP,
+    is_overlay_configured,
 )
 
 
@@ -218,6 +219,21 @@ RegistryModel = Annotated[SparkrunRegistryModel | ComposeRegistryModel, Field(di
 
 
 # --- Provider & Stack Configs ---
+
+
+def _default_litellm_base_url() -> str:
+    """Return the default LiteLLM base URL based on the current network topology.
+
+    When the Headscale overlay is active, LiteLLM runs in
+    network_mode: container:sparkstack-head-sidecar.  Its port 4000
+    is bound in the sidecar's network namespace, so it is only
+    routable via the sidecar's Docker container name on
+    sparkstack-net.  The service name "litellm" only resolves
+    within the compose project's internal network.
+    """
+    if is_overlay_configured():
+        return "http://sparkstack-head-sidecar:4000/v1"
+    return f"http://{os.getenv('WORKER_TAILNET_IP', 'litellm')}:4000/v1"
 
 
 class ApiKeyConfig(BaseSchema):
