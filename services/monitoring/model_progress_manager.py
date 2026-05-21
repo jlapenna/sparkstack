@@ -203,7 +203,8 @@ class DockerHostMonitor:
                         json={"Detach": False},
                         timeout=aiohttp.ClientTimeout(total=5.0),
                     ) as resp:
-                        content = await resp.text()
+                        content_bytes = await resp.read()
+                        content = content_bytes.decode("utf-8", errors="ignore")
                     # Parse port and model ID from content
                     port_match = re.search(r"--port\s+(\d+)", content)
                     if port_match:

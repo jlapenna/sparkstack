@@ -11,7 +11,12 @@ from typing import Annotated, Any, ClassVar, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
 
-from sparkstack.core.env import OPENCLAW_NODE_TARGET, WORKER_TAILNET_IP
+from sparkstack.core.env import (
+    OPENCLAW_NODE_TARGET,
+    SPARKSTACK_HEAD_TAILNET_IP,
+    WORKER_TAILNET_IP,
+    is_overlay_configured,
+)
 
 
 @dataclass
@@ -312,7 +317,16 @@ class SparkProvider(BaseSchema):
 
     base_url: str = Field(
         default_factory=lambda: os.getenv(
-            "VLLM_GATEWAY_URL", f"http://{os.getenv('WORKER_TAILNET_IP', 'litellm')}:4000/v1"
+            "VLLM_GATEWAY_URL",
+            # When the Headscale overlay is active, LiteLLM runs in
+            # network_mode: container:sparkstack-head-sidecar.  Its port 4000
+            # is bound in the sidecar's network namespace, so it is only
+            # routable via the sidecar's Docker container name on
+            # sparkstack-net.  The service name "litellm" only resolves
+            # within the compose project's internal network.
+            f"http://sparkstack-head-sidecar:4000/v1"
+            if is_overlay_configured()
+            else f"http://{os.getenv('WORKER_TAILNET_IP', 'litellm')}:4000/v1",
         ),
         alias="baseUrl",
     )
@@ -322,19 +336,35 @@ class SparkProvider(BaseSchema):
 
     @model_validator(mode="after")
     def _rewrite_base_url_for_remote(self) -> "SparkProvider":
-        # If OpenClaw is deployed remotely, litellm and localhost won't resolve
-        # to the worker node from its perspective, so rewrite to the tailnet IP.
-        if OPENCLAW_NODE_TARGET and ("localhost" in self.base_url or "litellm" in self.base_url):
-            if not WORKER_TAILNET_IP:
+        # Only rewrite when OpenClaw is on a *truly* remote node (not localhost/127.0.0.1).
+        # When OPENCLAW_NODE_TARGET points to localhost the openclaw container is co-located on
+        # Docker and can reach LiteLLM via Docker DNS ("litellm").  Rewriting to the Tailnet IP
+        # breaks connectivity because the 100.64.0.0/10 subnet is only routable inside the
+        # sidecar's network namespace, not from openclaw's Docker bridge.
+        _target = OPENCLAW_NODE_TARGET or ""
+        _is_local_target = (
+            not _target
+            or "localhost" in _target
+            or "127.0.0.1" in _target
+        )
+        if _target and not _is_local_target and (
+            "localhost" in self.base_url
+            or "litellm" in self.base_url
+            or (WORKER_TAILNET_IP and WORKER_TAILNET_IP in self.base_url)
+        ):
+            if not SPARKSTACK_HEAD_TAILNET_IP:
                 warnings.warn(
-                    "OPENCLAW_NODE_TARGET is set but WORKER_TAILNET_IP is missing. "
+                    "OPENCLAW_NODE_TARGET is set but SPARKSTACK_HEAD_TAILNET_IP is missing. "
                     f"The base_url '{self.base_url}' may not resolve from the remote node.",
                     stacklevel=2,
                 )
             else:
-                self.base_url = self.base_url.replace("localhost", WORKER_TAILNET_IP).replace(
-                    "litellm", WORKER_TAILNET_IP
+                new_url = self.base_url.replace("localhost", SPARKSTACK_HEAD_TAILNET_IP).replace(
+                    "litellm", SPARKSTACK_HEAD_TAILNET_IP
                 )
+                if WORKER_TAILNET_IP:
+                    new_url = new_url.replace(WORKER_TAILNET_IP, SPARKSTACK_HEAD_TAILNET_IP)
+                self.base_url = new_url
         return self
 
     timeout_seconds: int = 300
