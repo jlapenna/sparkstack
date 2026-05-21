@@ -68,15 +68,15 @@ async def _setup_wizard_async() -> None:
             "Enter Headscale Control Plane IP/Domain", default=default_ip
         )
         set_env("SPARKSTACK_HEADSCALE_SERVER", headscale_server)
-        click.echo(f"Saved SPARKSTACK_HEADSCALE_SERVER={headscale_server} to .env\n")
+        click.echo(f"Saved SPARKSTACK_HEADSCALE_SERVER={headscale_server} to configuration\n")
     else:
         click.echo(f"Headscale Control Plane: {headscale_server}")
 
     # 2. Ask to generate headscale keys if missing
     if not SPARKSTACK_HEADSCALE_AUTH_KEY:
-        click.echo("\nNo Headscale auth key found in .env.")
+        click.echo("\nNo Headscale auth key found in configuration.")
         click.echo("Note: The 'sparkstack-headscale' container must be running to generate a key.")
-        if click.confirm("Generate a new auth key and save it to .env?", default=True):
+        if click.confirm("Generate a new auth key and save it to configuration?", default=True):
             await _setup_overlay_async()
     else:
         click.echo("\nHeadscale auth key is already configured.")
@@ -166,7 +166,7 @@ async def _setup_wizard_async() -> None:
     set_env("SPARKSTACK_ENABLED_SERVICES", ",".join(chosen_services))
     console.print(
         Panel(
-            f"[bold green]Saved active services to .env:[/bold green]\n"
+            f"[bold green]Saved active services to configuration (sparkstack.yaml):[/bold green]\n"
             f"[cyan]SPARKSTACK_ENABLED_SERVICES={','.join(chosen_services)}[/cyan]",
             title="Configuration Saved",
             border_style="green",
@@ -188,7 +188,7 @@ async def _setup_wizard_async() -> None:
             )
             set_env("SPARK_MONITORING_HOST", ext_host)
             console.print(
-                f"[bold green]Saved SPARK_MONITORING_HOST={ext_host} to .env[/bold green]"
+                f"[bold green]Saved SPARK_MONITORING_HOST={ext_host} to configuration (sparkstack.yaml)[/bold green]"
             )
         else:
             set_env("SPARK_MONITORING_HOST", "")
@@ -217,7 +217,7 @@ async def _setup_wizard_async() -> None:
         set_env("OPENCLAW_NODE_TARGET", openclaw_node)
         set_env("MONITORING_NODE_TARGET", monitoring_node)
 
-        console.print("[bold green]Multi-node targets persisted to .env[/bold green]")
+        console.print("[bold green]Multi-node targets persisted to configuration (sparkstack.yaml)[/bold green]")
 
         if (spark_node or openclaw_node or monitoring_node) and "Headscale" not in chosen_services:
             console.print(
@@ -330,7 +330,7 @@ async def _setup_overlay_async() -> None:
         auth_key = await get_headscale_auth_key()
         click.echo(f"Generated auth key: {auth_key[:8]}...")
         set_env("SPARKSTACK_HEADSCALE_AUTH_KEY", auth_key)
-        click.echo("Saved SPARKSTACK_HEADSCALE_AUTH_KEY to .env")
+        click.echo("Saved SPARKSTACK_HEADSCALE_AUTH_KEY to configuration (sparkstack.yaml)")
     except Exception as e:
         click.secho(f"Failed to generate auth key: {e}", fg="red")
         return
@@ -348,6 +348,6 @@ async def _setup_overlay_async() -> None:
         click.echo("Resolving Head sidecar Tailnet IP...")
         ip = await resolve_head_tailnet_ip()
         set_env("SPARKSTACK_HEAD_TAILNET_IP", ip)
-        click.echo(f"Saved SPARKSTACK_HEAD_TAILNET_IP ({ip}) to .env")
+        click.echo(f"Saved SPARKSTACK_HEAD_TAILNET_IP ({ip}) to configuration (sparkstack.yaml)")
     except Exception as e:
         click.secho(f"Failed to resolve Tailnet IP: {e}", fg="red")
