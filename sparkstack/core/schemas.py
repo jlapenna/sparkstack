@@ -13,6 +13,7 @@ from pydantic.alias_generators import to_camel
 
 from sparkstack.core.env import (
     OPENCLAW_NODE_TARGET,
+    SPARK_NODE_TARGET,
     SPARKSTACK_HEAD_TAILNET_IP,
     WORKER_TAILNET_IP,
     is_overlay_configured,
@@ -318,15 +319,7 @@ class SparkProvider(BaseSchema):
     base_url: str = Field(
         default_factory=lambda: os.getenv(
             "VLLM_GATEWAY_URL",
-            # When the Headscale overlay is active, LiteLLM runs in
-            # network_mode: container:sparkstack-head-sidecar.  Its port 4000
-            # is bound in the sidecar's network namespace, so it is only
-            # routable via the sidecar's Docker container name on
-            # sparkstack-net.  The service name "litellm" only resolves
-            # within the compose project's internal network.
-            f"http://sparkstack-head-sidecar:4000/v1"
-            if is_overlay_configured()
-            else f"http://{os.getenv('WORKER_TAILNET_IP', 'litellm')}:4000/v1",
+            _default_litellm_base_url(),
         ),
         alias="baseUrl",
     )
@@ -342,15 +335,15 @@ class SparkProvider(BaseSchema):
         # breaks connectivity because the 100.64.0.0/10 subnet is only routable inside the
         # sidecar's network namespace, not from openclaw's Docker bridge.
         _target = OPENCLAW_NODE_TARGET or ""
-        _is_local_target = (
-            not _target
-            or "localhost" in _target
-            or "127.0.0.1" in _target
-        )
-        if _target and not _is_local_target and (
-            "localhost" in self.base_url
-            or "litellm" in self.base_url
-            or (WORKER_TAILNET_IP and WORKER_TAILNET_IP in self.base_url)
+        _is_local_target = not _target or "localhost" in _target or "127.0.0.1" in _target
+        if (
+            _target
+            and not _is_local_target
+            and (
+                "localhost" in self.base_url
+                or "litellm" in self.base_url
+                or (WORKER_TAILNET_IP and WORKER_TAILNET_IP in self.base_url)
+            )
         ):
             if not SPARKSTACK_HEAD_TAILNET_IP:
                 warnings.warn(

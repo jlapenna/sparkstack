@@ -38,7 +38,11 @@ def _provider(
         patch(f"{_SCHEMAS}.OPENCLAW_NODE_TARGET", openclaw_target),
         patch(f"{_SCHEMAS}.SPARKSTACK_HEAD_TAILNET_IP", head_tailnet_ip),
         patch(f"{_SCHEMAS}.WORKER_TAILNET_IP", worker_tailnet_ip),
-        patch.dict(os.environ, {"WORKER_TAILNET_IP": worker_tailnet_ip} if worker_tailnet_ip else {}, clear=False),
+        patch.dict(
+            os.environ,
+            {"WORKER_TAILNET_IP": worker_tailnet_ip} if worker_tailnet_ip else {},
+            clear=False,
+        ),
     ):
         return schemas_mod.SparkProvider(**kwargs)
 
