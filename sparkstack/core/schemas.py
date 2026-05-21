@@ -13,10 +13,8 @@ from pydantic.alias_generators import to_camel
 
 from sparkstack.core.env import (
     OPENCLAW_NODE_TARGET,
-    SPARK_NODE_TARGET,
     SPARKSTACK_HEAD_TAILNET_IP,
     WORKER_TAILNET_IP,
-    is_overlay_configured,
 )
 
 
