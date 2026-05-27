@@ -3,11 +3,11 @@ Pydantic models for service configurations.
 """
 
 import os
-import warnings
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Annotated, Any, ClassVar, Literal
 
+from loguru import logger
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
 
@@ -171,19 +171,17 @@ class OpenClawModel(BaseSchema):
         # Guard 2 & 3: Compaction Poison Pill (Reference: Incident 2026-05-10)
         ceiling = min(self.MAX_COMPLETION_TOKENS, self.context_window // 2)
         if self.max_tokens >= self.context_window > 0:
-            warnings.warn(
+            logger.warning(
                 f"OpenClawModel '{self.id}': max_tokens ({self.max_tokens}) >= "
                 f"context_window ({self.context_window}). Clamping to {ceiling} "
-                f"to prevent compaction poison-pill loop.",
-                stacklevel=2,
+                f"to prevent compaction poison-pill loop."
             )
             self.max_tokens = ceiling
         elif self.max_tokens > self.MAX_COMPLETION_TOKENS and self.context_window > 0:
-            warnings.warn(
+            logger.warning(
                 f"OpenClawModel '{self.id}': max_tokens ({self.max_tokens}) exceeds "
                 f"recommended ceiling ({self.MAX_COMPLETION_TOKENS}). Clamping to "
-                f"{ceiling} to prevent excessive reserve token consumption.",
-                stacklevel=2,
+                f"{ceiling} to prevent excessive reserve token consumption."
             )
             self.max_tokens = ceiling
         return self
@@ -360,10 +358,9 @@ class SparkProvider(BaseSchema):
             )
         ):
             if not SPARKSTACK_HEAD_TAILNET_IP:
-                warnings.warn(
+                logger.warning(
                     "OPENCLAW_NODE_TARGET is set but SPARKSTACK_HEAD_TAILNET_IP is missing. "
-                    f"The base_url '{self.base_url}' may not resolve from the remote node.",
-                    stacklevel=2,
+                    f"The base_url '{self.base_url}' may not resolve from the remote node."
                 )
             else:
                 new_url = self.base_url.replace("localhost", SPARKSTACK_HEAD_TAILNET_IP).replace(

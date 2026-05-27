@@ -42,17 +42,21 @@ def sidecar_name(hostname: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-async def run_ssh_command(target: str, command: str, timeout: int = 60) -> str:
+async def run_ssh_command(
+    target: str, command: str, timeout: int = 60, retries: int = 3, retry_delay: float = 2.0
+) -> str:
     """Run a command over SSH and return stdout.
 
     Args:
         target: SSH target, e.g. ``"user@spark"`` or ``"spark"``.
         command: Shell command to execute remotely.
         timeout: Maximum seconds to wait.
+        retries: Number of retry attempts.
+        retry_delay: Delay between retries in seconds.
 
     Raises:
-        TimeoutError: If the command exceeds *timeout* seconds.
-        RuntimeError: If the remote command exits non-zero.
+        TimeoutError: If the command exceeds *timeout* seconds after all retries.
+        RuntimeError: If the remote command exits non-zero after all retries.
     """
     cmd = [
         "ssh",
@@ -60,27 +64,53 @@ async def run_ssh_command(target: str, command: str, timeout: int = 60) -> str:
         "StrictHostKeyChecking=no",
         "-o",
         "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=10",
         target,
         command,
     ]
-    process = await asyncio.create_subprocess_exec(
-        *cmd,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
 
-    try:
-        stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
-    except TimeoutError as e:
-        process.kill()
-        await process.wait()
-        raise TimeoutError(f"SSH command timed out after {timeout}s on {target}: {command}") from e
+    if retries < 1:
+        raise ValueError("retries must be at least 1")
 
-    if process.returncode != 0:
-        err_msg = stderr.decode().strip()
-        raise RuntimeError(f"SSH command failed on {target} (exit {process.returncode}): {err_msg}")
+    last_err = None
+    for attempt in range(1, retries + 1):
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
 
-    return stdout.decode().strip()
+        try:
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
+        except TimeoutError as e:
+            process.kill()
+            await process.wait()
+            last_err = TimeoutError(
+                f"SSH command timed out after {timeout}s on {target}: {command}"
+            )
+            logger.warning(f"SSH timeout on attempt {attempt}/{retries} for {target}. Retrying...")
+            if attempt < retries:
+                await asyncio.sleep(retry_delay * attempt)
+                continue
+            raise last_err from e
+
+        if process.returncode != 0:
+            err_msg = stderr.decode().strip()
+            last_err = RuntimeError(
+                f"SSH command failed on {target} (exit {process.returncode}): {err_msg}"
+            )
+            logger.warning(
+                f"SSH failure on attempt {attempt}/{retries} for {target}. Retrying... ({err_msg})"
+            )
+            if attempt < retries:
+                await asyncio.sleep(retry_delay * attempt)
+                continue
+            raise last_err
+
+        return stdout.decode().strip()
+
+    raise RuntimeError("Unreachable code path in run_ssh_command")
 
 
 # ---------------------------------------------------------------------------

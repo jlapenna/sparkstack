@@ -59,6 +59,7 @@ class IPCServer:
         self.queue: asyncio.Queue = asyncio.Queue()
         self._states: dict[str, StateUpdateEvent] = {}
         self.local_callback: Callable[[dict[str, Any]], None] | None = None
+        self._loop: asyncio.AbstractEventLoop | None = None
 
     def update_state(self, event: StateUpdateEvent):
         """Updates internal state and queues broadcast."""
@@ -69,11 +70,11 @@ class IPCServer:
         """Queues an event to be broadcast to all connected clients. Thread-safe."""
         # Use put_nowait but it is NOT thread-safe by default unless in same loop.
         # Since logs come from a separate thread, we need to schedule it on the loop.
-        loop = asyncio.get_running_loop()
-        loop.call_soon_threadsafe(self.queue.put_nowait, event)
-        if self.local_callback:
-            with suppress(Exception):
-                loop.call_soon_threadsafe(self.local_callback, event.model_dump())
+        if self._loop:
+            self._loop.call_soon_threadsafe(self.queue.put_nowait, event)
+            if self.local_callback:
+                with suppress(Exception):
+                    self._loop.call_soon_threadsafe(self.local_callback, event.model_dump())
 
     async def _broadcaster_task(self):
         """Background task that reads from queue and broadcasts to all clients."""
@@ -89,7 +90,7 @@ class IPCServer:
             for writer in self._clients:
                 try:
                     writer.write(data)
-                    await writer.drain()
+                    await asyncio.wait_for(writer.drain(), timeout=1.0)
                 except Exception:
                     dead_clients.add(writer)
 
@@ -130,6 +131,7 @@ class IPCServer:
     async def serve(cls, socket_path: str):
         """Context manager to manage the IPC Server lifecycle."""
         server_instance = cls()
+        server_instance._loop = asyncio.get_running_loop()
 
         if os.path.exists(socket_path):
             with suppress(OSError):

@@ -418,9 +418,9 @@ class HeadscaleService(Service):
 
                 try:
                     await deploy_worker_sidecar(ssh_target, hostname, auth_key, headscale_url)
-                except RuntimeError as e:
-                    # Non-fatal: sidecar may already be running and authenticated.
-                    logger.warning(f"Worker sidecar deployment note for {label}: {e}")
+                except Exception as e:
+                    # Non-fatal: sidecar may already be running and authenticated, or network blip.
+                    logger.warning(f"Worker sidecar deployment issue for {label}: {e}")
 
                 # Verify health.
                 healthy = await poll_sidecar_health(ssh_target, hostname)

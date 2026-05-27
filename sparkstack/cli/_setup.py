@@ -217,7 +217,9 @@ async def _setup_wizard_async() -> None:
         set_env("OPENCLAW_NODE_TARGET", openclaw_node)
         set_env("MONITORING_NODE_TARGET", monitoring_node)
 
-        console.print("[bold green]Multi-node targets persisted to configuration (sparkstack.yaml)[/bold green]")
+        console.print(
+            "[bold green]Multi-node targets persisted to configuration (sparkstack.yaml)[/bold green]"
+        )
 
         if (spark_node or openclaw_node or monitoring_node) and "Headscale" not in chosen_services:
             console.print(

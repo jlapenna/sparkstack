@@ -26,21 +26,23 @@ STACKS_DIR = REGISTRY_DIR / "stacks"
 
 # --- YAML Configuration Helpers & Mapping ---
 
+
 def resolve_yaml_path() -> Path:
     """Resolve the active sparkstack.yaml configuration file path."""
     env_path = os.getenv("SPARKSTACK_CONFIG_PATH")
     if env_path:
         return Path(env_path).absolute()
-    
+
     user_config_path = Path.home() / ".config" / "sparkstack" / "sparkstack.yaml"
     if user_config_path.exists():
         return user_config_path
-    
+
     project_config_path = PROJECT_ROOT / "sparkstack.yaml"
     if project_config_path.exists():
         return project_config_path
-        
+
     return user_config_path
+
 
 # Mapping from environment variable name to its nested YAML structure path.
 YAML_ENV_MAPPING = {
@@ -62,7 +64,9 @@ YAML_ENV_MAPPING = {
     "SYSTEM_RESERVED_MEMORY_GB": ("hardware", "system_reserved_memory_gb"),
     "MAX_VRAM_UTILIZATION": ("hardware", "max_vram_utilization"),
     "DEFAULT_KV_CACHE_CEILING": ("hardware", "default_kv_cache_ceiling"),
+    "SPARKSTACK_MONITORING_OVERHEAD_GB": ("hardware", "monitoring_overhead_gb"),
 }
+
 
 def set_nested_value(d: dict, path: tuple, value) -> None:
     """Update or insert a nested value in a dict based on a tuple key path, with type conversion."""
@@ -71,15 +75,25 @@ def set_nested_value(d: dict, path: tuple, value) -> None:
         if key not in current or not isinstance(current[key], dict):
             current[key] = {}
         current = current[key]
-    
+
     last_key = path[-1]
     # Handle specific types for known operational settings
-    if last_key in ("headscale_port", "vllm_port", "backend_start_port", "default_kv_cache_ceiling"):
+    if last_key in (
+        "headscale_port",
+        "vllm_port",
+        "backend_start_port",
+        "default_kv_cache_ceiling",
+    ):
         try:
             value = int(value)
         except (ValueError, TypeError):
             pass
-    elif last_key in ("usable_spark_memory_gb", "system_reserved_memory_gb", "max_vram_utilization"):
+    elif last_key in (
+        "usable_spark_memory_gb",
+        "system_reserved_memory_gb",
+        "max_vram_utilization",
+        "monitoring_overhead_gb",
+    ):
         try:
             value = float(value)
         except (ValueError, TypeError):
@@ -87,8 +101,9 @@ def set_nested_value(d: dict, path: tuple, value) -> None:
     elif last_key == "enabled_services":
         if isinstance(value, str):
             value = [s.strip() for s in value.split(",") if s.strip()]
-            
+
     current[last_key] = value
+
 
 def get_nested_value(d: dict, path: tuple):
     """Retrieve a nested value from a dict based on a tuple key path."""
@@ -100,18 +115,20 @@ def get_nested_value(d: dict, path: tuple):
             return None
     return current
 
+
 def load_yaml_config() -> dict:
     """Load configuration dictionary from sparkstack.yaml if it exists."""
     yaml_path = resolve_yaml_path()
     if not yaml_path.exists():
         return {}
     try:
-        with open(yaml_path, "r") as f:
+        with open(yaml_path) as f:
             data = yaml.safe_load(f)
             return data if isinstance(data, dict) else {}
     except Exception as e:
         logging.getLogger(__name__).warning(f"Failed to load configuration from {yaml_path}: {e}")
         return {}
+
 
 # Load and inject YAML settings into the active environment
 YAML_PATH = resolve_yaml_path()
@@ -125,34 +142,35 @@ for env_key, path in YAML_ENV_MAPPING.items():
         else:
             os.environ[env_key] = str(val)
 
+
 def set_env(key: str, value: str) -> None:
     """Set an environment variable and persist it in the appropriate configuration file.
-    
+
     Operational and topology configurations are persisted in sparkstack.yaml.
     Secrets and code/development-specific configurations are persisted in .env.
     """
     os.environ[key] = value
     if key in globals():
         globals()[key] = value
-    
+
     if key in YAML_ENV_MAPPING:
         path = YAML_ENV_MAPPING[key]
         yaml_path = resolve_yaml_path()
-        
+
         # Load existing YAML config
         data = {}
         if yaml_path.exists():
             try:
-                with open(yaml_path, "r") as f:
+                with open(yaml_path) as f:
                     parsed = yaml.safe_load(f)
                     if isinstance(parsed, dict):
                         data = parsed
             except Exception as e:
                 logging.getLogger(__name__).warning(f"Failed to read existing YAML config: {e}")
-        
+
         # Set the value
         set_nested_value(data, path, value)
-        
+
         # Keep SYSTEM_RESERVED_MEMORY_GB & SPARK_STACK_SYSTEM_RESERVED_MEMORY_GB in sync
         if key == "SYSTEM_RESERVED_MEMORY_GB":
             set_nested_value(data, YAML_ENV_MAPPING["SPARK_STACK_SYSTEM_RESERVED_MEMORY_GB"], value)
@@ -160,7 +178,7 @@ def set_env(key: str, value: str) -> None:
         elif key == "SPARK_STACK_SYSTEM_RESERVED_MEMORY_GB":
             set_nested_value(data, YAML_ENV_MAPPING["SYSTEM_RESERVED_MEMORY_GB"], value)
             os.environ["SYSTEM_RESERVED_MEMORY_GB"] = value
-            
+
         # Write back to YAML
         try:
             yaml_path.parent.mkdir(parents=True, exist_ok=True)
@@ -207,6 +225,9 @@ USABLE_SPARK_MEMORY_GB = float(os.getenv("USABLE_SPARK_MEMORY_GB", 121.0))
 # monitoring containers, and other non-workload processes.  This must be large
 # enough to prevent OOM kernel panics during transient model-loading spikes.
 SYSTEM_RESERVED_MEMORY_GB = float(os.getenv("SPARK_STACK_SYSTEM_RESERVED_MEMORY_GB", 12.0))
+
+# Memory reserved for the monitoring stack (Prometheus, Grafana, Alloy)
+SPARKSTACK_MONITORING_OVERHEAD_GB = float(os.getenv("SPARKSTACK_MONITORING_OVERHEAD_GB", 5.0))
 
 # Strict ceiling for the sum of all workload container memory limits.
 # Derived from total usable minus the system reserve.

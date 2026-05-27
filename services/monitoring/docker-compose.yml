@@ -16,7 +16,6 @@ services:
     - ${SPARKSTACK_DIR:?SPARKSTACK_DIR must be set}/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     - ${SPARKSTACK_DIR:?SPARKSTACK_DIR must be set}/targets.json:/etc/prometheus/targets.json:ro
     - prometheus_data:/prometheus
-    - /var/run/docker.sock:/var/run/docker.sock:ro
     command:
     - --config.file=/etc/prometheus/prometheus.yml
     - --storage.tsdb.path=/prometheus

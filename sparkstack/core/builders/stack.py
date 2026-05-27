@@ -15,6 +15,7 @@ from sparkstack.core.env import (
     MAX_VRAM_UTILIZATION,
     OPENCLAW_CONFIG_PATH,
     REGISTRY_DIR,
+    SPARKSTACK_MONITORING_OVERHEAD_GB,
     STACKS_DIR,
     SYSTEM_RESERVED_MEMORY_GB,
     USABLE_SPARK_MEMORY_GB,
@@ -107,7 +108,6 @@ class StackBuilder:
 
     # Fixed overhead for monitoring/gateway containers not tracked by handlers.
     # Prometheus (2G) + Grafana (0.5G) + Alloy (0.5G) + Tempo (1G) + misc (1G).
-    _MONITORING_OVERHEAD_GB = 5.0
 
     @property
     def is_remote(self) -> bool:
@@ -121,7 +121,7 @@ class StackBuilder:
             mem_gb = self.host_memory_gb[host]
             # Fixed overhead for monitoring/gateway containers not tracked by handlers.
             # Applied only to localhost. Remote hosts only run the vLLM container.
-            overhead = self._MONITORING_OVERHEAD_GB if host == "localhost" else 0.0
+            overhead = SPARKSTACK_MONITORING_OVERHEAD_GB if host == "localhost" else 0.0
             total_declared = mem_gb + overhead
 
             logger.info(
