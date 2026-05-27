@@ -1,3 +1,5 @@
+import json
+import yaml
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
@@ -104,8 +106,6 @@ async def test_golden_stack_generation(tmp_path, request, monkeypatch, mock_exec
     )
 
     # 3. Setup a fake 'current' stack directory with our topology
-    import yaml
-
     current_dir = tmp_path / "current"
     current_dir.mkdir()
 
