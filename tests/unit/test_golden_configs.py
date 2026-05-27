@@ -1,9 +1,8 @@
-import json
-import yaml
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+import yaml
 
 from sparkstack.core.registry import SparkrunRegistryModel
 from sparkstack.manager.services import (
@@ -95,14 +94,9 @@ async def test_golden_stack_generation(tmp_path, request, monkeypatch, mock_exec
     # 2. Mock the registry and sparkrun handler
     mock_recipe = SparkrunRegistryModel(
         identity="test-model",
-        name="test-model",
-        image="vllm/vllm-openai:latest",
-        memory_usage_gb=20.0,
         vram_usage=0.16,
         recipe={},
         recipe_path="test-recipe-path",
-        model_name="meta-llama/Llama-3-70b-Instruct",
-        environment={},
     )
 
     # 3. Setup a fake 'current' stack directory with our topology

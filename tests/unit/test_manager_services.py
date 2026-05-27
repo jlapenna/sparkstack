@@ -60,7 +60,6 @@ async def test_headscale_service_worker_isolation():
     mock_settings = MagicMock(pull_latest=False, project_root=Path("/tmp"))
 
     service = HeadscaleService("Headscale", mock_state, mock_settings)
-    service.deploy = MagicMock()
     service._pull_images = AsyncMock(return_value=2)
     service._deploy_compose = AsyncMock(return_value=3)
     service._probe_health = AsyncMock()
