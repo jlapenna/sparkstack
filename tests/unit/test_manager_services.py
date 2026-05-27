@@ -1,9 +1,10 @@
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from sparkstack.core.schemas import ServiceStatus
-from sparkstack.manager.services import ServiceState, SparkrunService
+from sparkstack.manager.services import HeadscaleService, ServiceState, SparkrunService
 
 
 @pytest.mark.asyncio
@@ -52,10 +53,6 @@ async def test_sparkrun_service_update():
 
 @pytest.mark.asyncio
 async def test_headscale_service_worker_isolation():
-    from pathlib import Path
-
-    from sparkstack.manager.services import HeadscaleService
-
     mock_state = MagicMock()
     mock_settings = MagicMock(pull_latest=False, project_root=Path("/tmp"))
 

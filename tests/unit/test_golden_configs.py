@@ -20,10 +20,7 @@ def mock_execution_logger():
     log = []
 
     async def mock_run_command(cmd, *args, **kwargs):
-        if isinstance(cmd, list):
-            cmd_str = " ".join(cmd)
-        else:
-            cmd_str = cmd
+        cmd_str = " ".join(cmd) if isinstance(cmd, list) else cmd
         env_str = ""
         if kwargs.get("env"):
             env_str = f"[ENV: DOCKER_HOST={kwargs['env'].get('DOCKER_HOST', '')}] "
