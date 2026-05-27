@@ -1,0 +1,52 @@
+model_list:
+- model_name: model-a
+  litellm_params:
+    model: openai/model-a
+    api_base: http://model-a_solo:8001/v1
+    api_key: ${LITELLM_MASTER_KEY:-}
+  model_info:
+    context_window: 128000
+    base_model: openai/test-recipe-path
+    mode: chat
+- model_name: main
+  litellm_params:
+    model: openai/model-a
+    api_base: http://model-a_solo:8001/v1
+    api_key: ${LITELLM_MASTER_KEY:-}
+  model_info:
+    context_window: 128000
+    base_model: openai/test-recipe-path
+    mode: chat
+litellm_settings:
+  merge_reasoning_content_in_choices: true
+  drop_params: false
+  pass_through_stream_options: true
+  pass_through_headers:
+  - traceparent
+  - tracestate
+  forward_traceparent_to_llm_provider: true
+  telemetry: true
+  callbacks:
+  - prometheus
+  - otel
+  guardrails: []
+  request_timeout: 1200
+  num_retries: 3
+  retry_policy:
+    exponential_backoff: true
+  connect_timeout: 10
+  health_check: true
+  openai_developer_role_to_system: true
+  disable_on_boarding: true
+  store_model_in_db: false
+  proxy_batch_write_log: false
+  model_alias_map:
+    spark/model-a: model-a
+    spark/main: main
+general_settings:
+  reload_config: true
+  reload_interval: 10
+  always_include_stream_usage: true
+router_settings:
+  routing_strategy: simple-shuffle
+  enable_pre_call_checks: true

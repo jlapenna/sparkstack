@@ -65,6 +65,8 @@ async def test_run_ssh_command_success():
             "StrictHostKeyChecking=no",
             "-o",
             "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=10",
             "user@host",
             "echo hello",
             stdout=-1,
@@ -80,9 +82,31 @@ async def test_run_ssh_command_failure():
 
     with (
         patch("asyncio.create_subprocess_exec", return_value=mock_proc),
+        patch("asyncio.sleep", new_callable=AsyncMock),
         pytest.raises(RuntimeError, match="SSH command failed on user@host"),
     ):
-        await run_ssh_command("user@host", "invalid command")
+        await run_ssh_command("user@host", "invalid command", retries=2)
+
+
+@pytest.mark.asyncio
+async def test_run_ssh_command_retry_success():
+    mock_proc_fail = AsyncMock()
+    mock_proc_fail.communicate.return_value = (b"", b"permission denied\n")
+    mock_proc_fail.returncode = 255
+
+    mock_proc_success = AsyncMock()
+    mock_proc_success.communicate.return_value = (b"output\n", b"")
+    mock_proc_success.returncode = 0
+
+    with (
+        patch("asyncio.create_subprocess_exec") as mock_exec,
+        patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+    ):
+        mock_exec.side_effect = [mock_proc_fail, mock_proc_success]
+        res = await run_ssh_command("user@host", "echo hello", retries=2, retry_delay=0.1)
+        assert res == "output"
+        assert mock_exec.call_count == 2
+        mock_sleep.assert_called_once()
 
 
 @pytest.mark.asyncio

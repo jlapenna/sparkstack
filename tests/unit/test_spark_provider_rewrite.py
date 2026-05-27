@@ -13,8 +13,6 @@ be skipped.
 import os
 from unittest.mock import patch
 
-import pytest
-
 import sparkstack.core.schemas as schemas_mod
 
 # We patch the module-level constants that schemas.py reads at validator-time
@@ -122,17 +120,19 @@ def test_rewrite_replaces_localhost_in_url():
     assert p.base_url == "http://100.64.0.1:4000/v1", f"Unexpected base_url: {p.base_url}"
 
 
-def test_warns_when_head_ip_missing_for_remote():
-    """Remote target + missing HEAD IP → warning issued, base_url unchanged."""
-    with pytest.warns(UserWarning, match="SPARKSTACK_HEAD_TAILNET_IP is missing"):
-        p = _provider(
-            openclaw_target="ssh://spark-worker",
-            head_tailnet_ip="",
-            worker_tailnet_ip="",
-            base_url="http://litellm:4000/v1",
-        )
+@patch("sparkstack.core.schemas.logger.warning")
+def test_warns_when_head_ip_missing_for_remote(mock_warning):
+    """Remote target + missing HEAD IP → logger warning issued, base_url unchanged."""
+    p = _provider(
+        openclaw_target="ssh://spark-worker",
+        head_tailnet_ip="",
+        worker_tailnet_ip="",
+        base_url="http://litellm:4000/v1",
+    )
     # base_url should remain unchanged (no head IP to rewrite to)
     assert "litellm" in p.base_url
+    assert mock_warning.call_count == 1
+    assert "SPARKSTACK_HEAD_TAILNET_IP is missing" in mock_warning.call_args[0][0]
 
 
 def test_default_base_url_uses_head_sidecar_when_overlay_configured():

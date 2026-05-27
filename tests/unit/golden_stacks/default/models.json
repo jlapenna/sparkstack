@@ -1,0 +1,50 @@
+{
+  "spark": {
+    "baseUrl": "http://sparkstack-head-sidecar:4000/v1",
+    "apiKey": "${LITELLM_MASTER_KEY}",
+    "auth": "api-key",
+    "api": null,
+    "timeoutSeconds": 300,
+    "request": {
+      "allowPrivateNetwork": true
+    },
+    "models": [
+      {
+        "id": "model-a",
+        "name": "Model-A (Test-Model)",
+        "contextWindow": 108800,
+        "maxTokens": 32768,
+        "input": [
+          "text"
+        ],
+        "reasoning": false,
+        "api": "openai-responses",
+        "cost": {
+          "input": 0.0,
+          "output": 0.0,
+          "cacheRead": 0.0,
+          "cacheWrite": 0.0
+        },
+        "compat": null
+      },
+      {
+        "id": "main",
+        "name": "Spark Main (Test-Model)",
+        "contextWindow": 108800,
+        "maxTokens": 32768,
+        "input": [
+          "text"
+        ],
+        "reasoning": false,
+        "api": "openai-responses",
+        "cost": {
+          "input": 0.0,
+          "output": 0.0,
+          "cacheRead": 0.0,
+          "cacheWrite": 0.0
+        },
+        "compat": null
+      }
+    ]
+  }
+}

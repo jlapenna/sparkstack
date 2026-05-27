@@ -1,0 +1,59 @@
+services:
+  litellm:
+    build:
+      context: ../../../services/litellm/docker
+    image: sparkstack-litellm:latest
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    volumes:
+    - ./litellm-config.yaml:/app/config.yaml
+    environment:
+    - PROMETHEUS_MONITORING=True
+    - OTEL_TRACES_EXPORTER=otlp
+    - OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4318
+    - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://alloy:4318/v1/traces
+    - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+    - OTEL_SERVICE_NAME=litellm
+    - OTEL_ATTRIBUTE_VALUE_LENGTH_LIMIT=131072
+    - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY}
+    - LITELLM_LOG=DEBUG
+    - LITELLM_FORWARD_TRACEPARENT_TO_LLM_PROVIDER=True
+    - DATABASE_URL=postgresql://litellm:litellmpassword@litellm-db:5432/litellm
+    entrypoint:
+    - opentelemetry-instrument
+    - litellm
+    command:
+    - --config
+    - /app/config.yaml
+    depends_on:
+      litellm-db:
+        condition: service_healthy
+    network_mode: container:sparkstack-head-sidecar
+  litellm-db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: litellm
+      POSTGRES_USER: litellm
+      POSTGRES_PASSWORD: litellmpassword
+    volumes:
+    - litellm-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -U litellm
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+    - sparkstack-net
+volumes:
+  litellm-data: null
+networks:
+  vllm-network:
+    external: true
+  sparkstack-net:
+    external: true

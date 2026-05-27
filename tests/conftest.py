@@ -40,6 +40,12 @@ def pytest_addoption(parser):
         default=4,
         help="Number of messages in long conversation test",
     )
+    parser.addoption(
+        "--update-goldens",
+        action="store_true",
+        default=False,
+        help="Update golden test files",
+    )
 
 
 @pytest.fixture(scope="session", autouse=True)

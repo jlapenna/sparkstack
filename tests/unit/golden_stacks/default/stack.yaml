@@ -1,0 +1,22 @@
+version: '1'
+name: current
+backends:
+- name: model-a
+  recipe: test-recipe-path
+  target: user@remote-worker
+  is_remote: true
+  port: 8001
+  env:
+    OTEL_ATTRIBUTE_VALUE_LENGTH_LIMIT: '131072'
+    VLLM_ATTENTION_BACKEND: FLASHINFER
+    VLLM_FLASHINFER_MOE_BACKEND: latency
+    VLLM_BLACKWELL_LAYOUT: '1'
+    VLLM_BLACKWELL_UMA_OVERLAP: '1'
+    VLLM_USE_FLASHINFER_MOE_MXFP4_MXFP8: '1'
+    VLLM_USE_DEEP_GEMM: '0'
+  overrides:
+    gpu_memory_utilization: '0.8'
+  labels:
+  - sparkrun.role=model-a
+  - sparkrun.monitoring=true
+  memory_limit: 109G

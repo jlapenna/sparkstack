@@ -34,7 +34,7 @@ async def test_docker_probe_healthy(mock_get_status):
     probe = DockerProbe("test-container")
     result = await probe.probe()
     assert result == HealthStatus.HEALTHY
-    mock_get_status.assert_called_once_with("test-container")
+    mock_get_status.assert_called_once_with("test-container", env=None)
 
 
 @pytest.mark.asyncio
@@ -44,6 +44,7 @@ async def test_docker_probe_crashed(mock_get_status):
     probe = DockerProbe("test-container")
     result = await probe.probe()
     assert result == HealthStatus.CRASHED
+    mock_get_status.assert_called_once_with("test-container", env=None)
 
 
 @pytest.mark.asyncio
@@ -56,7 +57,7 @@ async def test_http_probe_healthy(mock_get):
     probe = HttpProbe("http://localhost:8080/health")
     result = await probe.probe()
     assert result == HealthStatus.HEALTHY
-    mock_get.assert_called_once_with("http://localhost:8080/health", timeout=2.0)
+    mock_get.assert_called_once_with("http://localhost:8080/health", timeout=2.0, headers=None)
 
 
 @pytest.mark.asyncio
@@ -69,6 +70,7 @@ async def test_http_probe_starting(mock_get):
     probe = HttpProbe("http://localhost:8080/health")
     result = await probe.probe()
     assert result == HealthStatus.STARTING
+    mock_get.assert_called_once_with("http://localhost:8080/health", timeout=2.0, headers=None)
 
 
 @pytest.mark.asyncio
