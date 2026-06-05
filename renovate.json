@@ -30,8 +30,8 @@
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": [
-        "/docker-compose\\.yml$/"
+      "managerFilePatterns": [
+        "//docker-compose\\.yml$//"
       ],
       "matchStrings": [
         "# renovate: datasource=(?<datasource>[^\\s]+) depName=(?<depName>[^\\s]+)\\n\\s*- [A-Z_]+_VERSION=(?<currentValue>.*?)\\n"
@@ -40,8 +40,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "/^services/openclaw/docker/build-versions\\.json$/"
+      "managerFilePatterns": [
+        "//^services/openclaw/docker/build-versions\\.json$//"
       ],
       "matchStrings": ["\"gogcli\":\\s*\"v?(?<currentValue>[^\"]+)\""],
       "datasourceTemplate": "github-releases",
@@ -49,8 +49,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "/^services/openclaw/docker/build-versions\\.json$/"
+      "managerFilePatterns": [
+        "//^services/openclaw/docker/build-versions\\.json$//"
       ],
       "matchStrings": ["\"goplaces\":\\s*\"v?(?<currentValue>[^\"]+)\""],
       "datasourceTemplate": "github-releases",
@@ -58,8 +58,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "/^services/openclaw/docker/build-versions\\.json$/"
+      "managerFilePatterns": [
+        "//^services/openclaw/docker/build-versions\\.json$//"
       ],
       "matchStrings": ["\"camsnap\":\\s*\"v?(?<currentValue>[^\"]+)\""],
       "datasourceTemplate": "github-releases",
@@ -67,8 +67,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "/^services/openclaw/docker/build-versions\\.json$/"
+      "managerFilePatterns": [
+        "//^services/openclaw/docker/build-versions\\.json$//"
       ],
       "matchStrings": ["\"opencode\":\\s*\"v?(?<currentValue>[^\"]+)\""],
       "datasourceTemplate": "github-releases",
@@ -76,8 +76,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "/^services/openclaw/docker/build-versions\\.json$/"
+      "managerFilePatterns": [
+        "//^services/openclaw/docker/build-versions\\.json$//"
       ],
       "matchStrings": ["\"blogwatcher\":\\s*\"v?(?<currentValue>[^\"]+)\""],
       "datasourceTemplate": "go",
@@ -85,8 +85,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "/^services/openclaw/docker/build-versions\\.json$/"
+      "managerFilePatterns": [
+        "//^services/openclaw/docker/build-versions\\.json$//"
       ],
       "matchStrings": ["\"wacli\":\\s*\"v?(?<currentValue>[^\"]+)\""],
       "datasourceTemplate": "go",
@@ -94,8 +94,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "/^services/openclaw/docker/build-versions\\.json$/"
+      "managerFilePatterns": [
+        "//^services/openclaw/docker/build-versions\\.json$//"
       ],
       "matchStrings": ["\"openai-whisper\":\\s*\"v?(?<currentValue>[^\"]+)\""],
       "datasourceTemplate": "pypi",
@@ -103,8 +103,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "/^services/openclaw/docker/build-versions\\.json$/"
+      "managerFilePatterns": [
+        "//^services/openclaw/docker/build-versions\\.json$//"
       ],
       "matchStrings": ["\"nano-pdf\":\\s*\"v?(?<currentValue>[^\"]+)\""],
       "datasourceTemplate": "pypi",
