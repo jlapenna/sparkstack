@@ -4,15 +4,56 @@ This repository serves as the primary deployment orchestrator for the Spark ecos
 
 ## Architecture
 
-The ecosystem relies on Docker and Docker Compose to network different services together safely:
+The Spark Services Orchestrator (`sparkstack`) acts as the command center for the entire Spark AI ecosystem. It provides a robust, async-first Python CLI to manage the lifecycle of various interconnected services. 
 
-- **vLLM Inference Stacks**: Dynamic backend model deployment scripts.
-- **OpenClaw Gateway**: API router and backend proxy logic.
-- **SparkRun**: Automated orchestration.
-- **Cloudflare Tunnels**: Exposes internal ports securely to the web.
-- **Monitoring**: Prometheus and Grafana dashboards.
+### System Diagram
 
-> **Note**: This repository is designed to be a deployment orchestrator. It manages `openclaw` and `sparkrun` as source dependencies in `../`. You will need access to those repositories to fully initialize this project, or you must configure it to point to public images.
+```mermaid
+graph TD
+    %% Host Level Components
+    subgraph Host["Linux Host"]
+        CLI["sparkstack CLI<br>(Python, uv, Click)"]
+        IPC["IPC Server<br>(UDS: /tmp/sparkstack.sock)"]
+        TUI["sparkstack status<br>(Textual TUI)"]
+        Headless["Headless Mode<br>(--json)"]
+        
+        CLI -- "Broadcasts Events" --> IPC
+        IPC -- "Live Monitoring" --> TUI
+        CLI -- "JSON-Lines Output" --> Headless
+    end
+
+    %% Docker Ecosystem
+    subgraph Docker["Docker Compose V2 Ecosystem"]
+        OpenClaw["OpenClaw Gateway<br>(API Router)"]
+        SparkRun["SparkRun<br>(Automated Orchestrator)"]
+        vLLM["vLLM Inference<br>(Local LLM Backends)"]
+        Monitoring["Monitoring Stack<br>(Prometheus, Grafana, Tempo)"]
+        Registry["sparkstack-registry<br>(Recipes & Models)"]
+        Cloudflare["Cloudflare Tunnels<br>(Secure Ingress)"]
+
+        OpenClaw -- "Routes requests to" --> vLLM
+        SparkRun -- "Evaluates via" --> OpenClaw
+        Monitoring -- "Scrapes metrics" --> OpenClaw
+        Monitoring -- "Scrapes metrics" --> vLLM
+        Cloudflare -- "Exposes" --> OpenClaw
+        Registry -. "Provides configurations" .-> CLI
+    end
+
+    CLI -- "Orchestrates Deployments" --> Docker
+```
+
+### Component Overview
+
+- **Orchestrator CLI (`sparkstack`)**: A unified command-line tool built with Python and Click. It handles building, deploying, updating, and syncing the multi-service stack. It supports headless execution (`--json`) for automation and CI pipelines.
+- **IPC Monitoring**: During deployments, the CLI spins up an async Unix Domain Socket (UDS) server that broadcasts live JSON-Lines events. The `sparkstack status` TUI connects to this socket for real-time monitoring.
+- **Docker Compose V2**: Used to securely isolate and network the various AI services. The orchestrator generates and applies Compose configurations dynamically based on deployment recipes.
+- **OpenClaw Gateway**: The core API router and backend gateway. It proxies requests to the appropriate inference backends and manages access.
+- **SparkRun**: An automated orchestration and evaluation engine that works alongside OpenClaw to run AI workloads.
+- **vLLM Inference**: High-throughput LLM inference backends spun up dynamically based on the active stack configuration.
+- **Monitoring Stack**: A comprehensive observability suite utilizing Prometheus, Grafana, and Tempo (managed via Grafana Alloy) to track system health, performance, and memory usage.
+- **Registry (`sparkstack-registry`)**: A centralized source dependency that holds deployment recipes and model configurations used by the orchestrator to build the environment.
+
+> **Note**: This repository is designed to be a deployment orchestrator. It manages `openclaw`, `sparkrun`, and `sparkstack-registry` as source dependencies in `../`. You will need access to those repositories to fully initialize this project, or you must configure it to point to public images.
 
 ## Prerequisites
 
