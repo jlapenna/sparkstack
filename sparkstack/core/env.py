@@ -2,6 +2,7 @@
 System-wide constants and constraints.
 """
 
+import contextlib
 import logging
 import os
 from pathlib import Path
@@ -84,23 +85,18 @@ def set_nested_value(d: dict, path: tuple, value) -> None:
         "backend_start_port",
         "default_kv_cache_ceiling",
     ):
-        try:
+        with contextlib.suppress(ValueError, TypeError):
             value = int(value)
-        except (ValueError, TypeError):
-            pass
     elif last_key in (
         "usable_spark_memory_gb",
         "system_reserved_memory_gb",
         "max_vram_utilization",
         "monitoring_overhead_gb",
     ):
-        try:
+        with contextlib.suppress(ValueError, TypeError):
             value = float(value)
-        except (ValueError, TypeError):
-            pass
-    elif last_key == "enabled_services":
-        if isinstance(value, str):
-            value = [s.strip() for s in value.split(",") if s.strip()]
+    elif last_key == "enabled_services" and isinstance(value, str):
+        value = [s.strip() for s in value.split(",") if s.strip()]
 
     current[last_key] = value
 
