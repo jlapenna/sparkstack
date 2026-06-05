@@ -2,12 +2,12 @@
 # Reference: https://github.com/juanfont/headscale/blob/main/config-example.yaml
 #
 # IMPORTANT: This is a Jinja2 template.  sparkstack renders it into
-# config.yaml at deploy time, substituting http://192.168.68.215:8080.
+# config.yaml at deploy time, substituting http://YOUR_SERVER_IP:8080.
 # Do NOT set server_url here — edit this file and let the deployer fill it in.
 
 # server_url must be reachable from all Tailscale sidecar containers (head +
 # workers).  sparkstack auto-detects the host LAN IP and fills this in.
-server_url: "http://192.168.68.215:8080"
+server_url: "http://YOUR_SERVER_IP:8080"
 
 listen_addr: 0.0.0.0:8080
 metrics_listen_addr: 0.0.0.0:9090

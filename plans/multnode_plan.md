@@ -161,8 +161,8 @@ To avoid maintaining parallel cluster definitions, `sparkstack` will **reuse `sp
 ```yaml
 # ~/.config/sparkstack/clusters/mylab.yaml
 # References the sparkrun cluster of the same name for host/SSH details.
-sparkrun_cluster: mylab
-headscale_server: 192.168.1.100:8080
+sparkrun_cluster: myoverlay:
+  headscale_server: YOUR_SERVER_IP:8080
 head_tailnet_ip: 100.64.0.1  # Persisted after initial setup
 ```
 
@@ -446,8 +446,8 @@ The current `_check_constraints()` sums VRAM and RAM across **all** backends and
 
 - **Host Resource Registry:** Extend the cluster supplementary config (Section 3.1) to support per-host resource overrides:
   ```yaml
-  sparkrun_cluster: mylab
-  headscale_server: 192.168.1.100:8080
+  sparkrun_cluster: myoverlay:
+  headscale_server: YOUR_SERVER_IP:8080
   head_tailnet_ip: 100.64.0.1
   host_resources:
     spark:

@@ -26,7 +26,7 @@ docker compose --env-file ../../.env ps       # Check status
    ```
 1. **Map in Dashboard:**
    - Go to **Networks > Connectors** in Cloudflare.
-   - Add a Public Hostname: `matrix-spark.joelapenna.com` -> `http://container_name:8008`.
+   - Add a Public Hostname: `matrix-spark.example.com` -> `http://container_name:8008`.
 
 ### Common Commands
 
