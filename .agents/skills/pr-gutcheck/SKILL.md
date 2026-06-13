@@ -1,4 +1,4 @@
-______________________________________________________________________
+---
 
 name: pr-gutcheck
 description: "Review a Pull Request to ensure the implementation strictly matches the PR description and comments, and does nothing else."
@@ -14,7 +14,7 @@ triggers:
 - check PR intent
 - evaluate comments
 
-______________________________________________________________________
+---
 
 # PR Gut Check
 
@@ -31,8 +31,8 @@ This skill ensures an agent performs a strict "gut check" on a Pull Request. It 
 
 ## Do not use this skill when
 
-- You are looking to do a deep security audit (use `differential-review` or `security-auditor`).
-- You are primarily looking for code quality or logic bugs (use `code-review-checklist` or `code-reviewer`).
+- You are looking to do a deep security audit (use security reviews).
+- You are primarily looking for code quality or logic bugs (use code reviews).
 
 ## Instructions
 
@@ -55,9 +55,9 @@ This skill ensures an agent performs a strict "gut check" on a Pull Request. It 
 1. **Integration with Other Review Skills**
    To produce a fully comprehensive PR audit, layer in these specific skills:
 
-   - **`@comprehensive-review-pr-enhance`**: If the PR lacks a proper description, use this skill *first* to generate a detailed summary from the diff, then use the generated summary as the baseline for your gut check.
-   - **`@code-reviewer`** & **`@code-review-checklist`**: Once the scope gut-check passes, use these skills to hunt for logic bugs, performance regressions, readability issues, and security vulnerabilities within the approved scope.
-   - **`@fix-review`**: If the PR specifically claims to patch an audit finding or bug, invoke this skill to scientifically verify that the fix addresses the root cause without introducing new regressions.
+   - **Review Enhance**: If the PR lacks a proper description, use this skill *first* to generate a detailed summary from the diff, then use the generated summary as the baseline for your gut check.
+   - **Code Review**: Once the scope gut-check passes, use these skills to hunt for logic bugs, performance regressions, readability issues, and security vulnerabilities within the approved scope.
+   - **Fix Review**: If the PR specifically claims to patch an audit finding or bug, invoke this skill to scientifically verify that the fix addresses the root cause without introducing new regressions.
 
 1. **Deliver the Verdict**
 
@@ -65,7 +65,7 @@ This skill ensures an agent performs a strict "gut check" on a Pull Request. It 
    - **Out-of-Scope Items:** Provide a bulleted list of any undocumented or unrelated changes found in the implementation.
    - **Missing Items:** List any requirements from the PR description or comments that are missing from the implementation.
    - **Actionable Advice:** Recommend next steps (e.g., "Revert the unrelated changes in file X," or "Update the PR description to cover the added scope").
-   - **Next Steps:** Propose kicking off full code-quality/security checks via `@code-reviewer` if the PR passed the strict scope check.
+   - **Next Steps:** Propose kicking off full code-quality/security checks via code review if the PR passed the strict scope check.
 
 ## Prerequisites
 

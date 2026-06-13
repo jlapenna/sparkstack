@@ -1,4 +1,4 @@
-______________________________________________________________________
+---
 
 name: stack-knowledge
 description: Centralized technical knowledge base for Spark Stack architectural facts, model-specific quirks, and historical system learnings.
@@ -34,7 +34,7 @@ triggers:
 - connection error docker
 - resolv.conf
 
-______________________________________________________________________
+---
 
 # stack-knowledge
 

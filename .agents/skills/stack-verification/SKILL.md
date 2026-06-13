@@ -1,4 +1,4 @@
-______________________________________________________________________
+---
 
 name: stack-verification
 description: Orchestrates the E2E verification testing suite for the Spark Stack using pytest.
@@ -14,7 +14,7 @@ triggers:
 - test wait for backends
 - verify proxy connectivity
 
-______________________________________________________________________
+---
 
 # Spark Stack Verification
 

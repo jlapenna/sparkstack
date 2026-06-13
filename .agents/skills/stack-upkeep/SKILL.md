@@ -1,4 +1,4 @@
-______________________________________________________________________
+---
 
 name: stack-upkeep
 description: A maintenance skill dedicated to keeping the NVIDIA Spark stack and OpenClaw ecosystem up to date with the latest stable releases and recipes.
@@ -15,7 +15,7 @@ triggers:
 - upgrade my system
 - keep the stack current
 
-______________________________________________________________________
+---
 
 # stack-upkeep
 
@@ -128,7 +128,7 @@ After applying updates and verifying functionality, run the full `spark-arena-v1
 
 ### 9. Container Build & Runtime Tool Persistence
 
-When modifying Docker images (e.g., `Dockerfile.openclaw-custom`), you MUST consult the **openclaw-image-manager** skill to understand the dual-persistence pattern and prevent tools from being masked by volume mounts.
+When modifying Docker images (e.g., `Dockerfile.openclaw-custom`), you MUST carefully manage the dual-persistence pattern and prevent tools from being masked by volume mounts.
 
 ## Important Safety Notes
 

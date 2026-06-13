@@ -1,4 +1,4 @@
-______________________________________________________________________
+---
 
 name: source-dependency-dev
 description: A workflow skill governing how to interact with and develop inside source dependencies (like sparkrun and openclaw), including configuring defaults, opening PRs, and running local integration branches.
@@ -16,7 +16,7 @@ triggers:
 - "create a PR in the source dependency"
 - "push upstream"
 
-______________________________________________________________________
+---
 
 # Source Dependency Development Workflow
 
@@ -38,7 +38,7 @@ Upstream maintainers will not merge PRs that have failing checks or unaddressed 
 
 1. **Continuous Integration (CI):** You MUST regularly check the CI status of open PRs using `gh pr checks`. You should only address CI issues if they are related to your changes. If you identify failures that are directly caused by your work, promptly push fixes to the PR branch. Do not fix unrelated CI failures inherited from `main`.
 1. **Scope Checking:** When updating a PR or submitting new code, you MUST use the `pr-gutcheck` skill. This ensures all implementation changes strictly adhere to the PR description and any accepted review comments, guarding against scope creep or the unintentional inclusion of unrelated modifications.
-1. **Review Comments:** You MUST actively address feedback from human reviewers and automated bots (like Codex bots). Use the `address-github-comments` skill (located globally) to help evaluate and resolve these comments. When updating a PR to address feedback, you MUST reply to every human comment (such as via `gh pr comment`) to explicitly confirm that their concerns have been resolved and what actions were taken. You MUST always ask the user for comment approval before posting any response to GitHub comments. Do not leave reviewers "awaiting replies."
+1. **Review Comments:** You MUST actively address feedback from human reviewers and automated bots (like Codex bots). Evaluate and resolve these comments thoughtfully. When updating a PR to address feedback, you MUST reply to every human comment (such as via `gh pr comment`) to explicitly confirm that their concerns have been resolved and what actions were taken. You MUST always ask the user for comment approval before posting any response to GitHub comments. Do not leave reviewers "awaiting replies."
 1. **Resolve Conversations:** Pushing code fixes and leaving a top-level `@comment` reply does **not** actually mark the review thread as resolved in GitHub! Once feedback is addressed, you MUST explicitly resolve the individual review conversations programmatically using the GitHub GraphQL API or the `gh` CLI.
    Do not assume conversations will be resolved automatically.
 1. **OpenClaw Specific:** For `openclaw` PRs, if the GitHub Codex review bot does not trigger, you should run `codex review --base origin/main` locally and treat the findings as mandatory review items.
@@ -75,7 +75,7 @@ Because the source dependencies track the main upstream source repositories nati
 
 ### Prep Work
 
-1. Activate the `pr-writer` skill and adhere to it to learn how to structure and write high-quality PR descriptions every time you create or edit a PR.
+1. Adhere to high-quality PR description standards every time you create or edit a PR.
 
 ### 0. Developing on `local-dev`
 
@@ -105,7 +105,7 @@ When a specific feature or fix is ready for review, extract it into a clean PR b
    git diff <upstream-base-branch> --name-only
    ```
    **CRITICALLY EXAMINE THIS LIST.** If you see any files that are not strictly necessary for your fix/feature (e.g., unrelated release notes, other feature files, dependency lockfile churn), you **MUST** remove them (e.g., using `git checkout <upstream-base-branch> -- <file>` and `git commit --amend`) before opening the PR.
-1. **Push and PR:** Push the feature branch to your fork (`git push fork <feature-name>`), and open the PR using the `pr-writer` skill.
+1. **Push and PR:** Push the feature branch to your fork (`git push fork <feature-name>`), and open the PR.
 1. When finished and merged upstream, clean up the worktree using `git worktree remove <absolute-path>`.
 
 ### 2. Updating Existing PRs (Worktree Maintenance)

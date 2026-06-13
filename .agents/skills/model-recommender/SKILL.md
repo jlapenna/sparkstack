@@ -1,4 +1,4 @@
-______________________________________________________________________
+---
 
 name: model-recommender
 description: Specialized discovery, research, and configuration of frontier LLMs for NVIDIA Spark (GB10 Blackwell) using Spark Arena and internet sources.
@@ -17,7 +17,7 @@ triggers:
 - are there any new models that I should consider trying
 - recommend a new model
 
-______________________________________________________________________
+---
 
 # model-recommender
 

@@ -1,4 +1,4 @@
-______________________________________________________________________
+---
 
 name: monitoring
 description: Manages the Grafana/Prometheus monitoring stack, container updates, telemetry pipelines, and safe dashboard integration.
@@ -16,7 +16,7 @@ triggers:
 - update grafana templates
 - fix monitoring containers
 
-______________________________________________________________________
+---
 
 # Observability Stack Management
 
@@ -81,7 +81,7 @@ The orchestration tool `manager/build_stack.py` integrates seamlessly via a meta
 - **Progress Manager Decoupling**: Progress Manager now discovers monitoring-eligible containers natively using docker labels `sparkrun.monitoring=true` natively via filters (`docker ps -f label=sparkrun.monitoring=true`), avoiding implicit regex naming matches. The metrics fallback `model_id` uses the `sparkrun.role` label securely populated at instantiation.
 - **Architecture Standard**: Any new orchestrator or wrapper connecting to this repository's monitoring tools MUST apply the labels `sparkrun.monitoring=true` and `sparkrun.role=X` to its containers to ensure automatic inclusion into Grafana dashboards and stat-piping streams.
 
-______________________________________________________________________
+---
 
 ## Grafana Upkeep & Dashboard Modernization
 

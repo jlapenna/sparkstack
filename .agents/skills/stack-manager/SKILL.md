@@ -1,4 +1,4 @@
-______________________________________________________________________
+---
 
 name: stack-manager
 description: Manages model upgrades, STT deployment, and memory rebalancing for NVIDIA Spark workstations with atomic configuration sync using a Model Registry pattern.
@@ -16,7 +16,7 @@ triggers:
 - setup stt on spark
 - refactor vllm models
 
-______________________________________________________________________
+---
 
 # stack-manager
 
