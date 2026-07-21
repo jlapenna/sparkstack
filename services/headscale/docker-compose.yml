@@ -12,7 +12,7 @@ volumes:
 services:
   headscale:
     container_name: sparkstack-headscale
-    image: headscale/headscale:0.28.0
+    image: headscale/headscale:v0.29.2
     restart: unless-stopped
     command: serve
     networks:
