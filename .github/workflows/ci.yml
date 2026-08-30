@@ -10,8 +10,8 @@ jobs:
   lint-and-test:
     runs-on: ubuntu-latest
     env:
-      OPENCLAW_CONFIG_DIR: ${{ runner.temp }}/openclaw
-      SPARKSTACK_CONFIG_PATH: ${{ runner.temp }}/sparkstack.yaml
+      OPENCLAW_CONFIG_DIR: /tmp/sparkstack-openclaw
+      SPARKSTACK_CONFIG_PATH: /tmp/sparkstack.yaml
     defaults:
       run:
         working-directory: spark-stack
