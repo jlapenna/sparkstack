@@ -83,6 +83,7 @@ async def test_golden_stack_generation(tmp_path, request, monkeypatch, mock_exec
     monkeypatch.setattr("sparkstack.core.builders.stack.SYSTEM_RESERVED_MEMORY_GB", 12.0)
     monkeypatch.setattr("sparkstack.core.builders.stack.SPARKSTACK_MONITORING_OVERHEAD_GB", 5.0)
     monkeypatch.setattr("sparkstack.core.builders.stack.MAX_DOCKER_MEMORY_GB", 138.0)
+    monkeypatch.setenv("VLLM_GATEWAY_HOST", "100.64.0.2:4000")
 
     # Force overlay to True so headscale executes
     monkeypatch.setattr("sparkstack.core.env.SPARKSTACK_HEADSCALE_SERVER", "http://headscale:8080")
@@ -161,6 +162,7 @@ async def test_golden_stack_generation(tmp_path, request, monkeypatch, mock_exec
     # Write execution log to file
     log_content = "\n".join(execution_log) + "\n"
     log_content = log_content.replace(str(tmp_path), "<TMP_PATH>")
+    log_content = log_content.replace(str(Path(__file__).parents[2]), "<PROJECT_ROOT>")
     (current_dir / "execution_log.txt").write_text(log_content)
 
     # 5. Assert generated files against the golden directory

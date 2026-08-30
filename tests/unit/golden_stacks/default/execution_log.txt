@@ -1,0 +1,7 @@
+[COMPOSE:headscale] up -d --force-recreate
+[COMPOSE:monitoring] [ENV: DOCKER_HOST=] -f docker-compose.yml up -d --build
+[SSH:user@remote-worker] docker exec sparkstack-sidecar-remote-worker tailscale status --json 2>/dev/null || echo '{}'
+[SSH:user@remote-worker] docker exec sparkstack-sidecar-remote-worker tailscale ip -4
+[CMD] [ENV: DOCKER_HOST=] docker ps -aq --filter label=sparkstack-backend=true
+[CMD] [ENV: DOCKER_HOST=] uv run sparkrun run <PROJECT_ROOT>/sparkstack-registry/test-recipe-path --hosts user@remote-worker --port 8001 --tp 1 --served-model-name model-a --cluster model-a --container-name model-a --no-follow --label sparkstack-backend=true -o network=container:sparkstack-sidecar-remote-worker -o env.OTEL_EXPORTER_OTLP_ENDPOINT=http://100.64.0.1:4318 --memory-limit 109G --gpu-mem 0.8 -o env.OTEL_ATTRIBUTE_VALUE_LENGTH_LIMIT=131072 -o env.VLLM_ATTENTION_BACKEND=FLASHINFER -o env.VLLM_FLASHINFER_MOE_BACKEND=latency -o env.VLLM_BLACKWELL_LAYOUT=1 -o env.VLLM_BLACKWELL_UMA_OVERLAP=1 -o env.VLLM_USE_FLASHINFER_MOE_MXFP4_MXFP8=1 -o env.VLLM_USE_DEEP_GEMM=0 --label sparkrun.role=model-a --label sparkrun.monitoring=true
+[COMPOSE:current] [ENV: DOCKER_HOST=] -f <TMP_PATH>/current/docker-compose.yaml up -d --build

@@ -60,6 +60,7 @@ Thumbs.db
 # Logs
 *.log
 *.txt
+!tests/unit/golden_stacks/default/execution_log.txt
 
 scratch/
 tmp/
@@ -70,4 +71,3 @@ gha-creds-*.json
 
 # Lock files
 .sparkstack*.lock
-
