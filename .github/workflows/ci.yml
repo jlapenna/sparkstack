@@ -9,6 +9,9 @@ on:
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+    env:
+      OPENCLAW_CONFIG_DIR: ${{ runner.temp }}/openclaw
+      SPARKSTACK_CONFIG_PATH: ${{ runner.temp }}/sparkstack.yaml
     defaults:
       run:
         working-directory: spark-stack
@@ -22,6 +25,8 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: spark-arena/sparkrun
+          # v0.2.36: keep the editable workspace dependency aligned with uv.lock.
+          ref: 872645f32c9967690acd918d00216c6c3272cc84
           path: sparkrun
 
       - name: Install uv

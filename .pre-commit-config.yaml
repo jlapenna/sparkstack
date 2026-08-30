@@ -21,6 +21,7 @@ repos:
       - id: mdformat
         entry: bash -c 'mdformat "$@"' --
         verbose: true
+        exclude: ^\.agents/skills/
         additional_dependencies:
           - mdformat-gfm
         stages: [pre-push]

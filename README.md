@@ -4,7 +4,7 @@ This repository serves as the primary deployment orchestrator for the Spark ecos
 
 ## Architecture
 
-The Spark Services Orchestrator (`sparkstack`) acts as the command center for the entire Spark AI ecosystem. It provides a robust, async-first Python CLI to manage the lifecycle of various interconnected services. 
+The Spark Services Orchestrator (`sparkstack`) acts as the command center for the entire Spark AI ecosystem. It provides a robust, async-first Python CLI to manage the lifecycle of various interconnected services.
 
 ### System Diagram
 
