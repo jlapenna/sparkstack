@@ -91,7 +91,7 @@ services:
       - monitoring
 
   grafana:
-    image: grafana/grafana:13.2.0
+    image: grafana/grafana:13.2.1
     container_name: grafana
     ports:
     - 3001:3000
