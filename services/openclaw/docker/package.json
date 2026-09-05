@@ -5,7 +5,7 @@
   "dependencies": {
     "@google/gemini-cli": "0.58.0",
     "@earendil-works/pi-coding-agent": "0.85.1",
-    "mcporter": "0.13.8",
+    "mcporter": "0.13.10",
     "@steipete/summarize": "0.21.11"
   }
 }
