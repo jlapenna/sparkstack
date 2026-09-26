@@ -6,6 +6,6 @@
     "@google/gemini-cli": "0.61.0",
     "@earendil-works/pi-coding-agent": "0.87.1",
     "mcporter": "0.14.1",
-    "@steipete/summarize": "0.23.1"
+    "@steipete/summarize": "0.24.0"
   }
 }
