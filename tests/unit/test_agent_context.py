@@ -28,7 +28,9 @@ def test_agent_router_points_to_rules_skills_architecture_and_proof() -> None:
 
 def test_router_does_not_duplicate_operational_commands() -> None:
     agents = read("AGENTS.md")
-    assert not re.search(r"docker (compose|rm)|sparkstack (update|set-current)|git (pull|rebase)", agents)
+    assert not re.search(
+        r"docker (compose|rm)|sparkstack (update|set-current)|git (pull|rebase)", agents
+    )
 
 
 def test_documentation_index_targets_exist() -> None:
