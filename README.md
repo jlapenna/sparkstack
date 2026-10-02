@@ -2,6 +2,9 @@
 
 This repository serves as the primary deployment orchestrator for the Spark ecosystem, managing the `openclaw` backend, `sparkrun` orchestrator, and various local LLM (vLLM) backend stacks.
 
+See [ARCHITECTURE.md](ARCHITECTURE.md) for component ownership and source/runtime
+boundaries, and [docs/README.md](docs/README.md) for the documentation index.
+
 ## Architecture
 
 The Spark Services Orchestrator (`sparkstack`) acts as the command center for the entire Spark AI ecosystem. It provides a robust, async-first Python CLI to manage the lifecycle of various interconnected services.
