@@ -1,9 +1,8 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
+    "github>jlapenna/repo-tools//renovate-preset"
   ],
-  "labels": ["dependencies"],
   "ignoreDeps": [
     "pytest",
     "pytest-cov",
@@ -12,13 +11,6 @@
   ],
   "packageRules": [
     {
-      "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "all non-major dependencies",
-      "groupSlug": "all-minor-patch",
-      "automerge": true,
-      "automergeType": "pr"
-    },
-    {
       "description": "OpenClaw image build tools pinned in services/openclaw/docker/build-versions.json. Their custom managers never matched until the managerFilePatterns fix, so the first updates are multi-release catch-ups into the gateway and sandbox images: review them together instead of auto-merging.",
       "matchFileNames": ["services/openclaw/docker/build-versions.json"],
       "groupName": "openclaw build tools",
@@ -26,8 +18,8 @@
       "automerge": false
     },
     {
-      "description": "Wait a day before proposing a release, matching the fleet's shared Renovate preset (jlapenna/agent-lcars renovate-preset.json), so a just-published or quickly yanked release never auto-merges. Covers every datasource that reports release timestamps, including the custom managers' GitHub releases (the auto-merged Grafana plugin pins) and Go/PyPI tools.",
-      "matchDatasources": ["npm", "github-releases", "go", "pypi"],
+      "description": "The shared preset holds npm releases for a day; hold this repository's custom-manager datasources the same way, so a just-published or quickly yanked GitHub release (the auto-merged Grafana plugin pins), Go module, or PyPI package never auto-merges.",
+      "matchDatasources": ["github-releases", "go", "pypi"],
       "minimumReleaseAge": "1 day"
     }
   ],
