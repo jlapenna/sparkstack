@@ -26,8 +26,8 @@
       "automerge": false
     },
     {
-      "description": "Wait a day before proposing an npm release, matching the fleet's shared Renovate preset (jlapenna/agent-lcars renovate-preset.json), so a just-published or quickly yanked package never auto-merges.",
-      "matchDatasources": ["npm"],
+      "description": "Wait a day before proposing a release, matching the fleet's shared Renovate preset (jlapenna/agent-lcars renovate-preset.json), so a just-published or quickly yanked release never auto-merges. Covers every datasource that reports release timestamps, including the custom managers' GitHub releases (the auto-merged Grafana plugin pins) and Go/PyPI tools.",
+      "matchDatasources": ["npm", "github-releases", "go", "pypi"],
       "minimumReleaseAge": "1 day"
     }
   ],
