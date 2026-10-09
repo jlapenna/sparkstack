@@ -1,6 +1,6 @@
----
-trigger: always_on
----
+______________________________________________________________________
+
+## trigger: always_on
 
 # Sparkstack registry source workflow
 
