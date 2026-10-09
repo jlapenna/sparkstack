@@ -30,17 +30,17 @@ they must not scrape Rich or Textual output.
 
 ## Ownership Map
 
-| Concern | Source of truth | Evidence |
-| --- | --- | --- |
-| CLI surface | `sparkstack/cli/` | unit tests and command help |
-| Shared configuration and events | `sparkstack/core/` | unit/regression tests |
-| Lifecycle orchestration | `sparkstack/manager/` | manager unit tests and IPC regressions |
-| Service definitions | `services/` | Compose/config checks and prepared-stack E2E |
-| Model/stack recipes | sibling `sparkstack-registry` | registry validation and memory-law checks |
-| SparkRun behavior | sibling `sparkrun` | its repository workflow plus integration tests |
-| OpenClaw behavior | sibling `openclaw` | its repository workflow plus gateway E2E |
-| Network topology and incident learning | `stack-knowledge` skill | live topology diagnostics |
-| Deployment workflow | `stack-manager` skill | approved plan, benchmark, and E2E evidence |
+| Concern                                | Source of truth               | Evidence                                       |
+| -------------------------------------- | ----------------------------- | ---------------------------------------------- |
+| CLI surface                            | `sparkstack/cli/`             | unit tests and command help                    |
+| Shared configuration and events        | `sparkstack/core/`            | unit/regression tests                          |
+| Lifecycle orchestration                | `sparkstack/manager/`         | manager unit tests and IPC regressions         |
+| Service definitions                    | `services/`                   | Compose/config checks and prepared-stack E2E   |
+| Model/stack recipes                    | sibling `sparkstack-registry` | registry validation and memory-law checks      |
+| SparkRun behavior                      | sibling `sparkrun`            | its repository workflow plus integration tests |
+| OpenClaw behavior                      | sibling `openclaw`            | its repository workflow plus gateway E2E       |
+| Network topology and incident learning | `stack-knowledge` skill       | live topology diagnostics                      |
+| Deployment workflow                    | `stack-manager` skill         | approved plan, benchmark, and E2E evidence     |
 
 ## Source and Runtime Boundaries
 
@@ -68,10 +68,10 @@ dependency branch rules and the selected skill's preparation steps.
 ## Proof Ladder
 
 1. Run the narrow unit or regression test for the changed owner.
-2. Run formatting, linting, type, and security checks defined by hooks.
-3. Run the complete non-live unit/regression suite.
-4. For infrastructure or live-stack changes, prepare the stack and run the
+1. Run formatting, linting, type, and security checks defined by hooks.
+1. Run the complete non-live unit/regression suite.
+1. For infrastructure or live-stack changes, prepare the stack and run the
    ordered E2E verification skill.
-5. Require CI on the exact reviewed commit.
-6. For deployment work, record live configuration and benchmark evidence as
+1. Require CI on the exact reviewed commit.
+1. For deployment work, record live configuration and benchmark evidence as
    required by the stack-manager plan.
