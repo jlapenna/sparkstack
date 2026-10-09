@@ -52,8 +52,10 @@ they must not scrape Rich or Textual output.
   identical volume mappings where both host and container access are needed.
 - Service-to-service traffic uses shared-network names, never fixed container
   IPs or host hairpin routing.
-- The registry's main-only policy and sibling branch prerequisites live in
-  `.agents/rules/`; do not infer or duplicate them here.
+- The registry's reviewed source-delivery workflow lives in
+  [registry-source-workflow.md](.agents/rules/registry-source-workflow.md).
+  Sibling branch prerequisites for live stack operations remain in
+  [source-dependency-requirements.md](.agents/rules/source-dependency-requirements.md).
 
 ## Change Classes and Proof
 
