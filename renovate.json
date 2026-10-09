@@ -1,9 +1,8 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
+    "github>jlapenna/repo-tools//renovate-preset"
   ],
-  "labels": ["dependencies"],
   "ignoreDeps": [
     "pytest",
     "pytest-cov",
@@ -12,11 +11,16 @@
   ],
   "packageRules": [
     {
-      "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "all non-major dependencies",
-      "groupSlug": "all-minor-patch",
-      "automerge": true,
-      "automergeType": "pr"
+      "description": "OpenClaw image build tools pinned in services/openclaw/docker/build-versions.json. Their custom managers never matched until the managerFilePatterns fix, so the first updates are multi-release catch-ups into the gateway and sandbox images: review them together instead of auto-merging.",
+      "matchFileNames": ["services/openclaw/docker/build-versions.json"],
+      "groupName": "openclaw build tools",
+      "groupSlug": "openclaw-build-tools",
+      "automerge": false
+    },
+    {
+      "description": "The shared preset holds npm releases for a day; hold this repository's custom-manager datasources the same way, so a just-published or quickly yanked GitHub release (the auto-merged Grafana plugin pins), Go module, or PyPI package never auto-merges.",
+      "matchDatasources": ["github-releases", "go", "pypi"],
+      "minimumReleaseAge": "1 day"
     }
   ],
   "pep621": {
@@ -31,7 +35,7 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "//docker-compose\\.yml$//"
+        "/docker-compose\\.yml$/"
       ],
       "matchStrings": [
         "# renovate: datasource=(?<datasource>[^\\s]+) depName=(?<depName>[^\\s]+)\\n\\s*- [A-Z_]+_VERSION=(?<currentValue>.*?)\\n"
@@ -41,61 +45,67 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "//^services/openclaw/docker/build-versions\\.json$//"
+        "/^services/openclaw/docker/build-versions\\.json$/"
       ],
       "matchStrings": ["\"gogcli\":\\s*\"v?(?<currentValue>[^\"]+)\""],
       "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v?(?<version>.*)$",
       "depNameTemplate": "steipete/gogcli"
     },
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "//^services/openclaw/docker/build-versions\\.json$//"
+        "/^services/openclaw/docker/build-versions\\.json$/"
       ],
       "matchStrings": ["\"goplaces\":\\s*\"v?(?<currentValue>[^\"]+)\""],
       "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v?(?<version>.*)$",
       "depNameTemplate": "steipete/goplaces"
     },
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "//^services/openclaw/docker/build-versions\\.json$//"
+        "/^services/openclaw/docker/build-versions\\.json$/"
       ],
       "matchStrings": ["\"camsnap\":\\s*\"v?(?<currentValue>[^\"]+)\""],
       "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v?(?<version>.*)$",
       "depNameTemplate": "steipete/camsnap"
     },
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "//^services/openclaw/docker/build-versions\\.json$//"
+        "/^services/openclaw/docker/build-versions\\.json$/"
       ],
       "matchStrings": ["\"opencode\":\\s*\"v?(?<currentValue>[^\"]+)\""],
       "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v?(?<version>.*)$",
       "depNameTemplate": "anomalyco/opencode"
     },
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "//^services/openclaw/docker/build-versions\\.json$//"
+        "/^services/openclaw/docker/build-versions\\.json$/"
       ],
       "matchStrings": ["\"blogwatcher\":\\s*\"v?(?<currentValue>[^\"]+)\""],
       "datasourceTemplate": "go",
+      "extractVersionTemplate": "^v?(?<version>.*)$",
       "depNameTemplate": "github.com/Hyaxia/blogwatcher"
     },
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "//^services/openclaw/docker/build-versions\\.json$//"
+        "/^services/openclaw/docker/build-versions\\.json$/"
       ],
       "matchStrings": ["\"wacli\":\\s*\"v?(?<currentValue>[^\"]+)\""],
       "datasourceTemplate": "go",
+      "extractVersionTemplate": "^v?(?<version>.*)$",
       "depNameTemplate": "github.com/steipete/wacli"
     },
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "//^services/openclaw/docker/build-versions\\.json$//"
+        "/^services/openclaw/docker/build-versions\\.json$/"
       ],
       "matchStrings": ["\"openai-whisper\":\\s*\"v?(?<currentValue>[^\"]+)\""],
       "datasourceTemplate": "pypi",
@@ -104,7 +114,7 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "//^services/openclaw/docker/build-versions\\.json$//"
+        "/^services/openclaw/docker/build-versions\\.json$/"
       ],
       "matchStrings": ["\"nano-pdf\":\\s*\"v?(?<currentValue>[^\"]+)\""],
       "datasourceTemplate": "pypi",
