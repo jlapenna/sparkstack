@@ -2,11 +2,11 @@ default_install_hook_types: [pre-commit, pre-push]
 exclude: '^(openclaw/|sparkrun/)'
 repos:
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.11.12
+    rev: 0.13.0
     hooks:
       - id: uv-lock
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.12
+    rev: v0.17.0
     hooks:
       - id: ruff-check
         args: [ --fix ]
@@ -26,7 +26,7 @@ repos:
           - mdformat-gfm
         stages: [pre-push]
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.409
+    rev: v1.1.414
     hooks:
       - id: pyright
         entry: bash -c 'pyright --pythonpath .venv/bin/python "$@"' --
