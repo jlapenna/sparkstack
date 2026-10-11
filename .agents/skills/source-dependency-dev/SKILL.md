@@ -106,7 +106,7 @@ When a specific feature or fix is ready for review, extract it into a clean PR b
    ```
    **CRITICALLY EXAMINE THIS LIST.** If you see any files that are not strictly necessary for your fix/feature (e.g., unrelated release notes, other feature files, dependency lockfile churn), you **MUST** remove them (e.g., using `git checkout <upstream-base-branch> -- <file>` and `git commit --amend`) before opening the PR.
 1. **Push and PR:** Push the feature branch to your fork (`git push fork <feature-name>`), and open the PR.
-1. When finished and merged upstream, clean up the worktree using `git worktree remove <absolute-path>`.
+1. When finished and merged upstream, follow the shared [worktree-hygiene workflow](https://github.com/jlapenna/repo-tools/blob/main/plugins/repo-tools/skills/worktree-hygiene/SKILL.md). From outside the target, audit with `repo-prune-merged-worktrees --repo <source-dependency-checkout> --base <upstream-base-branch> <absolute-path>`, then add `--delete` for this completed task. Keep refused worktrees and inspect the reported merge, PR, cleanliness, lock or process evidence; do not force removal. Use the actual upstream base for that dependency, preserving the remote routing above.
 
 ### 2. Updating Existing PRs (Worktree Maintenance)
 
