@@ -100,7 +100,7 @@
       "matchStrings": ["\"wacli\":\\s*\"v?(?<currentValue>[^\"]+)\""],
       "datasourceTemplate": "go",
       "extractVersionTemplate": "^v?(?<version>.*)$",
-      "depNameTemplate": "github.com/steipete/wacli"
+      "depNameTemplate": "github.com/openclaw/wacli"
     },
     {
       "customType": "regex",
