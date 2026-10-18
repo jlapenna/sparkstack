@@ -4,7 +4,7 @@ import uuid
 import pytest
 from loguru import logger
 
-from sparkstack.core.utils import async_run_command
+from sparkstack.core.utils import async_run_command, parse_cli_json
 from tests.e2e.context import E2EContext
 from tests.e2e.session_cleanup import cleanup_session
 from tests.e2e.utils import extract_cli_json
@@ -77,3 +77,17 @@ async def test_layer_3_openclaw(ctx: E2EContext):
         logger.info("✅ Pass: Consumer Readiness (Verified agent turnaround and reasoning)")
     finally:
         cleanup_session(session_id)
+
+
+@pytest.mark.order(9)
+@pytest.mark.asyncio
+async def test_openclaw_models_list_spark_main(ctx: E2EContext):
+    """OpenClaw's model catalog must expose the ``spark/main`` key."""
+    result = await async_run_command([str(ctx.openclaw_bin), "models", "list", "--json"])
+    data = parse_cli_json(result.stdout)
+    assert isinstance(data, dict), "no JSON object in 'openclaw models list' output"
+    spark_models = [
+        m["key"] for m in data.get("models", []) if m.get("key", "").startswith("spark/")
+    ]
+    logger.info(f"Configured Spark models: {', '.join(spark_models)}")
+    assert "spark/main" in spark_models, "spark/main not found in OpenClaw"

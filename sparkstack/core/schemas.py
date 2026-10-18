@@ -276,6 +276,21 @@ class OpenClawConfig(BaseSchema):
         This injects the provider into the `models` block and updates global
         agent defaults (like compaction reserve and placeholder model keys) to
         ensure OpenClaw operates safely with the provided models.
+
+        Compaction reserve rationale: OpenClaw's prompt budget is
+        ``contextWindow - reserveTokens``, and its own floor only guarantees
+        8k tokens of prompt, so an oversized reserve silently truncates
+        history on every turn. Deriving ``reserveTokens`` from ``maxTokens``
+        is correct in structure but poisonous when ``maxTokens`` is a large
+        fraction of the window (131k of 262k left under half the context for
+        history).
+
+        The reserve is therefore ``max(maxTokens) + HEADROOM`` (system prompt,
+        tool definitions, tokenizer drift) and is clamped to
+        ``MAX_RESERVE_RATIO`` of the smallest non-embedding context window,
+        keeping at least 70% of the window for history. This is the last
+        guard before ``openclaw.json``; ``OpenClawModel`` separately clamps
+        ``maxTokens`` to ``MAX_COMPLETION_TOKENS`` per model.
         """
         self.models.providers["spark"] = provider.model_dump(by_alias=True, exclude_none=True)
 
@@ -295,9 +310,7 @@ class OpenClawConfig(BaseSchema):
         self.agents.defaults.compaction.mode = "safeguard"
 
         if max_gen_tokens > 0 and self.agents.defaults.compaction.reserveTokensFloor is None:
-            # Layer 3 Enforcement: Compute reserve and clamp to MAX_RESERVE_RATIO
-            # Formula: reserveTokens = maxTokens + HEADROOM (8192)
-            # Reference: plans/token_budget_algorithm.md
+            # Compute reserve and clamp to MAX_RESERVE_RATIO (see docstring).
             HEADROOM = 8192
             MAX_RESERVE_RATIO = 0.30
 

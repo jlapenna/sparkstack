@@ -83,7 +83,7 @@ Even if a model is amazing on the internet, it still needs to run on the worksta
 ### 1. Mandatory Availability Check
 
 - **Rule**: You MUST explicitly verify that the model's physical weights are published and publicly downloadable (e.g., legitimately accessible on the HuggingFace Hub) before recommending it. Ensure you locate a valid `repo_id`. API-only models, closed-source stealth models, or vaporware must be disqualified immediately. You do not need to download the weights ahead of time during the recommendation phase, but you MUST establish that the files actually exist and are available for local invocation.
-- **Official & Popularity Preference**: When multiple repositories exist for the same model and quantization, you MUST default to the official repository (e.g., `nvidia/`, `google/`, `Qwen/`). If no official version exists, prioritize the repository with higher community trust and higher download counts, as reported by the `verify_hf_model.py` script.
+- **Official & Popularity Preference**: When multiple repositories exist for the same model and quantization, you MUST default to the official repository (e.g., `nvidia/`, `google/`, `Qwen/`). If no official version exists, prioritize the repository with higher community trust and higher download counts, as reported by `sparkstack verify-model`.
 
 ### 2. Mandatory VRAM Profiling (STRICT)
 
@@ -121,7 +121,7 @@ Recommend models based on their intended **Functional Role**. Use your web resea
 To ensure the recommender operates accurately, **NEVER** do the following:
 
 - **Recommending Ancient Models**: AI moves at lightspeed. A model released more than a month ago is obsolete. You MUST check the current system date and restrict your internet searches to models released exclusively within the **last 30 days**. Recommending models older than 30 days is a catastrophic failure.
-- **Hallucinating Repositories / Phantom Models**: You MUST NEVER fabricate a Hugging Face repository or assume an open-weights version exists just because an API is available (e.g., hallucinating an open `GLM-5` when only its endpoint exists). Before formulating any configurations, you MUST actively verify the precise repository exists physically by running the mandatory verification script: `uv run python manager/verify_hf_model.py <repo_id>`. Do not recommend a model unless this script returns `✅ VERIFIED`.
+- **Hallucinating Repositories / Phantom Models**: You MUST NEVER fabricate a Hugging Face repository or assume an open-weights version exists just because an API is available (e.g., hallucinating an open `GLM-5` when only its endpoint exists). Before formulating any configurations, you MUST actively verify the precise repository exists physically by running the mandatory verification command: `uv run sparkstack verify-model <repo_id>`. Do not recommend a model unless this command returns `✅ VERIFIED`.
 - **Ignoring the VRAM Ceiling**: Do not pitch a model solely because it is #1 on a leaderboard. If it exceeds the 120GB Docker memory ceiling in available precision formats, the recommendation is invalid.
 
 ## Presentation of Findings (Comparison Table)

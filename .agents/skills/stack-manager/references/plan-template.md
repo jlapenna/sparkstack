@@ -123,7 +123,7 @@ ______________________________________________________________________
   - Gateway Routing & Proxy Integrity (`test_wait_for_backends.py`)
   - Functional Role Verification — Reasoning (`test_tool_calling.py`, `test_long_conversation.py`)
   - Functional Role Verification — Embeddings (`test_functional_embeddings.py`)
-  - OpenClaw System Diagnosis (`test_openclaw_diagnosis.py`)
+  - OpenClaw Consumer Readiness & Model Catalog (`test_layer_3_openclaw.py`)
   - Telemetry Verification (`test_telemetry.py`, `test_tracing.py`)
 
 ______________________________________________________________________

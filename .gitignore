@@ -71,3 +71,6 @@ gha-creds-*.json
 
 # Lock files
 .sparkstack*.lock
+
+# Runtime pointer to the active stack (resolved at runtime, never committed)
+/current
