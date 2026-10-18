@@ -22,7 +22,7 @@ incident history or duplicate skill procedures here.
 | Build, rotate, or rebalance a stack | `stack-manager`                                          | its approved plan and full verification protocol |
 | Update OpenClaw or SparkRun source  | `stack-upkeep`, `source-dependency-dev`                  | skill-defined integration proof                  |
 | Debug a stack                       | `stack-debugging`, then the matching domain skill        | focused diagnosis before mutation                |
-| Change Docker/network topology      | `stack-knowledge` and Docker guidance                    | topology checks and incident record              |
+| Change Docker/network topology      | `stack-knowledge` and Docker guidance                    | topology checks                                  |
 | Change observability                | `monitoring`                                             | metrics/config validation                        |
 | Change Python orchestration         | `python-pro`, `async-python-patterns`, `ARCHITECTURE.md` | focused unit/regression tests                    |
 | Verify a running stack              | `stack-verification`                                     | ordered `tests/e2e/` evidence                    |

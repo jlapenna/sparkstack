@@ -1,7 +1,7 @@
 ---
 
 name: stack-knowledge
-description: Centralized technical knowledge base for Spark Stack architectural facts, model-specific quirks, and historical system learnings.
+description: Centralized technical knowledge base for Spark Stack architectural facts, Docker networking rules, and model-specific quirks.
 category: documentation
 risk: safe
 source: local
@@ -40,13 +40,13 @@ triggers:
 
 ## Purpose
 
-To serve as the single source of truth for Docker decisions in this repository. This skill is **self-learning**: every networking diagnosis, change, or mistake MUST be appended as a new dated entry so future sessions never repeat past errors.
+To serve as the single source of truth for Docker decisions in this repository. Its Hard Rules and the topology in `references/network-context.md` are distilled from past networking failures; when a change teaches a new durable rule, put it in those owners, not in a chronology.
 
 ## Mandatory Protocol
 
 ### Before ANY Networking Change
 
-1. **Activate the `docker-expert` skill**, then read this skill and its linked networking context. Retrieve incidents relevant to the symptom and proposed change.
+1. **Read this skill and its linked networking context** ([network-context.md](references/network-context.md)) before proposing a change.
 1. **Identify DooD vs DinD Pathing Requirements**: Before modifying path mappings, check if an orchestrator uses Docker-out-of-Docker (mounting `/var/run/docker.sock`). If so, the orchestrator's config MUST use _Host absolute paths_ for any targets it passes to the daemon. If the orchestrator _also_ accesses those targets natively via its own FS bridge, you MUST implement an **Identical Volume Map** (`- /path:/path`) for the orchestrator container so it shares the Host's path string natively.
 1. **Verify the target process is alive** before touching network config:
    ```bash
@@ -63,9 +63,9 @@ To serve as the single source of truth for Docker decisions in this repository. 
 
 ### After ANY Networking Change
 
-1. **Append a new dated entry** to this file, documenting the exact symptom, hypothesis, testing performed, and systemic learnings.
-1. **Update the topology tables** if network memberships or routing paths changed.
-1. **Commit this file** alongside whatever infra change you made.
+1. **Update the topology tables** in [network-context.md](references/network-context.md) if network memberships or routing paths changed.
+1. **Promote any new durable lesson** into the Hard Rules below or an executable check (for example `tests/e2e/test_config_drift.py`).
+1. **Commit those edits** alongside whatever infra change you made.
 
 ## Operational Rules
 
@@ -96,16 +96,15 @@ When interacting with OpenClaw, it is critical to distinguish between its immuta
 ## Docker Rigor
 
 - NEVER simply switch a container's network types, IP addresses, or host references without a ground-up evaluation of the intended and correct state of the world. Understand the base principles behind the existing Docker networks and topology first.
-- **Before making ANY Docker changes**, activate and review this file. It contains the current topology, past mistakes, and learnings. Add a new dated entry to the skill's Incident Log for every change you make, following the template in the doc.
+- **Before making ANY Docker changes**, review this file and its networking context. They carry the current topology and the rules learned from past mistakes.
 
 ## Conditional networking context
 
 For networking diagnosis or changes, read
 [network-context.md](references/network-context.md) for recorded topology and
-troubleshooting leads, then retrieve the relevant entries from
-[INCIDENT_LOG.md](INCIDENT_LOG.md). Historical observations need current
-corroboration; container membership and past agent explanations are not proof
-of a live service or root cause.
+troubleshooting leads. Historical observations need current corroboration;
+container membership and past agent explanations are not proof of a live
+service or root cause.
 
 ## Technical References
 
@@ -150,18 +149,14 @@ When making configuration changes to core infrastructure components (like OpenAI
 
 OpenClaw resolves model settings with agent-level overrides taking precedence over global defaults. If `sync_registry.py` updates `openclaw.json` but leaves agent-level `models.json` files stale, agents will silently use outdated settings (e.g., wrong `maxTokens`, stale API type, or missing capabilities).
 
-## Incident Log
-
-The incident log has grown too large and has been moved to a separate file. Please see [INCIDENT_LOG.md](./INCIDENT_LOG.md) for all historical incidents, and continue to append new entries there.
-
 ## Harness upkeep
 
 Use the [shared harness-maintenance workflow](https://github.com/jlapenna/repo-tools/blob/main/plugins/repo-tools/skills/harness-maintenance/SKILL.md), adapted from
 [Ryan Lopopolo's field guide](https://github.com/lopopolo/harness-engineering/tree/226c8d35fb6ea3ed55467753dba6dea2b5fd5778). Corroborate a failure with
 source and measured evidence before recording a general rule. Put current
-invariants in their code/configuration owner and concise skill guidance; keep
-chronology in the incident log. Retrieve topology and troubleshooting detail
-conditionally instead of expanding always-loaded context.
+invariants in their code/configuration owner and concise skill guidance; leave
+chronology to the pull request or issue that resolved it. Retrieve topology and
+troubleshooting detail conditionally instead of expanding always-loaded context.
 
 Follow [ARCHITECTURE.md](../../../ARCHITECTURE.md)'s proof boundary: source-only
 documentation maintenance uses non-live checks; infrastructure/configuration
