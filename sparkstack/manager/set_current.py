@@ -1,6 +1,7 @@
 #!/usr/bin/env -S uv run --env-file .env --frozen --offline python3
 import argparse
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -33,6 +34,11 @@ async def main():
     else:
         full_target = Path(target_str)
 
+    await switch_stack(full_target)
+
+
+async def switch_stack(full_target: Path, *, no_launch: bool = False) -> None:
+    """Switch stacks through the same teardown and refresh path for both CLIs."""
     try:
         full_target = full_target.resolve()
         if not full_target.is_relative_to(ROOT_DIR):
@@ -77,6 +83,9 @@ async def main():
                 logger.info("🧹 Tier 2: Tearing down remote Tailscale sidecars...")
                 await teardown_sidecars(outgoing_stack, hosts_to_keep=set())
 
+    logger.info("Stopping existing stack...")
+    await async_run_command(["systemctl", "--user", "stop", "vllm-active.service"], check=False)
+
     # Kill orphaned sparkrun and vllm containers explicitly to prevent OOM
     logger.info("Cleaning up lingering local containers...")
     ps_result = await async_run_command(
@@ -99,28 +108,28 @@ async def main():
     await async_run_command(["docker", "rm", "-f", "litellm"], check=False)
 
     # Update symlink
-    logger.info(f"Switching active stack to: {args.target}")
+    logger.info(f"Switching active stack to: {full_target.name}")
     symlink_path = ROOT_DIR / "current"
 
     if symlink_path.is_symlink() or symlink_path.exists():
         symlink_path.unlink()
     symlink_path.symlink_to(full_target)
 
-    # Start new service
-    logger.info("Starting new stack...")
-    stack_yaml = full_target / "stack.yaml"
-    if stack_yaml.is_file():
-        logger.info("🚀 Using hybrid launcher (sparkrun + compose)...")
-        await launch_stack(full_target)
-    else:
-        logger.info("📦 Using standard docker compose launcher...")
-        await async_run_command(["systemctl", "--user", "daemon-reload"], check=False)
-        await async_run_command(
-            ["systemctl", "--user", "start", "vllm-active.service"], check=False
-        )
+    if not no_launch:
+        stack_yaml = full_target / "stack.yaml"
+        if stack_yaml.is_file():
+            logger.info("🚀 Using hybrid launcher (sparkrun + compose)...")
+            await launch_stack(full_target)
+        else:
+            logger.info("📦 Using standard docker compose launcher...")
+            await async_run_command(["systemctl", "--user", "daemon-reload"], check=False)
+            await async_run_command(
+                ["systemctl", "--user", "start", "vllm-active.service"], check=False
+            )
 
     logger.info("🔄 Refreshing monitoring stack...")
     monitor_dir = ROOT_DIR / "services" / "monitoring"
+    os.environ["SPARKSTACK_DIR"] = str(full_target)
     compose_args = ["-f", "docker-compose.external.yml"] if is_monitoring_external() else []
     await async_run_compose(monitor_dir, "rm", "-fsv", "prometheus", check=False)
     await async_run_compose(monitor_dir, *compose_args, "up", "-d", check=False)
@@ -134,7 +143,7 @@ async def main():
             await async_run_compose(cf_dir, "down", project_root=ROOT_DIR, check=False)
             await async_run_compose(cf_dir, "up", "-d", project_root=ROOT_DIR, check=False)
 
-    logger.info(f"✅ Active stack is now: {args.target}")
+    logger.info(f"✅ Active stack is now: {full_target.name}")
 
 
 if __name__ == "__main__":
