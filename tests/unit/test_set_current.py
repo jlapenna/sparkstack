@@ -2,7 +2,9 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from click.testing import CliRunner
 
+from sparkstack.cli import main as cli
 from sparkstack.manager.set_current import main
 
 
@@ -124,7 +126,7 @@ async def test_set_current_success(tmp_path):
         assert current_symlink.resolve() == target_stack
 
         # Verify Tier 1 teardown (sparkrun stop called)
-        stop_calls = [c[0][0] for c in mock_run.call_args_list if "stop" in c[0][0]]
+        stop_calls = [c[0][0] for c in mock_run.call_args_list if "--cluster" in c[0][0]]
         assert len(stop_calls) == 1
         assert "--cluster" in stop_calls[0]
         assert "old-cluster" in stop_calls[0]
@@ -201,10 +203,65 @@ async def test_set_current_no_hybrid_service(tmp_path):
         assert "systemctl" in daemon_reload_call
 
         service_start_call = next(
-            c[0][0] for c in mock_run.call_args_list if "vllm-active.service" in c[0][0]
+            c[0][0]
+            for c in mock_run.call_args_list
+            if "start" in c[0][0] and "vllm-active.service" in c[0][0]
         )
         assert "systemctl" in service_start_call
         assert "start" in service_start_call
 
         # launch_stack should not have been called
         mock_launch.assert_not_called()
+
+
+@pytest.mark.parametrize("no_launch", [False, True])
+def test_click_switch_tears_down_remote_stack_and_refreshes_external_monitoring(
+    tmp_path, no_launch
+):
+    outgoing = tmp_path / "outgoing"
+    outgoing.mkdir()
+    (outgoing / ".state.json").write_text(
+        json.dumps(
+            {
+                "cluster_name": "old-cluster",
+                "sidecars": {"worker": {"container_name": "sidecar-worker"}},
+            }
+        )
+    )
+    (tmp_path / "current").symlink_to(outgoing)
+    target = tmp_path / "target"
+    target.mkdir()
+    (target / "stack.yaml").write_text("backends: []")
+    commands = AsyncMock(return_value=MagicMock(stdout="", returncode=0))
+    compose, launch, teardown = AsyncMock(), AsyncMock(), AsyncMock()
+    with (
+        patch("sparkstack.cli._set_current.resolve_stack_dir", return_value=target),
+        patch("sparkstack.manager.set_current.ROOT_DIR", tmp_path),
+        patch("sparkstack.manager.set_current.async_run_command", commands),
+        patch("sparkstack.manager.set_current.async_run_compose", compose),
+        patch("sparkstack.manager.set_current.launch_stack", launch),
+        patch("sparkstack.manager.remote.teardown_sidecars", teardown),
+        patch("sparkstack.manager.set_current.is_monitoring_external", return_value=True),
+        patch.dict("os.environ"),
+    ):
+        args = ["set-current", str(target)] + (["--no-launch"] if no_launch else [])
+        result = CliRunner().invoke(cli, args)
+
+    assert result.exit_code == 0, result.output
+    assert (tmp_path / "current").resolve() == target
+    remote_stop = next(c.args[0] for c in commands.call_args_list if "--cluster" in c.args[0])
+    assert remote_stop[-1] == "old-cluster"
+    teardown.assert_awaited_once_with(outgoing, hosts_to_keep=set())
+    commands.assert_any_await(["systemctl", "--user", "stop", "vllm-active.service"], check=False)
+    compose.assert_any_await(
+        tmp_path / "services" / "monitoring",
+        "-f",
+        "docker-compose.external.yml",
+        "up",
+        "-d",
+        check=False,
+    )
+    if no_launch:
+        launch.assert_not_awaited()
+    else:
+        launch.assert_awaited_once_with(target)
